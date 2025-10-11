@@ -12,7 +12,7 @@ FORCE_NEW_MODEL     = True
 MODEL_SEED          = 42       # Set to None for random seed
 ENABLE_SET_LR       = False
 LEARNING_RATE       = 1e-7
-MAX_LEARNING_RATE   = 1e-3
+MAX_LEARNING_RATE   = 1
 MIN_LEARNING_RATE   = 1e-10
 ENABLE_ADAPTIVE_LR              = False
 LR_INCREASE_MULTIPLIER          = 0.01
@@ -41,31 +41,7 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 # "lion_delta_refine_freeze_cosine", "adabelief", "lion_belief_refine", 
 # "qhlion_refine", "qhlion_belief_refine", "qhlion_belief_refine_adaptive"
 OPTIMISER                       = {
-    "name": "stratagum",
-    "base_unit_lr": 1e-7,
-    "min_unit_lr": 1e-12,
-    "max_unit_lr": 1e-4,
-    "base_layer_lr": 1e-10,
-    "min_layer_lr": 1e-11,
-    "max_layer_lr": 1e-6,
-    "alpha_lr": 0.2,
-    "nu_alpha": 0.2,
-    "lr_unit_increase_rate": 1.00057,
-    "lr_unit_decrease_rate": 0.9991,
-    "lr_layer_increase_rate": 1.005,
-    "lr_layer_decrease_rate": 0.9977,
-    "enable_segment_diagnostics": True,
-    "segment_size": 256,
-    "volatility_threshold": 1.0,
-    "stagnation_threshold": 0.1,
-    "stagnation_unit_threshold": 0.0000001,
-    "lr_stagnation_threshold": 0.4,
-    "expected_max_loss_std": 10.0,
-    "loss_history_maxlen": 128,
-    "nu_loss_std_weight": 0.001,
-    "expected_max_loss_std_unit": 3.0,
-    "expected_max_magnitude_unit": 1.0,
-    "exploration_gain": 0.67,
+    "name": "adabelief_lookahead"
 }
 
 #LION_BETA1                      = 0.9

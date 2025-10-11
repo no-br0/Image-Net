@@ -18,6 +18,5 @@ OPTIMISER_REGISTRY = {
     "lion_belief_refine": LionBeliefRefine,
     "qhlion_refine": QHLionRefine,
     "qhlion_belief_refine": QHLionAdaBeliefRefine,
-    "stratagum": Stratagum,
     "adabelief_lookahead": AdaBeliefLookahead
 }
