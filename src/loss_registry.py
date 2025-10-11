@@ -45,18 +45,15 @@ def combined_loss(target, pred, derivative=False):
     total_vector = cp.zeros_like(raw_vals[0][2])  # shape: [batch_size]
     breakdown = {}
     raw_loss = {}
-    total_raw_vector = cp.zeros_like(raw_vals[0][2])
 
     for (loss_name, _, val_vector), w in zip(raw_vals, weights):
         weighted_vector = w * val_vector
         total_vector += weighted_vector
-        total_raw_vector += val_vector
         breakdown[loss_name] = cp.mean(weighted_vector)
         raw_loss[loss_name] = cp.mean(val_vector)
         
-    raw_scalar = cp.mean(total_raw_vector)
     total_scalar = cp.mean(total_vector)
-    return total_scalar, total_vector, breakdown, raw_loss, raw_scalar
+    return total_scalar, breakdown, raw_loss
 
 
 
@@ -64,7 +61,7 @@ def wrapped_combined_loss(y_true, y_pred, derivative=False):
     if derivative:
         total = combined_loss(y_true, y_pred, derivative=True)
     else:
-        total, _, _, _, _ = combined_loss(y_true, y_pred)
+        total, _, _, = combined_loss(y_true, y_pred)
     
     return total
 

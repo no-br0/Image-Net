@@ -260,16 +260,10 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
                 print(f"[warn] accuracy computation failed: {e}")
 
             if error_func is wrapped_combined_loss:
-                total_loss, loss_vector, breakdown, raw_loss, total_raw = combined_loss(out, yb)
-                model.loss_batch_prev = model.loss_batch_current
-                model.loss_batch_current = total_loss
-                model.raw_loss_batch_prev = model.raw_loss_batch_current
-                model.raw_loss_batch_current = total_raw
-                model.backprop(yb, out, error_func=wrapped_combined_loss, loss_vector=loss_vector)
+                total_loss, breakdown, raw_loss = combined_loss(out, yb)
+                model.backprop(yb, out, error_func=wrapped_combined_loss)
             else:
                 total_loss, breakdown = error_func(yb, out)
-                model.loss_batch_prev = model.loss_batch_current
-                model.loss_batch_current = total_loss
                 model.backprop(yb, out, error_func=error_func)
 
             

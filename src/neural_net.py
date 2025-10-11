@@ -54,11 +54,6 @@ class NeuralNet:
         self._init_weights_and_biases()
         self.size = len(self.weights)
 
-        self.loss_batch_prev = None
-        self.loss_batch_current = None
-        self.raw_loss_batch_prev = None
-        self.raw_loss_batch_current = None
-        self.loss_batch_individual = None
         self.activated_output = None
         
         # Forward/backward reusable buffers
@@ -142,7 +137,7 @@ class NeuralNet:
 
 
 
-    def backprop(self, target_output, output, error_func=mse, loss_vector=None):
+    def backprop(self, target_output, output, error_func=mse):
         """
         Backward pass:
         - delta starts at dL/dYhat elementwise-multiplied by output activation derivative.
@@ -150,7 +145,6 @@ class NeuralNet:
         - grads: dW = A_{l-1}^T @ delta, db = sum(delta, axis=0)
         """
         
-        self.loss_batch_individual = loss_vector
         
         # Ensure delta buffer matches current output shape
         if self.delta_buf is None or self.delta_buf.shape != output.shape:
@@ -216,8 +210,6 @@ class NeuralNet:
             "PREVIOUS_RAW_BREAKDOWN_DELTA": self.PREVIOUS_RAW_BREAKDOWN_DELTA,
             "PREVIOUS_ABS_RAW_LOSS_DELTA": float(self.PREVIOUS_ABS_RAW_LOSS_DELTA),
             "optimiser_state": self.optimiser.get_state(),
-            "loss_batch_prev": float(self.loss_batch_prev),
-            "raw_loss_batch_prev": float(self.raw_loss_batch_prev),
             "seed": int(self.seed),
         }
         
@@ -280,8 +272,6 @@ class NeuralNet:
         nn.PREVIOUS_RAW_BREAKDOWN_DELTA = npz["PREVIOUS_RAW_BREAKDOWN_DELTA"].item()
         nn.PREVIOUS_ABS_RAW_LOSS_DELTA = npz["PREVIOUS_ABS_RAW_LOSS_DELTA"].item()
 
-        nn.loss_batch_prev = float(npz["loss_batch_prev"])
-        nn.raw_loss_batch_prev = float(npz["raw_loss_batch_prev"])
         if "GLOBAL_EPOCH" in npz:
             nn.GLOBAL_EPOCH = float(npz["GLOBAL_EPOCH"])
         else:
