@@ -1,0 +1,8 @@
+Logs/loss_log.txt
+Logs/perceptual_log.txt
+Logs/ripple_log.txt
+Logs/gpu_log.txt
+Logs/
+Saves/
+Telemetry/telemetry_logs/
+outputs/

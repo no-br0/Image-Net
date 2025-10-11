@@ -1,0 +1,102 @@
+[
+    {
+        "type": "perlin",
+        "frequency": 100.0,
+        "octaves": 6
+    },
+    {
+        "type": "flow_field",
+        "seed": 15
+    },
+    {
+        "type": "heightmap_flow_spectrum",
+        "seed": 822
+    },
+    {
+        "type": "multi_scale_flow",
+        "seed": 786
+    },
+    {
+        "type": "procedural_curvature",
+        "seed": 666
+    },
+    {
+        "type": "gradient_edges",
+        "seed": 720
+    },
+    {
+        "type": "fractal"
+    },
+    {
+        "type": "gaussian_noise",
+        "seed": 99
+    },
+    {
+        "type": "simplex_noise",
+        "seed": 83,
+        "scale": 5.0
+    },
+    {
+        "type": "simplex_noise",
+        "seed": 0,
+        "scale": 100.0
+    },
+    {
+        "type": "laplacian_gaussian"
+    },
+    {
+        "type": "curl_noise_flow"
+    },
+    {
+        "type": "voronoi_cells",
+        "num_seeds": 50
+    },
+    {
+        "type": "checkerboard_full_gray",
+        "block_size": 3,
+        "seed": 42
+    },
+    {
+        "type": "checkerboard_full_gray",
+        "block_size": 7,
+        "seed": 69
+    },
+    {
+        "type": "checkerboard_full_gray",
+        "block_size": 11,
+        "seed": 2
+    },
+    {
+        "type": "fbm_noise",
+        "seed": 42
+    },
+    {
+        "type": "fbm_vein",
+        "seed": 29
+    },
+    {
+        "type": "fbm_rock",
+        "seed": 1990
+    },
+    {
+        "type": "perlin_flow"
+    },
+    {
+        "type": "bandpass",
+        "cutoff": 0.009
+    },
+    {
+        "type": "checkerboard_radial",
+        "fade_mult": 1.1,
+        "tiles_x": 50,
+        "tiles_y": 39
+    },
+    {
+        "type": "checkerboard",
+        "block_size": 17
+    },
+    {
+        "type": "voronoi_segmentation",
+        "num_seeds": 100
+    }
+]
