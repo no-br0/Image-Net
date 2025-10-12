@@ -92,6 +92,11 @@ class AdaBeliefLookahead:
             grad_W -= self.weight_decay * grad_W
             grad_b -= self.weight_decay * grad_b
 
+        # Gradient Centralization (only for weights, not biases)
+        if grad_W.ndim > 1:
+            axes = tuple(range(1, grad_W.ndim))
+            grad_W -= cp.mean(grad_W, axis=axes, keepdims=True)
+
         # AdaBelief update
         m_W = self.beta1 * m_W + (1 - self.beta1) * grad_W
         m_b = self.beta1 * m_b + (1 - self.beta1) * grad_b

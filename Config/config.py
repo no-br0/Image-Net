@@ -11,9 +11,9 @@ TRAIN               = True
 FORCE_NEW_MODEL     = True
 MODEL_SEED          = 42       # Set to None for random seed
 ENABLE_SET_LR       = False
-LEARNING_RATE       = 1e-7
+LEARNING_RATE       = 1e-10
 MAX_LEARNING_RATE   = 1
-MIN_LEARNING_RATE   = 1e-10
+MIN_LEARNING_RATE   = 1e-100
 ENABLE_ADAPTIVE_LR              = False
 LR_INCREASE_MULTIPLIER          = 0.01
 LR_DECREASE_MULTIPLIER          = 0.004979
@@ -27,7 +27,7 @@ GRAD_CLIP                       = 1.0
 # | 65536 | 49152 | 32768 | 24576 | 16384 | 8192 | 4096 | 2048 | 1024)
 #BATCH_SIZE      = 98304
 BATCH_SIZE      = 163840
-SHUFFLE         = True
+SHUFFLE         = False
 EPOCHS          = 20000
 
 ENABLE_CUSTOM_MODEL_NAME        = False
@@ -41,7 +41,12 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 # "lion_delta_refine_freeze_cosine", "adabelief", "lion_belief_refine", 
 # "qhlion_refine", "qhlion_belief_refine", "qhlion_belief_refine_adaptive"
 OPTIMISER                       = {
-    "name": "adabelief_lookahead"
+    "name": "adabelief_lookahead",
+    "lookahead_k": 15,
+    "lookahead_alpha": 0.2,
+    "beta1": 0.85,
+    "beta2": 0.997,
+    "weight_decay": 1e-3,
 }
 
 #LION_BETA1                      = 0.9
