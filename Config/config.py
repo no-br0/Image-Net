@@ -11,7 +11,7 @@ TRAIN               = True
 FORCE_NEW_MODEL     = True
 MODEL_SEED          = 42       # Set to None for random seed
 ENABLE_SET_LR       = False
-LEARNING_RATE       = 1e-10
+LEARNING_RATE       = 1e-7
 MAX_LEARNING_RATE   = 1
 MIN_LEARNING_RATE   = 1e-100
 ENABLE_ADAPTIVE_LR              = False
@@ -46,7 +46,7 @@ OPTIMISER                       = {
     "lookahead_alpha": 0.2,
     "beta1": 0.85,
     "beta2": 0.997,
-    "weight_decay": 1e-3,
+    "gradient_dampening": 1e-3,
 }
 
 #LION_BETA1                      = 0.9
