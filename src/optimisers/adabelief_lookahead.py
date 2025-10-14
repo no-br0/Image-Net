@@ -14,10 +14,10 @@ class AdaBeliefLookahead:
         self.alpha = config.get("lookahead_alpha", 0.5)
         self.enable_gradient_centralisation = config.get("enable_gradient_centralisation", True)
         
-        self.use_curvature = config.get("use_curvature", False)
-        self.use_trust_gate = config.get("use_trust_gate", False)
-        self.use_flatness_reg = config.get("use_flatness_reg", False)
-        self.use_lr_modulation = config.get("use_lr_modulation", False)
+        self.use_curvature = config.get("use_curvature", True)
+        self.use_trust_gate = config.get("use_trust_gate", True)
+        self.use_flatness_reg = config.get("use_flatness_reg", True)
+        self.use_lr_modulation = config.get("use_lr_modulation", True)
         self.curvature_lambda = config.get("curvature_lambda", 1.0)
         self.curvature_alpha = config.get("curvature_alpha", 0.01)
         self.curvature_beta = config.get("curvature_beta", 0.1)
@@ -36,6 +36,7 @@ class AdaBeliefLookahead:
         self.momentum_boost = config.get("momentum_boost", 0.05)
         self.curv_kick_thresh = config.get("curv_kick_thresh", 0.05)
 
+        self.use_kick_meckanism = config.get("use_kick_meckanism", True)
 
         self.curv_ema = {}
 
@@ -118,26 +119,29 @@ class AdaBeliefLookahead:
         # Curvature estimation
         if self.use_curvature:
             eps = self.curvature_eps
-            num_samples = self.num_rademacher  # ← configurable
+            N = self.num_rademacher
 
-            trace_sum = 0
-            for _ in range(num_samples):
-                z_W = cp.random.choice([-1, 1], size=grad_W.shape)
-                z_b = cp.random.choice([-1, 1], size=grad_b.shape)
+            # Sample Rademacher vectors: shape (N, ...)
+            z_W = cp.random.choice([-1, 1], size=(N,) + grad_W.shape)
+            z_b = cp.random.choice([-1, 1], size=(N,) + grad_b.shape)
 
-                grad_plus_W = grad_W + eps * z_W
-                grad_minus_W = grad_W - eps * z_W
-                grad_plus_b = grad_b + eps * z_b
-                grad_minus_b = grad_b - eps * z_b
+            # Perturb gradients
+            grad_plus_W = grad_W[None, ...] + eps * z_W
+            grad_minus_W = grad_W[None, ...] - eps * z_W
+            grad_plus_b = grad_b[None, ...] + eps * z_b
+            grad_minus_b = grad_b[None, ...] - eps * z_b
 
-                Hz_W = (grad_plus_W - grad_minus_W) / (2 * eps)
-                Hz_b = (grad_plus_b - grad_minus_b) / (2 * eps)
+            # Finite difference Hessian-vector products
+            Hz_W = (grad_plus_W - grad_minus_W) / (2 * eps)
+            Hz_b = (grad_plus_b - grad_minus_b) / (2 * eps)
 
-                trace_W = cp.dot(z_W.ravel(), Hz_W.ravel())
-                trace_b = cp.dot(z_b.ravel(), Hz_b.ravel())
-                trace_sum += (trace_W + trace_b) / 2
+            # Trace estimates: dot(z, Hz) per sample
+            trace_W = cp.einsum("n...,n...->n", z_W, Hz_W)
+            trace_b = cp.einsum("n...,n...->n", z_b, Hz_b)
 
-            trace_raw = trace_sum / num_samples
+            # Average trace
+            trace_raw = cp.mean((trace_W + trace_b) / 2)
+
 
             # EMA update
             if layer_idx not in self.curv_ema:
@@ -152,29 +156,35 @@ class AdaBeliefLookahead:
             trace_lr    = self.curv_ratio_lr    * trace_raw + (1 - self.curv_ratio_lr)    * self.curv_ema[layer_idx]
             trace_pen   = self.curv_ratio_pen   * trace_raw + (1 - self.curv_ratio_pen)   * self.curv_ema[layer_idx]
 
+        #========================================
 
-            if self.use_trust_gate:
-                trust_gate = cp.sigmoid(-self.curvature_lambda * trace_trust)
-                trust_gate = cp.maximum(trust_gate, self.trust_gate_floor)  # ← prevent zeroing
-                grad_W *= trust_gate
-                grad_b *= trust_gate
+        # Trust gate
+        if self.use_trust_gate and self.use_curvature:
+            trust_gate = 1 / (1 + cp.exp(self.curvature_lambda * trace_trust))
+            trust_gate = cp.maximum(trust_gate, self.trust_gate_floor)  # ← prevent zeroing
+            grad_W *= trust_gate
+            grad_b *= trust_gate
 
+        #========================================
 
-            if self.use_flatness_reg:
-                flatness_penalty = self.curvature_alpha * trace_pen
+        # Flatness regularization
+        if self.use_flatness_reg and self.use_curvature:
+            flatness_penalty = self.curvature_alpha * trace_pen
 
-                # Apply penalty directly to gradients
-                grad_W += flatness_penalty * grad_W
-                grad_b += flatness_penalty * grad_b
+            # Apply penalty directly to gradients
+            grad_W += flatness_penalty * grad_W
+            grad_b += flatness_penalty * grad_b
 
-                # Log for overlays
-                self.log_metric(layer_idx, "flatness_penalty", float(flatness_penalty))
+            # Log for overlays
+            self.log_metric(layer_idx, "flatness_penalty", float(flatness_penalty))
 
-                            
-            if self.use_lr_modulation:
-                lr_mod_base = model.learning_rate * cp.exp(-self.curvature_beta * trace_lr)
-            else:
-                lr_mod_base = model.learning_rate
+        #========================================
+        
+        # LR modulation
+        if self.use_lr_modulation and self.use_curvature:
+            lr_mod_base = model.learning_rate * cp.exp(-self.curvature_beta * trace_lr)
+        else:
+            lr_mod_base = model.learning_rate
 
         #========================================
 
@@ -192,24 +202,29 @@ class AdaBeliefLookahead:
                 grad_W -= cp.mean(grad_W, axis=axes, keepdims=True)
 
         #========================================
+        
+        # Kick meckanism
+        if self.use_kick_meckanism:
+            # Cyclical LR
+            cycle_pos = self.step_counter % self.cycle_length
+            cycle_amp = 0.5 * (1 + cp.cos(cp.pi * cycle_pos / self.cycle_length))
+            lr_cycle = 1 + self.lr_cycle_amp * cycle_amp  # e.g. amp = 0.5 → 1.0–1.5
 
-        # Cyclical LR
-        cycle_pos = self.step_counter % self.cycle_length
-        cycle_amp = 0.5 * (1 + cp.cos(cp.pi * cycle_pos / self.cycle_length))
-        lr_cycle = 1 + self.lr_cycle_amp * cycle_amp  # e.g. amp = 0.5 → 1.0–1.5
+            # Stall detection
+            stall = (trace_raw < self.stall_curv_thresh) and (cp.linalg.norm(grad_W) < self.stall_grad_thresh)
 
-        # Stall detection
-        stall = (trace_raw < self.stall_curv_thresh) and (cp.linalg.norm(grad_W) < self.stall_grad_thresh)
+            # Momentum pulse
+            if stall:
+                beta1 = min(self.beta1 + self.momentum_boost, 0.98)
+            else:
+                beta1 = self.beta1
 
-        # Momentum pulse
-        if stall:
-            beta1 = min(self.beta1 + self.momentum_boost, 0.98)
+            # Final LR
+            lr_mod = lr_mod_base * lr_cycle if trace_lr < self.curv_kick_thresh else lr_mod_base
         else:
             beta1 = self.beta1
-
-        # Final LR
-        lr_mod = lr_mod_base * lr_cycle if trace_lr < self.curv_kick_thresh else lr_mod_base
-
+            lr_mod = lr_mod_base
+            
         #========================================
 
         # AdaBelief update
