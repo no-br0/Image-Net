@@ -22,7 +22,22 @@ class AdaBeliefLookahead:
         self.curvature_alpha = config.get("curvature_alpha", 0.01)
         self.curvature_beta = config.get("curvature_beta", 0.1)
         self.curvature_eps = config.get("curvature_eps", 1e-4)
+        
+        self.num_rademacher = config.get("num_rademacher", 2)
+        self.curv_beta = config.get("curv_beta", 0.9)
+        self.curv_ratio_trust = config.get("curv_ratio_trust", 0.6)
+        self.curv_ratio_lr = config.get("curv_ratio_lr", 0.3)
+        self.curv_ratio_pen = config.get("curv_ratio_pen", 0.5)
+        self.trust_gate_floor = config.get("trust_gate_floor", 0.15)
+        self.cycle_length = config.get("cycle_length", 200)
+        self.lr_cycle_amp = config.get("lr_cycle_amp", 0.5)
+        self.stall_curv_thresh = config.get("stall_curv_thresh", 0.01)
+        self.stall_grad_thresh = config.get("stall_grad_thresh", 1e-3)
+        self.momentum_boost = config.get("momentum_boost", 0.05)
+        self.curv_kick_thresh = config.get("curv_kick_thresh", 0.05)
 
+
+        self.curv_ema = {}
 
         self.t = 0
         self.step_counter = 0
@@ -98,46 +113,77 @@ class AdaBeliefLookahead:
         s_W, s_b = self.s[layer_idx]
         slow_W, slow_b = self.slow_params[layer_idx]
 
+        #========================================
 
+        # Curvature estimation
         if self.use_curvature:
             eps = self.curvature_eps
+            num_samples = self.num_rademacher  # ← configurable
 
-            # Sample Rademacher vectors
-            z_W = cp.random.choice([-1, 1], size=grad_W.shape)
-            z_b = cp.random.choice([-1, 1], size=grad_b.shape)
+            trace_sum = 0
+            for _ in range(num_samples):
+                z_W = cp.random.choice([-1, 1], size=grad_W.shape)
+                z_b = cp.random.choice([-1, 1], size=grad_b.shape)
 
-            # Estimate curvature via finite differences on gradient
-            grad_plus_W = grad_W + eps * z_W
-            grad_minus_W = grad_W - eps * z_W
-            grad_plus_b = grad_b + eps * z_b
-            grad_minus_b = grad_b - eps * z_b
+                grad_plus_W = grad_W + eps * z_W
+                grad_minus_W = grad_W - eps * z_W
+                grad_plus_b = grad_b + eps * z_b
+                grad_minus_b = grad_b - eps * z_b
 
-            Hz_W = (grad_plus_W - grad_minus_W) / (2 * eps)
-            Hz_b = (grad_plus_b - grad_minus_b) / (2 * eps)
+                Hz_W = (grad_plus_W - grad_minus_W) / (2 * eps)
+                Hz_b = (grad_plus_b - grad_minus_b) / (2 * eps)
 
-            trace_W = cp.dot(z_W.ravel(), Hz_W.ravel())
-            trace_b = cp.dot(z_b.ravel(), Hz_b.ravel())
-            trace_estimate = (trace_W + trace_b) / 2
+                trace_W = cp.dot(z_W.ravel(), Hz_W.ravel())
+                trace_b = cp.dot(z_b.ravel(), Hz_b.ravel())
+                trace_sum += (trace_W + trace_b) / 2
 
-        if self.use_trust_gate:
-            trust_gate = cp.sigmoid(-self.curvature_lambda * trace_estimate)
-            grad_W *= trust_gate
-            grad_b *= trust_gate
+            trace_raw = trace_sum / num_samples
 
-        if self.use_flatness_reg:
-            model.loss += self.curvature_alpha * trace_estimate
+            # EMA update
+            if layer_idx not in self.curv_ema:
+                self.curv_ema[layer_idx] = trace_raw
+            else:
+                self.curv_ema[layer_idx] = (
+                    self.curv_beta * self.curv_ema[layer_idx] + (1 - self.curv_beta) * trace_raw
+                )
 
-        if self.use_lr_modulation:
-            lr_mod = model.learning_rate * cp.exp(-self.curvature_beta * trace_estimate)
-        else:
-            lr_mod = model.learning_rate
+            # Ratio blend per use
+            trace_trust = self.curv_ratio_trust * trace_raw + (1 - self.curv_ratio_trust) * self.curv_ema[layer_idx]
+            trace_lr    = self.curv_ratio_lr    * trace_raw + (1 - self.curv_ratio_lr)    * self.curv_ema[layer_idx]
+            trace_pen   = self.curv_ratio_pen   * trace_raw + (1 - self.curv_ratio_pen)   * self.curv_ema[layer_idx]
 
+
+            if self.use_trust_gate:
+                trust_gate = cp.sigmoid(-self.curvature_lambda * trace_trust)
+                trust_gate = cp.maximum(trust_gate, self.trust_gate_floor)  # ← prevent zeroing
+                grad_W *= trust_gate
+                grad_b *= trust_gate
+
+
+            if self.use_flatness_reg:
+                flatness_penalty = self.curvature_alpha * trace_pen
+
+                # Apply penalty directly to gradients
+                grad_W += flatness_penalty * grad_W
+                grad_b += flatness_penalty * grad_b
+
+                # Log for overlays
+                self.log_metric(layer_idx, "flatness_penalty", float(flatness_penalty))
+
+                            
+            if self.use_lr_modulation:
+                lr_mod_base = model.learning_rate * cp.exp(-self.curvature_beta * trace_lr)
+            else:
+                lr_mod_base = model.learning_rate
+
+        #========================================
 
         # Gradient Dampening
         if self.gradient_dampening != 0:
             grad_W -= self.gradient_dampening * grad_W
             grad_b -= self.gradient_dampening * grad_b
             
+        #========================================
 
         # Gradient Centralization (only for weights, not biases)
         if self.enable_gradient_centralisation:
@@ -145,9 +191,30 @@ class AdaBeliefLookahead:
                 axes = tuple(range(1, grad_W.ndim))
                 grad_W -= cp.mean(grad_W, axis=axes, keepdims=True)
 
+        #========================================
+
+        # Cyclical LR
+        cycle_pos = self.step_counter % self.cycle_length
+        cycle_amp = 0.5 * (1 + cp.cos(cp.pi * cycle_pos / self.cycle_length))
+        lr_cycle = 1 + self.lr_cycle_amp * cycle_amp  # e.g. amp = 0.5 → 1.0–1.5
+
+        # Stall detection
+        stall = (trace_raw < self.stall_curv_thresh) and (cp.linalg.norm(grad_W) < self.stall_grad_thresh)
+
+        # Momentum pulse
+        if stall:
+            beta1 = min(self.beta1 + self.momentum_boost, 0.98)
+        else:
+            beta1 = self.beta1
+
+        # Final LR
+        lr_mod = lr_mod_base * lr_cycle if trace_lr < self.curv_kick_thresh else lr_mod_base
+
+        #========================================
+
         # AdaBelief update
-        m_W = self.beta1 * m_W + (1 - self.beta1) * grad_W
-        m_b = self.beta1 * m_b + (1 - self.beta1) * grad_b
+        m_W = beta1 * m_W + (1 - beta1) * grad_W
+        m_b = beta1 * m_b + (1 - beta1) * grad_b
 
         diff_W = grad_W - m_W
         diff_b = grad_b - m_b
@@ -166,6 +233,8 @@ class AdaBeliefLookahead:
         model.weights[layer_idx] -= update_W
         model.bias[layer_idx] -= update_b
 
+        #========================================
+
         # Lookahead sync
         if self.step_counter % self.k == 0:
             slow_W += self.alpha * (model.weights[layer_idx] - slow_W)
@@ -173,10 +242,14 @@ class AdaBeliefLookahead:
             model.weights[layer_idx][:] = slow_W
             model.bias[layer_idx][:] = slow_b
 
+        #========================================
+
         # Save updated state
         self.m[layer_idx] = [m_W, m_b]
         self.s[layer_idx] = [s_W, s_b]
         self.slow_params[layer_idx] = [slow_W, slow_b]
+
+        #========================================
 
         # Optional telemetry
         self.log_metric(layer_idx, "update_magnitude_W", float(cp.linalg.norm(update_W)))
