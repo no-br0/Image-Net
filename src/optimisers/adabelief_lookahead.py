@@ -13,6 +13,15 @@ class AdaBeliefLookahead:
         self.k = config.get("lookahead_k", 5)
         self.alpha = config.get("lookahead_alpha", 0.5)
         self.enable_gradient_centralisation = config.get("enable_gradient_centralisation", True)
+        
+        self.use_curvature = config.get("use_curvature", False)
+        self.use_trust_gate = config.get("use_trust_gate", False)
+        self.use_flatness_reg = config.get("use_flatness_reg", False)
+        self.use_lr_modulation = config.get("use_lr_modulation", False)
+        self.curvature_lambda = config.get("curvature_lambda", 1.0)
+        self.curvature_alpha = config.get("curvature_alpha", 0.01)
+        self.curvature_beta = config.get("curvature_beta", 0.1)
+        self.curvature_eps = config.get("curvature_eps", 1e-4)
 
 
         self.t = 0
@@ -89,10 +98,46 @@ class AdaBeliefLookahead:
         s_W, s_b = self.s[layer_idx]
         slow_W, slow_b = self.slow_params[layer_idx]
 
-        # Weight decay
+
+        if self.use_curvature:
+            eps = self.curvature_eps
+
+            # Sample Rademacher vectors
+            z_W = cp.random.choice([-1, 1], size=grad_W.shape)
+            z_b = cp.random.choice([-1, 1], size=grad_b.shape)
+
+            # Estimate curvature via finite differences on gradient
+            grad_plus_W = grad_W + eps * z_W
+            grad_minus_W = grad_W - eps * z_W
+            grad_plus_b = grad_b + eps * z_b
+            grad_minus_b = grad_b - eps * z_b
+
+            Hz_W = (grad_plus_W - grad_minus_W) / (2 * eps)
+            Hz_b = (grad_plus_b - grad_minus_b) / (2 * eps)
+
+            trace_W = cp.dot(z_W.ravel(), Hz_W.ravel())
+            trace_b = cp.dot(z_b.ravel(), Hz_b.ravel())
+            trace_estimate = (trace_W + trace_b) / 2
+
+        if self.use_trust_gate:
+            trust_gate = cp.sigmoid(-self.curvature_lambda * trace_estimate)
+            grad_W *= trust_gate
+            grad_b *= trust_gate
+
+        if self.use_flatness_reg:
+            model.loss += self.curvature_alpha * trace_estimate
+
+        if self.use_lr_modulation:
+            lr_mod = model.learning_rate * cp.exp(-self.curvature_beta * trace_estimate)
+        else:
+            lr_mod = model.learning_rate
+
+
+        # Gradient Dampening
         if self.gradient_dampening != 0:
             grad_W -= self.gradient_dampening * grad_W
             grad_b -= self.gradient_dampening * grad_b
+            
 
         # Gradient Centralization (only for weights, not biases)
         if self.enable_gradient_centralisation:
@@ -115,8 +160,8 @@ class AdaBeliefLookahead:
         s_hat_W = s_W / (1 - self.beta2 ** self.t)
         s_hat_b = s_b / (1 - self.beta2 ** self.t)
 
-        update_W = model.learning_rate * m_hat_W / (cp.sqrt(s_hat_W) + self.eps)
-        update_b = model.learning_rate * m_hat_b / (cp.sqrt(s_hat_b) + self.eps)
+        update_W = lr_mod * m_hat_W / (cp.sqrt(s_hat_W) + self.eps)
+        update_b = lr_mod * m_hat_b / (cp.sqrt(s_hat_b) + self.eps)
 
         model.weights[layer_idx] -= update_W
         model.bias[layer_idx] -= update_b

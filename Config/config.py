@@ -11,7 +11,7 @@ TRAIN               = True
 FORCE_NEW_MODEL     = True
 MODEL_SEED          = 42       # Set to None for random seed
 ENABLE_SET_LR       = False
-LEARNING_RATE       = 1e-7
+LEARNING_RATE       = 1e-6
 MAX_LEARNING_RATE   = 1
 MIN_LEARNING_RATE   = 1e-100
 ENABLE_ADAPTIVE_LR              = False
@@ -43,10 +43,10 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 OPTIMISER                       = {
     "name": "adabelief_lookahead",
     "lookahead_k": 15,
-    "lookahead_alpha": 0.2,
-    "beta1": 0.85,
-    "beta2": 0.997,
-    "gradient_dampening": 1e-3,
+    "lookahead_alpha": 0.5,
+    "beta1": 0.89,
+    "beta2": 0.998,
+    "gradient_dampening": 3e-4,
 }
 
 #LION_BETA1                      = 0.9
