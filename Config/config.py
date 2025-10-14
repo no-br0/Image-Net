@@ -8,7 +8,7 @@ ENABLE_TELEMETRY_VIEWER = False
 
 # --- Settings ---
 TRAIN               = True
-FORCE_NEW_MODEL     = True
+FORCE_NEW_MODEL     = False
 MODEL_SEED          = 42       # Set to None for random seed
 ENABLE_SET_LR       = False
 LEARNING_RATE       = 1e-6
@@ -42,7 +42,7 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 # "qhlion_refine", "qhlion_belief_refine", "qhlion_belief_refine_adaptive"
 OPTIMISER                       = {
     "name": "adabelief_lookahead",
-    "lookahead_k": 15,
+    #"lookahead_k": 15,
     "lookahead_alpha": 0.5,
     "beta1": 0.89,
     "beta2": 0.998,

@@ -10,7 +10,7 @@ class AdaBeliefLookahead:
         self.beta2 = config.get("beta2", 0.998)
         self.eps = config.get("eps", 1e-8)
         self.gradient_dampening = config.get("gradient_dampening", 0.0)
-        self.k = config.get("lookahead_k", 5)
+        #self.k = config.get("lookahead_k", 5)
         self.alpha = config.get("lookahead_alpha", 0.5)
         self.enable_gradient_centralisation = config.get("enable_gradient_centralisation", True)
         
@@ -35,6 +35,7 @@ class AdaBeliefLookahead:
         self.stall_grad_thresh = config.get("stall_grad_thresh", 1e-3)
         self.momentum_boost = config.get("momentum_boost", 0.05)
         self.curv_kick_thresh = config.get("curv_kick_thresh", 0.05)
+        self.flatness_penalty_max = config.get("flatness_penalty_max", 2.0)
 
         self.use_kick_meckanism = config.get("use_kick_meckanism", True)
 
@@ -60,6 +61,8 @@ class AdaBeliefLookahead:
             "m": {k: [cp.asnumpy(x) for x in v] for k, v in self.m.items()},
             "s": {k: [cp.asnumpy(x) for x in v] for k, v in self.s.items()},
             "slow_params": {k: [cp.asnumpy(x) for x in v] for k, v in self.slow_params.items()},
+            "curv_ema": {k: float(v) for k, v in self.curv_ema.items()},
+
         }
 
     def load_state(self, state):
@@ -68,6 +71,8 @@ class AdaBeliefLookahead:
         self.m = {k: [cp.asarray(x) for x in v] for k, v in state["m"].items()}
         self.s = {k: [cp.asarray(x) for x in v] for k, v in state["s"].items()}
         self.slow_params = {k: [cp.asarray(x) for x in v] for k, v in state["slow_params"].items()}
+        self.curv_ema = {k: float(v) for k, v in state.get("curv_ema", {}).items()}
+
 
     def log_metric(self, layer_idx, key, value):
         layer_telemetry = self.telemetry.setdefault(layer_idx, {})
@@ -121,9 +126,10 @@ class AdaBeliefLookahead:
             eps = self.curvature_eps
             N = self.num_rademacher
 
+            rng = cp.random.RandomState(model.seed + model.batch_index + layer_idx)
             # Sample Rademacher vectors: shape (N, ...)
-            z_W = cp.random.choice([-1, 1], size=(N,) + grad_W.shape)
-            z_b = cp.random.choice([-1, 1], size=(N,) + grad_b.shape)
+            z_W = rng.choice([-1, 1], size=(N,) + grad_W.shape)
+            z_b = rng.choice([-1, 1], size=(N,) + grad_b.shape)
 
             # Perturb gradients
             grad_plus_W = grad_W[None, ...] + eps * z_W
@@ -135,13 +141,18 @@ class AdaBeliefLookahead:
             Hz_W = (grad_plus_W - grad_minus_W) / (2 * eps)
             Hz_b = (grad_plus_b - grad_minus_b) / (2 * eps)
 
-            # Trace estimates: dot(z, Hz) per sample
-            trace_W = cp.einsum("n...,n...->n", z_W, Hz_W)
-            trace_b = cp.einsum("n...,n...->n", z_b, Hz_b)
+            # Flatten each sample to 2D: (N, D)
+            z_W_flat = z_W.reshape(z_W.shape[0], -1)
+            Hz_W_flat = Hz_W.reshape(Hz_W.shape[0], -1)
+            z_b_flat = z_b.reshape(z_b.shape[0], -1)
+            Hz_b_flat = Hz_b.reshape(Hz_b.shape[0], -1)
 
-            # Average trace
+            # Batch dot product: (N,)
+            trace_W = cp.sum(z_W_flat * Hz_W_flat, axis=1)
+            trace_b = cp.sum(z_b_flat * Hz_b_flat, axis=1)
+
+            # Final trace
             trace_raw = cp.mean((trace_W + trace_b) / 2)
-
 
             # EMA update
             if layer_idx not in self.curv_ema:
@@ -170,7 +181,7 @@ class AdaBeliefLookahead:
         # Flatness regularization
         if self.use_flatness_reg and self.use_curvature:
             flatness_penalty = self.curvature_alpha * trace_pen
-
+            flatness_penalty = cp.clip(flatness_penalty, 0.0, self.flatness_penalty_max)
             # Apply penalty directly to gradients
             grad_W += flatness_penalty * grad_W
             grad_b += flatness_penalty * grad_b
@@ -182,7 +193,8 @@ class AdaBeliefLookahead:
         
         # LR modulation
         if self.use_lr_modulation and self.use_curvature:
-            lr_mod_base = model.learning_rate * cp.exp(-self.curvature_beta * trace_lr)
+            decay_exponent = cp.minimum(self.curvature_beta * trace_lr, 20.0)
+            lr_mod_base = model.learning_rate * cp.exp(-decay_exponent)
         else:
             lr_mod_base = model.learning_rate
 
@@ -251,7 +263,7 @@ class AdaBeliefLookahead:
         #========================================
 
         # Lookahead sync
-        if self.step_counter % self.k == 0:
+        if cycle_pos == self.cycle_length - 1:
             slow_W += self.alpha * (model.weights[layer_idx] - slow_W)
             slow_b += self.alpha * (model.bias[layer_idx] - slow_b)
             model.weights[layer_idx][:] = slow_W
