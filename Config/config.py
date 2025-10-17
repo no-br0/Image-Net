@@ -8,10 +8,10 @@ ENABLE_TELEMETRY_VIEWER = False
 
 # --- Settings ---
 TRAIN               = True
-FORCE_NEW_MODEL     = False
+FORCE_NEW_MODEL     = True
 MODEL_SEED          = 42       # Set to None for random seed
 ENABLE_SET_LR       = False
-LEARNING_RATE       = 1e-6
+LEARNING_RATE       = 1e-5
 MAX_LEARNING_RATE   = 1
 MIN_LEARNING_RATE   = 1e-100
 ENABLE_ADAPTIVE_LR              = False
@@ -42,11 +42,19 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 # "qhlion_refine", "qhlion_belief_refine", "qhlion_belief_refine_adaptive"
 OPTIMISER                       = {
     "name": "adabelief_lookahead",
-    #"lookahead_k": 15,
-    "lookahead_alpha": 0.5,
-    "beta1": 0.89,
-    "beta2": 0.998,
-    "gradient_dampening": 3e-4,
+    "lr_floor": 1e-10,
+    "lookahead_alpha": 0.9,
+    "beta1": 0.90,
+    "beta2": 0.999,
+    "gradient_dampening": 0.0,
+    "use_flatness_reg": False,
+    "use_kick_meckanism": True,
+    "use_lr_modulation": True,
+    "num_rademacher": 1,
+    "curvature_lambda": 0.5,
+    "curv_kick_thresh": 0.8,
+    "stall_curv_thresh": 0.8,
+    
 }
 
 #LION_BETA1                      = 0.9
