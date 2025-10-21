@@ -23,11 +23,11 @@ LOWEST_LOSS_THRESHOLD           = 0.001
 GRAD_CLIP                       = 1.0
 
 
-#(327680 | 262144 | 196608 | 163840 | 143744 | 131072 | 122880 | 1048576 | 98304 
+#(327680 | 262144 | 245760 | 196608 | 163840 | 143744 | 131072 | 122880 | 1048576 | 98304 
 # | 65536 | 49152 | 32768 | 24576 | 16384 | 8192 | 4096 | 2048 | 1024)
 #BATCH_SIZE      = 98304
-BATCH_SIZE      = 163840
-SHUFFLE         = False
+BATCH_SIZE      = 245760
+SHUFFLE         = True
 EPOCHS          = 20000
 
 ENABLE_CUSTOM_MODEL_NAME        = False
@@ -48,11 +48,11 @@ OPTIMISER                       = {
     "beta2": 0.999,
     "gradient_dampening": 0.0,
     "use_flatness_reg": False,
-    "use_kick_meckanism": True,
+    "use_kick_mechanism": True,
     "use_lr_modulation": True,
     "num_rademacher": 1,
     "curvature_lambda": 0.5,
-    "curv_kick_thresh": 0.8,
+    "curv_kick_thresh": 0.5,
     "stall_curv_thresh": 0.8,
     
 }
@@ -61,7 +61,7 @@ OPTIMISER                       = {
 #MOMENTUM                        = 0.8
 
 SAVE_AFTER          = True
-SAVE_INTERVAL       = 10
+SAVE_INTERVAL       = 6
 
 
 LOSS_CONFIG = [

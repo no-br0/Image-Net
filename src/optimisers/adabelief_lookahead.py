@@ -40,7 +40,7 @@ class AdaBeliefLookahead:
         self.flatness_gate_thresh = config.get("flatness_gate_thresh", 0.05)
         self.trace_lr_max = config.get("trace_lr_max", 100.0)
 
-        self.use_kick_meckanism = config.get("use_kick_meckanism", True)
+        self.use_kick_mechanism = config.get("use_kick_mechanism", True)
 
         self.curv_ema = {}
 
@@ -59,6 +59,11 @@ class AdaBeliefLookahead:
         self.telemetry_maxlen = 100
 
     def get_state(self):
+        #for k in self.prev_grad_W:
+        #    print(f"Layer {k}: prev_grad_W norm = {cp.linalg.norm(self.prev_grad_W[k])}")
+        #    print(f"Layer {k}: curv_ema = {self.curv_ema.get(k, 'missing')}")
+        #    print(f"Layer {k}: m_W norm = {cp.linalg.norm(self.m[k][0])}")
+        #    print(f"Layer {k}: s_W norm = {cp.linalg.norm(self.s[k][0])}\n")
         return {
             "name": self.name,
             "t": self.t,
@@ -67,16 +72,26 @@ class AdaBeliefLookahead:
             "s": {k: [cp.asnumpy(x) for x in v] for k, v in self.s.items()},
             "slow_params": {k: [cp.asnumpy(x) for x in v] for k, v in self.slow_params.items()},
             "curv_ema": {k: float(v) for k, v in self.curv_ema.items()},
-
+            "prev_grad_W": {k: cp.asnumpy(v) for k, v in self.prev_grad_W.items()},
+            "prev_grad_b": {k: cp.asnumpy(v) for k, v in self.prev_grad_b.items()},
         }
 
     def load_state(self, state):
         self.t = state["t"]
         self.step_counter = state["step_counter"]
-        self.m = {k: [cp.asarray(x) for x in v] for k, v in state["m"].items()}
-        self.s = {k: [cp.asarray(x) for x in v] for k, v in state["s"].items()}
-        self.slow_params = {k: [cp.asarray(x) for x in v] for k, v in state["slow_params"].items()}
-        self.curv_ema = {k: float(v) for k, v in state.get("curv_ema", {}).items()}
+        self.m = {k: [cp.asarray(x, dtype=cp.float32) for x in v] for k, v in state["m"].items()}
+        self.s = {k: [cp.asarray(x, dtype=cp.float32) for x in v] for k, v in state["s"].items()}
+        self.slow_params = {k: [cp.asarray(x, dtype=cp.float32) for x in v] for k, v in state["slow_params"].items()}
+        self.curv_ema = {k: float(v) for k, v in state["curv_ema"].items()}
+        self.prev_grad_W = {k: cp.asarray(v, dtype=cp.float32) for k, v in state["prev_grad_W"].items()}
+        self.prev_grad_b = {k: cp.asarray(v, dtype=cp.float32) for k, v in state["prev_grad_b"].items()}
+        #for k in self.prev_grad_W:
+        #    print(f"Layer {k}: prev_grad_W norm = {cp.linalg.norm(self.prev_grad_W[k])}")
+        #    print(f"Layer {k}: curv_ema = {self.curv_ema.get(k, 'missing')}")
+        #    print(f"Layer {k}: m_W norm = {cp.linalg.norm(self.m[k][0])}")
+        #    print(f"Layer {k}: s_W norm = {cp.linalg.norm(self.s[k][0])}\n")
+
+
 
 
     def log_metric(self, layer_idx, key, value):
@@ -203,7 +218,7 @@ class AdaBeliefLookahead:
         #========================================
         
         # Kick meckanism
-        if self.use_kick_meckanism:
+        if self.use_kick_mechanism:
             # Cyclical LR
             cycle_pos = self.step_counter % self.cycle_length
             cycle_amp = 0.5 * (1 + cp.cos(cp.pi * cycle_pos / self.cycle_length))
@@ -211,7 +226,8 @@ class AdaBeliefLookahead:
 
             # Stall detection
             stall = (trace_raw < self.stall_curv_thresh) and (cp.linalg.norm(grad_W) < self.stall_grad_thresh)
-
+            self.log_metric(layer_idx, "stall_triggered", float(stall))
+            
             # Soft trust gating
             kick_weight = trust_gate if self.use_trust_gate and self.use_curvature else 1.0
             lr_cycle *= kick_weight
@@ -257,7 +273,7 @@ class AdaBeliefLookahead:
         #========================================
 
         # Lookahead sync
-        if self.use_kick_meckanism:
+        if self.use_kick_mechanism:
             if cycle_pos == self.cycle_length - 1:
                 slow_W += self.lookahead_alpha * (model.weights[layer_idx] - slow_W)
                 slow_b += self.lookahead_alpha * (model.bias[layer_idx] - slow_b)
@@ -289,5 +305,8 @@ class AdaBeliefLookahead:
         self.log_metric(layer_idx, "lr_mod_final", float(lr_mod))
         self.log_metric(layer_idx, "trace_lr", float(trace_lr))
         self.log_metric(layer_idx, "trace_raw", float(trace_raw))
+        #self.log_metric(layer_idx, "grad_W_norm", float(cp.linalg.norm(grad_W)))
+        #self.log_metric(layer_idx, "prev_grad_W_norm", float(cp.linalg.norm(self.prev_grad_W[layer_idx])))
+        #self.log_metric(layer_idx, "delta_grad_W_norm", float(cp.linalg.norm(delta_grad_W)))
         
 
