@@ -29,6 +29,9 @@ class SGD:
         self.last_change = {int(k): to_device(v) for k, v in raw_W.items()}
         self.last_bias_change = {int(k): to_device(v) for k, v in raw_b.items()}
     
+    def log_epoch_telemetry(self, epoch):
+        pass
+    
     def step(self, model, layer_idx, grad_W, grad_b):
         if layer_idx not in self.last_change:
             self.last_change[layer_idx] = cp.zeros_like(grad_W)

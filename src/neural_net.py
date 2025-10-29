@@ -66,6 +66,9 @@ class NeuralNet:
         
         self.optimiser = OPTIMISER_REGISTRY.get(OPTIMISER.get("name", "sgd"))(OPTIMISER)
 
+        self.current_loss = None
+        self.previous_loss = None
+
         self.LOWEST_LOSS = None
         self.LOWEST_RAW_LOSS = None
         self.NORM_LOWEST_RAW_LOSS = None

@@ -38,6 +38,9 @@ class AdaBelief:
         self.belief_W = {int(k): to_device(v) for k, v in state.get("belief_W", {}).items()}
         self.belief_b = {int(k): to_device(v) for k, v in state.get("belief_b", {}).items()}
 
+    def log_epoch_telemetry(self, epoch):
+        pass
+
     def step(self, model, layer_idx, grad_W, grad_b):
         # --- Momentum update ---
         m_W = self.momentum_W.setdefault(layer_idx, cp.zeros_like(grad_W))

@@ -18,5 +18,6 @@ OPTIMISER_REGISTRY = {
     "lion_belief_refine": LionBeliefRefine,
     "qhlion_refine": QHLionRefine,
     "qhlion_belief_refine": QHLionAdaBeliefRefine,
-    "adabelief_lookahead": AdaBeliefLookahead
+    "adabelief_lookahead": AdaBeliefLookahead,
+    "speculative_batch_lion": SpeculativeBatchLion,
 }

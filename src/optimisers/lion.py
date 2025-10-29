@@ -35,6 +35,9 @@ class Lion:
         }
 
 
+    def log_epoch_telemetry(self, epoch):
+        pass
+
 
 
     def step(self, model, layer_idx, grad_W, grad_b):

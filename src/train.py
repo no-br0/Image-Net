@@ -261,9 +261,13 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 
             if error_func is wrapped_combined_loss:
                 total_loss, breakdown, raw_loss = combined_loss(out, yb)
+                model.previous_loss = model.current_loss
+                model.current_loss = total_loss
                 model.backprop(yb, out, error_func=wrapped_combined_loss)
             else:
                 total_loss, breakdown = error_func(yb, out)
+                model.previous_loss = model.current_loss
+                model.current_loss = total_loss
                 model.backprop(yb, out, error_func=error_func)
 
             

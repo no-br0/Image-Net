@@ -190,7 +190,7 @@ def main():
     #topology = [stream.N_features, 1280, 1024, 3]
     #topology = [stream.N_features, 384, 384, 384, 384, 3]
     #topology = [stream.N_features, 960, 768, 512, 3]
-    topology = [stream.N_features, 512, 384, 256, 128, 64, 3]
+    topology = [stream.N_features, 768, 512, 384, 192, 3]
     model = NeuralNet(topology, LEARNING_RATE, 
                       HIDDEN_ACT, 
                       OUTPUT_ACT, GRAD_CLIP,

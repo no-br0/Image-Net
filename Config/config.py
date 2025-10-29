@@ -8,10 +8,10 @@ ENABLE_TELEMETRY_VIEWER = False
 
 # --- Settings ---
 TRAIN               = True
-FORCE_NEW_MODEL     = True
+FORCE_NEW_MODEL     = False
 MODEL_SEED          = 42       # Set to None for random seed
 ENABLE_SET_LR       = False
-LEARNING_RATE       = 1e-5
+LEARNING_RATE       = 1e-7
 MAX_LEARNING_RATE   = 1
 MIN_LEARNING_RATE   = 1e-100
 ENABLE_ADAPTIVE_LR              = False
@@ -26,13 +26,13 @@ GRAD_CLIP                       = 1.0
 #(327680 | 262144 | 245760 | 196608 | 163840 | 143744 | 131072 | 122880 | 1048576 | 98304 
 # | 65536 | 49152 | 32768 | 24576 | 16384 | 8192 | 4096 | 2048 | 1024)
 #BATCH_SIZE      = 98304
-BATCH_SIZE      = 245760
+BATCH_SIZE      = 196608
 SHUFFLE         = True
 EPOCHS          = 20000
 
 ENABLE_CUSTOM_MODEL_NAME        = False
 ENABLE_INPUT_CACHING            = False
-ENABLE_ADAPTIVE_LOSS_WEIGHTING  = True
+ENABLE_ADAPTIVE_LOSS_WEIGHTING  = False
 LOSS_WEIGHTING_POWER_SCALE      = 4
 
 # "sgd", "nesterov", "lion", "lion_loss_delta", "lion_oscillation_lr", 
@@ -40,22 +40,41 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 # "lion_refine_cosine", "lion_delta_refine_cosine", "lion_refine_freeze_cosine", 
 # "lion_delta_refine_freeze_cosine", "adabelief", "lion_belief_refine", 
 # "qhlion_refine", "qhlion_belief_refine", "qhlion_belief_refine_adaptive"
+
+OPTIMISER                     = {
+    "name": "speculative_batch_lion",
+}
+
+"""
 OPTIMISER                       = {
     "name": "adabelief_lookahead",
-    "lr_floor": 1e-10,
-    "lookahead_alpha": 0.9,
-    "beta1": 0.90,
-    "beta2": 0.999,
-    "gradient_dampening": 0.0,
+    "beta1": 0.92,
+    "beta2": 0.998,
+    "lr_floor": 1e-15,
+    "gradient_dampening": 0.01,
+    "lookahead_alpha": 0.4,
     "use_flatness_reg": False,
-    "use_kick_mechanism": True,
-    "use_lr_modulation": True,
-    "num_rademacher": 1,
-    "curvature_lambda": 0.5,
-    "curv_kick_thresh": 0.5,
-    "stall_curv_thresh": 0.8,
+    "use_kick_mechanism": False,
+    "use_lr_modulation": False,
+    "use_trust_gate": True,
+    "use_curvature": True,
+    "curvature_lambda": 1.0,
+    "curvature_beta": 0.08,
+    "curv_beta": 0.9,
+    "curv_ratio_trust": 0.6,
+    "curv_ratio_lr": 0.3,
+    "trust_gate_floor": 0.15,
+    "cycle_length": 200,
+    "lr_cycle_amp": 0.4,
+    "stall_curv_thresh": 0.01,
+    "stall_grad_thresh": 1e-3,
+    "momentum_boost": 0.05,
+    "curv_kick_thresh": 0.4,
+    "num_rademacher": 8,
+    "stall_curv_thresh": 0.01,
     
 }
+"""
 
 #LION_BETA1                      = 0.9
 #MOMENTUM                        = 0.8
@@ -80,18 +99,18 @@ LOSS_CONFIG = [
     ("mae_cyan", 1.0),
     ("mae_magenta", 1.0), 
     
-    ("mae_blue_yellow", 1.0),
-    ("mae_red_yellow", 1.0),
-    ("mae_green_yellow", 1.0),
-    ("mae_red_cyan", 1.0),
-    ("mae_blue_cyan", 1.0),
-    ("mae_green_cyan", 1.0),
-    ("mae_green_magenta", 1.0),
-    ("mae_red_magenta", 1.0),
-    ("mae_blue_magenta", 1.0),
-    ("mae_cyan_yellow", 1.0),
-    ("mae_magenta_yellow", 1.0),
-    ("mae_cyan_magenta", 1.0),
+    #("mae_blue_yellow", 1.0),
+    #("mae_red_yellow", 1.0),
+    #("mae_green_yellow", 1.0),
+    #("mae_red_cyan", 1.0),
+    #("mae_blue_cyan", 1.0),
+    #("mae_green_cyan", 1.0),
+    #("mae_green_magenta", 1.0),
+    #("mae_red_magenta", 1.0),
+    #("mae_blue_magenta", 1.0),
+    #("mae_cyan_yellow", 1.0),
+    #("mae_magenta_yellow", 1.0),
+    #("mae_cyan_magenta", 1.0),
     
     
     #("mae_colorfulness", 1.0),
@@ -127,7 +146,7 @@ LOSS_CONFIG = [
 # ==================
 
 # --- Inputs ---
-PATCH_SIZE                      = 3
+PATCH_SIZE                      = 5
 DROP_CENTER_PIXEL               = False  # If True, the center pixel of the patch is not included in the input features
 
 
@@ -141,7 +160,7 @@ ENABLE_PATCH_RANGE          = True
 ENABLE_PATCH_MIN            = True
 ENABLE_PATCH_MAX            = True
 
-ENABLE_COLLECTIVE_STATS     = False
+ENABLE_COLLECTIVE_STATS     = True
 ENABLE_COLLECTIVE_MEAN      = True
 ENABLE_COLLECTIVE_SUM       = False
 ENABLE_COLLECTIVE_MIDPOINT  = True

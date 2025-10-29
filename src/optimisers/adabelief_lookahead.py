@@ -17,7 +17,7 @@ class AdaBeliefLookahead:
         
         self.use_curvature = config.get("use_curvature", True)
         self.use_trust_gate = config.get("use_trust_gate", True)
-        self.use_flatness_reg = config.get("use_flatness_reg", True)
+        self.use_flatness_reg = config.get("use_flatness_reg", False)
         self.use_lr_modulation = config.get("use_lr_modulation", True)
         self.curvature_lambda = config.get("curvature_lambda", 1.0)
         self.curvature_alpha = config.get("curvature_alpha", 0.01)
@@ -169,6 +169,8 @@ class AdaBeliefLookahead:
             trace_lr    = cp.minimum(trace_lr, self.trace_lr_max)
             trace_pen   = self.curv_ratio_pen   * trace_raw + (1 - self.curv_ratio_pen)   * self.curv_ema[layer_idx]
 
+            self.log_metric(layer_idx, "trace_lr", float(trace_lr))
+            self.log_metric(layer_idx, "trace_raw", float(trace_raw))
         
         #========================================
 
@@ -301,10 +303,11 @@ class AdaBeliefLookahead:
         # Optional telemetry
         self.log_metric(layer_idx, "update_magnitude_W", float(cp.linalg.norm(update_W)))
         self.log_metric(layer_idx, "update_magnitude_b", float(cp.linalg.norm(update_b)))
-        self.log_metric(layer_idx, "lr_mod_base", float(lr_mod_base))
-        self.log_metric(layer_idx, "lr_mod_final", float(lr_mod))
-        self.log_metric(layer_idx, "trace_lr", float(trace_lr))
-        self.log_metric(layer_idx, "trace_raw", float(trace_raw))
+        if self.use_lr_modulation and self.use_curvature:
+            self.log_metric(layer_idx, "lr_mod_base", float(lr_mod_base))
+        if self.use_kick_mechanism:
+            self.log_metric(layer_idx, "lr_mod_final", float(lr_mod))
+
         #self.log_metric(layer_idx, "grad_W_norm", float(cp.linalg.norm(grad_W)))
         #self.log_metric(layer_idx, "prev_grad_W_norm", float(cp.linalg.norm(self.prev_grad_W[layer_idx])))
         #self.log_metric(layer_idx, "delta_grad_W_norm", float(cp.linalg.norm(delta_grad_W)))

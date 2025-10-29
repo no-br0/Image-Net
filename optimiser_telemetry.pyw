@@ -5,6 +5,7 @@ import pandas as pd
 import json
 import os
 import math
+import numpy as np
 from Config.log_dir import TELEMETRY_LOG_FOLDER
 
 class OptimiserTelemetryViewer:
@@ -86,7 +87,7 @@ class OptimiserTelemetryViewer:
         self.fig.patch.set_facecolor("#1e1e1e")
         self.fig.subplots_adjust(left=0.06, right=0.97, top=0.95, bottom=0.06, hspace=0.35, wspace=0.3)
 
-        axes_grid = axes_grid.flatten()
+        axes_grid = np.atleast_1d(axes_grid).flatten()
         self.signal_axes = {}
 
         for i, key in enumerate(self.signal_keys):
