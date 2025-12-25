@@ -14,17 +14,14 @@ def _act_name(fn):
     return "linear"
 
 
-
-
 class NeuralNet:
-    def __init__(self, topology, learning_rate=0.0005,
+    def __init__(self, topology,
                  hidden_activation_function=_ACT_MAP["relu"],
                  output_activation_function=_ACT_MAP["linear"],
-                 grad_clip_norm=1.0, seed=42,
+                  seed=42,
                  input_config=None):
         
         self.topology = list(topology)
-        self.learning_rate = float(learning_rate)
         
         self.hidden_activation = (
             _ACT_MAP[hidden_activation_function]
@@ -37,7 +34,6 @@ class NeuralNet:
             else output_activation_function    
         )
         
-        self.grad_clip_norm = grad_clip_norm
         self.rng = xp.random.RandomState(seed)
         self.seed = seed
         self.batch_index = 0
@@ -63,24 +59,9 @@ class NeuralNet:
         self.grad_b_buf = [xp.empty_like(b) for b in self.bias]
         self.delta_buf = None  # shaped to current output on first backprop
 
-        
-        self.optimiser = OPTIMISER_REGISTRY.get(OPTIMISER.get("name", "sgd"))(OPTIMISER)
 
-        self.current_loss = None
-        self.previous_loss = None
 
-        self.LOWEST_LOSS = None
-        self.LOWEST_RAW_LOSS = None
-        self.NORM_LOWEST_RAW_LOSS = None
-        self.GLOBAL_EPOCH = 0
-        
-        self.PREVIOUS_LOSS = None
-        self.PREVIOUS_RAW_LOSS = None
-        self.PREVIOUS_LOSS_DELTA = None
-        self.PREVIOUS_RAW_LOSS_DELTA = None
-        self.PREVIOUS_RAW_BREAKDOWN = None
-        self.PREVIOUS_RAW_BREAKDOWN_DELTA = None
-        self.PREVIOUS_ABS_RAW_LOSS_DELTA = None
+
 
 
     def _init_weights_and_biases(self):
@@ -97,23 +78,6 @@ class NeuralNet:
             self.weights.append(W)
             self.bias.append(b)
 
-
-
-    def _clip_grads(self, grad_W, grad_b):
-        if self.grad_clip_norm is None:
-            return grad_W, grad_b
-        def clip(g):
-            norm = xp.linalg.norm(g)
-            if norm > self.grad_clip_norm and norm > 0:
-                g *= self.grad_clip_norm / norm
-            return g
-        return clip(grad_W), clip(grad_b)
-
-
-
-    def _apply_momentum_update(self, layer_idx, grad_W, grad_b):
-        grad_W, grad_b = self._clip_grads(grad_W, grad_b)
-        self.optimiser.step(self, layer_idx, grad_W, grad_b)
 
 
 
@@ -137,58 +101,6 @@ class NeuralNet:
                 A = self.hidden_activation(Z)
         self.activated_output = A
         return A
-
-
-
-    def backprop(self, target_output, output, error_func=mse):
-        """
-        Backward pass:
-        - delta starts at dL/dYhat elementwise-multiplied by output activation derivative.
-        - for each hidden layer, delta = (delta @ W_next^T) * act'(Z_l)
-        - grads: dW = A_{l-1}^T @ delta, db = sum(delta, axis=0)
-        """
-        
-        
-        # Ensure delta buffer matches current output shape
-        if self.delta_buf is None or self.delta_buf.shape != output.shape:
-            self.delta_buf = xp.empty_like(output)
-        delta = self.delta_buf
-
-        # Last layer delta
-        try:
-            d_err = error_func(target_output, output, derivative=True)
-        except TypeError:
-            d_err = output - target_output
-        d_act_out = self.output_activation(self.netIns[-1], derivative=True)
-        xp.multiply(d_err, d_act_out, out=delta)  # shape: (bs, n_out_last)
-
-        # Backward through layers
-        for layer in range(self.size - 1, -1, -1):
-            # Gradients for current layer weights/bias
-            # netOuts[layer] is A_{l-1} (or input X for first layer)
-            A_prev = self.netOuts[layer]
-            # Ensure grad buffers are correct shape (matches weights)
-            needed_W_shape = (A_prev.shape[1], delta.shape[1])
-            if self.grad_W_buf[layer].shape != needed_W_shape:
-                self.grad_W_buf[layer] = xp.empty(needed_W_shape, dtype=xp.float32)
-            if self.grad_b_buf[layer].shape != (1, delta.shape[1]):
-                self.grad_b_buf[layer] = xp.empty((1, delta.shape[1]), dtype=xp.float32)
-
-            xp.matmul(A_prev.T, delta, out=self.grad_W_buf[layer])            # (n_in, n_out)
-            xp.sum(delta, axis=0, keepdims=True, out=self.grad_b_buf[layer])  # (1, n_out)
-
-            # Apply update
-            self._apply_momentum_update(layer, self.grad_W_buf[layer], self.grad_b_buf[layer])
-
-            # Prepare delta for previous layer (skip after first layer)
-            if layer > 0:
-                W_cur = self.weights[layer]                # (n_in, n_out)
-                # New delta: (bs, n_in)
-                delta = xp.matmul(delta, W_cur.T)
-                # Multiply by hidden activation derivative at previous layer pre-activation
-                d_act_hidden = self.hidden_activation(self.netIns[layer - 1], derivative=True)
-                xp.multiply(delta, d_act_hidden, out=delta)
-
 
 
     def save(self, path):

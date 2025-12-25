@@ -213,8 +213,8 @@ def main():
         #    os.remove(TELEMETRY_LOG_PATH)
     
     
-    prune_telemetry(TELEMETRY_LOSS_PATH, model.GLOBAL_EPOCH)
-    prune_telemetry(TELEMETRY_OPTIMISER_PATH, model.GLOBAL_EPOCH)
+    #prune_telemetry(TELEMETRY_LOSS_PATH, model.GLOBAL_EPOCH)
+    #prune_telemetry(TELEMETRY_OPTIMISER_PATH, model.GLOBAL_EPOCH)
 
     
 
@@ -252,8 +252,6 @@ def main():
                 batch_size=bs,
                 shuffle=SHUFFLE,
                 error_func=LOSS_REGISTRY[LOSS_NAME],
-                on_epoch_end=on_epoch_end,
-                telemetry_logger=telemetry_logger
             )
     except KeyboardInterrupt:
         print("[ctrl-c] Interrupted — saving model…")
@@ -265,14 +263,14 @@ def main():
 
 if __name__ == "__main__":
     
-    open(RIPPLE_LOG_PATH, "w").close()
-    open(LOSS_LOG_PATH, "w").close()
-    open(GPU_LOG_PATH, "w").close()
-    open(GPU_TEMP_LOG_PATH, "w").close()
-    open(RAW_LOSS_LOG_PATH, "w").close()
-    open(LOWEST_LOSS_LOG_PATH, "w").close()
-    open(LOWEST_RAW_LOSS_LOG_PATH, "w").close()
-    open(TIME_LOG_PATH, "w").close()
+    #open(RIPPLE_LOG_PATH, "w").close()
+    #open(LOSS_LOG_PATH, "w").close()
+    #open(GPU_LOG_PATH, "w").close()
+    #open(GPU_TEMP_LOG_PATH, "w").close()
+    #open(RAW_LOSS_LOG_PATH, "w").close()
+    #open(LOWEST_LOSS_LOG_PATH, "w").close()
+    #open(LOWEST_RAW_LOSS_LOG_PATH, "w").close()
+    #open(TIME_LOG_PATH, "w").close()
     
     if os.path.exists(SAVE_ERROR_LOG_PATH):
         os.remove(SAVE_ERROR_LOG_PATH)
