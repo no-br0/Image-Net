@@ -19,5 +19,6 @@ OPTIMISER_REGISTRY = {
     "qhlion_refine": QHLionRefine,
     "qhlion_belief_refine": QHLionAdaBeliefRefine,
     "adabelief_lookahead": AdaBeliefLookahead,
-    "speculative_batch_lion": SpeculativeBatchLion,
+    "lion_reversion": LionReversion,
+    "yogi_reversion": YogiReversion,
 }

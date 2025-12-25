@@ -30,7 +30,7 @@ layers_cfg = [
     {"type": "voronoi_segmentation", "num_seeds": 100},
 
     #{"type": "checkerboard_radial", "tiles_x": 15, "tiles_y": 23},    
-    #{"type": "grid"},
+    {"type": "grid"},
     #{"type": "edge_like_flow"},
     #{"type": "linear_gradient"},
     #{"type": "radial_gradient"},

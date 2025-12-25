@@ -98,5 +98,8 @@
     {
         "type": "voronoi_segmentation",
         "num_seeds": 100
+    },
+    {
+        "type": "grid"
     }
 ]

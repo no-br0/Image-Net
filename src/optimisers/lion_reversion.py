@@ -3,12 +3,16 @@ import cupy as cp
 from Config.log_dir import TELEMETRY_LOG_FOLDER
 import os, json
 
-class SpeculativeBatchLion:
+class LionReversion:
     def __init__(self, params={}):
-        self.name = params.get("name", "lion")
+        self.name = params.get("name", "lion_reversion")
         self.beta1 = params.get("beta1", 0.9)
         self.beta2 = params.get("beta2", 0.99)
         self.weight_decay = params.get("weight_decay", 0.0)
+        self.revert_alpha = params.get("revert_alpha", 0.7)
+        self.enable_revert_blend = params.get("enable_revert_blend", True)
+        self.ema_smoothing = params.get("ema_smoothing", 0.7)
+        self.enable_ema_loss = params.get("enable_ema_loss", True)
         self.momentum_W = {}
         self.momentum_b = {}
         
@@ -28,7 +32,6 @@ class SpeculativeBatchLion:
             "momentum_b": {k: to_cpu(v) for k, v in self.momentum_b.items()},
             "prev_weight": {k: to_cpu(v) for k, v in self.prev_weight.items()},
             "prev_bias": {k: to_cpu(v) for k, v in self.prev_bias.items()},
-            "prev_loss": {k: to_cpu(v) for k, v in self.prev_loss.items()},
             "prev_loss": {int(k): {int(i): j for i, j in v.items()} for k, v in self.prev_loss.items()},
         }
         
@@ -74,7 +77,7 @@ class SpeculativeBatchLion:
             for layer_idx, did_revert in layer_dict.items():
                 total += 1
                 reverted += did_revert
-        if self.telemetry.__len__() is not 0:
+        if self.telemetry.__len__() != 0:
             reverted_epoch = reverted / len(self.telemetry[1].keys())
         else:
             reverted_epoch = 0.0
@@ -110,9 +113,12 @@ class SpeculativeBatchLion:
             # is this the proper implementation for reverting the weights and biases
             if self.prev_loss[model.batch_index].__contains__(layer_idx):
                 if model.current_loss > self.prev_loss[model.batch_index][layer_idx]:
-                    
-                    model.weights[layer_idx][...] = self.prev_weight[layer_idx]
-                    model.bias[layer_idx][...] = self.prev_bias[layer_idx]
+                    if self.enable_revert_blend:
+                        model.weights[layer_idx][...] = self.revert_alpha * self.prev_weight[layer_idx] + (1 - self.revert_alpha) * model.weights[layer_idx]
+                        model.bias[layer_idx][...] = self.revert_alpha * self.prev_bias[layer_idx] + (1 - self.revert_alpha) * model.bias[layer_idx]
+                    else:
+                        model.weights[layer_idx][...] = self.prev_weight[layer_idx]
+                        model.bias[layer_idx][...] = self.prev_bias[layer_idx]
                     self.telemetry[model.batch_index][layer_idx] = 1
                     #print(1)
                 else:
@@ -124,8 +130,19 @@ class SpeculativeBatchLion:
             self.telemetry[model.batch_index][layer_idx] = 0
             #print(3)
         
-        self.prev_loss[model.batch_index][layer_idx] = model.current_loss
         
+        if self.enable_ema_loss:            
+            if layer_idx not in self.prev_loss[model.batch_index]:
+                self.prev_loss[model.batch_index][layer_idx] = model.current_loss
+            else:
+                self.prev_loss[model.batch_index][layer_idx] = (
+                    self.ema_smoothing * self.prev_loss[model.batch_index][layer_idx]
+                    + (1 - self.ema_smoothing) * model.current_loss
+                )
+        else:
+            self.prev_loss[model.batch_index][layer_idx] = model.current_loss
+            
+            
         # Initialize buffers if needed
         if layer_idx not in self.momentum_W:
             self.momentum_W[layer_idx] = cp.zeros_like(grad_W)

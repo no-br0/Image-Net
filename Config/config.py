@@ -11,7 +11,7 @@ TRAIN               = True
 FORCE_NEW_MODEL     = False
 MODEL_SEED          = 42       # Set to None for random seed
 ENABLE_SET_LR       = False
-LEARNING_RATE       = 1e-7
+LEARNING_RATE       = 1e-6
 MAX_LEARNING_RATE   = 1
 MIN_LEARNING_RATE   = 1e-100
 ENABLE_ADAPTIVE_LR              = False
@@ -26,7 +26,7 @@ GRAD_CLIP                       = 1.0
 #(327680 | 262144 | 245760 | 196608 | 163840 | 143744 | 131072 | 122880 | 1048576 | 98304 
 # | 65536 | 49152 | 32768 | 24576 | 16384 | 8192 | 4096 | 2048 | 1024)
 #BATCH_SIZE      = 98304
-BATCH_SIZE      = 196608
+BATCH_SIZE      = 163840
 SHUFFLE         = True
 EPOCHS          = 20000
 
@@ -42,7 +42,7 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 # "qhlion_refine", "qhlion_belief_refine", "qhlion_belief_refine_adaptive"
 
 OPTIMISER                     = {
-    "name": "speculative_batch_lion",
+    "name": "yogi_reversion",
 }
 
 """
@@ -80,7 +80,7 @@ OPTIMISER                       = {
 #MOMENTUM                        = 0.8
 
 SAVE_AFTER          = True
-SAVE_INTERVAL       = 6
+SAVE_INTERVAL       = 10
 
 
 LOSS_CONFIG = [
@@ -160,7 +160,7 @@ ENABLE_PATCH_RANGE          = True
 ENABLE_PATCH_MIN            = True
 ENABLE_PATCH_MAX            = True
 
-ENABLE_COLLECTIVE_STATS     = True
+ENABLE_COLLECTIVE_STATS     = False
 ENABLE_COLLECTIVE_MEAN      = True
 ENABLE_COLLECTIVE_SUM       = False
 ENABLE_COLLECTIVE_MIDPOINT  = True
