@@ -49,7 +49,7 @@ def _build_registry():
     image_paths = sorted(image_paths)
         
     registry = {"images": {}}
-    for idx, path in enumerate(image_paths, start=1):
+    for idx, path in enumerate(image_paths, start=0):
         registry["images"][str(idx)] = {
             "filename": str(path),
             "seeds": {}  # can be populated later

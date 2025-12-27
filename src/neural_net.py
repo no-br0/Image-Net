@@ -24,9 +24,9 @@ class NeuralNetwork:
     @staticmethod
     def forward(x, weights, biases, hidden_act=cp.tanh, out_act=None):
         """Forward pass for ONE network. x: [B, in_dim]."""
-        for idx, (w, b) in enumerate(zip(weights, biases)):
+        for l, (w, b) in enumerate(zip(weights, biases)):
             x = x @ w.T + b
-            if idx < len(weights) - 1:
+            if l < len(weights) - 1:
                 x = hidden_act(x)
             elif out_act is not None:
                 x = out_act(x)
