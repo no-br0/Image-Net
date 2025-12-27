@@ -35,111 +35,13 @@ ENABLE_INPUT_CACHING            = False
 ENABLE_ADAPTIVE_LOSS_WEIGHTING  = False
 LOSS_WEIGHTING_POWER_SCALE      = 4
 
-# "sgd", "nesterov", "lion", "lion_loss_delta", "lion_oscillation_lr", 
-# "lion_directional_freeze", "lion_cosine_gate", "lion_refinement_mode", 
-# "lion_refine_cosine", "lion_delta_refine_cosine", "lion_refine_freeze_cosine", 
-# "lion_delta_refine_freeze_cosine", "adabelief", "lion_belief_refine", 
-# "qhlion_refine", "qhlion_belief_refine", "qhlion_belief_refine_adaptive"
 
-OPTIMISER                     = {
-    "name": "yogi_reversion",
-}
 
-"""
-OPTIMISER                       = {
-    "name": "adabelief_lookahead",
-    "beta1": 0.92,
-    "beta2": 0.998,
-    "lr_floor": 1e-15,
-    "gradient_dampening": 0.01,
-    "lookahead_alpha": 0.4,
-    "use_flatness_reg": False,
-    "use_kick_mechanism": False,
-    "use_lr_modulation": False,
-    "use_trust_gate": True,
-    "use_curvature": True,
-    "curvature_lambda": 1.0,
-    "curvature_beta": 0.08,
-    "curv_beta": 0.9,
-    "curv_ratio_trust": 0.6,
-    "curv_ratio_lr": 0.3,
-    "trust_gate_floor": 0.15,
-    "cycle_length": 200,
-    "lr_cycle_amp": 0.4,
-    "stall_curv_thresh": 0.01,
-    "stall_grad_thresh": 1e-3,
-    "momentum_boost": 0.05,
-    "curv_kick_thresh": 0.4,
-    "num_rademacher": 8,
-    "stall_curv_thresh": 0.01,
-    
-}
-"""
 
-#LION_BETA1                      = 0.9
-#MOMENTUM                        = 0.8
 
 SAVE_AFTER          = True
 SAVE_INTERVAL       = 10
 
-
-LOSS_CONFIG = [
-    
-    ("mae_dual_luma", 1.0),
-    ("mae_luma", 1.0),
-    ("mae_shadow", 1.0),
-    ("mae_red", 1.0),
-    ("mae_green", 1.0),
-    ("mae_blue", 1.0),
-    ("mae_rg", 1.0),
-    ("mae_gb", 1.0),
-    ("mae_rb", 1.0),
-    ("mae", 1.0),
-    ("mae_yellow", 1.0),
-    ("mae_cyan", 1.0),
-    ("mae_magenta", 1.0), 
-    
-    #("mae_blue_yellow", 1.0),
-    #("mae_red_yellow", 1.0),
-    #("mae_green_yellow", 1.0),
-    #("mae_red_cyan", 1.0),
-    #("mae_blue_cyan", 1.0),
-    #("mae_green_cyan", 1.0),
-    #("mae_green_magenta", 1.0),
-    #("mae_red_magenta", 1.0),
-    #("mae_blue_magenta", 1.0),
-    #("mae_cyan_yellow", 1.0),
-    #("mae_magenta_yellow", 1.0),
-    #("mae_cyan_magenta", 1.0),
-    
-    
-    #("mae_colorfulness", 1.0),
-    #("mae_equalized", 1.0),
-    
-    #("mae_hue", 1.0),
-    #("mae_saturation", 1.0),
-    #("mae_chromatic_entropy", 1.0),
-    #("mae_opponent", 1.0),
-    #("mae_rgb_angle", 1.0),
-
-    
-    #("mae_ycbcr_chroma", 1.0),
-    #("mae_cmyk_chroma", 1.0),
-    #("mae_luma_heavy", 1.0),
-    #("mae_red_bias", 1.0),
-    #("mae_green_bias", 1.0),
-    #("mae_blue_bias", 1.0),
-    #("mae_red_suppress", 1.0),
-    #("mae_blue_suppress", 1.0),
-    #("mae_green_suppress", 1.0),
-    #("mae_hue_bias", 1.0),
-    #("mae_hue_suppress", 1.0),
-    #("mae_saturation_bias", 1.0),
-    #("mae_saturation_suppress", 1.0),
-    #("mae_luma_bias", 1.0),
-    #("mae_luma_suppress", 1.0),
-
-    ]
 
 # ==================
 # --- Neural Net ---
@@ -151,31 +53,6 @@ DROP_CENTER_PIXEL               = False  # If True, the center pixel of the patc
 
 
 
-
-ENABLE_PATCH_STATS          = True
-ENABLE_PATCH_MEAN           = True
-ENABLE_PATCH_SUM            = False
-ENABLE_PATCH_MIDPOINT       = True
-ENABLE_PATCH_RANGE          = True
-ENABLE_PATCH_MIN            = True
-ENABLE_PATCH_MAX            = True
-
-ENABLE_COLLECTIVE_STATS     = False
-ENABLE_COLLECTIVE_MEAN      = True
-ENABLE_COLLECTIVE_SUM       = False
-ENABLE_COLLECTIVE_MIDPOINT  = True
-ENABLE_COLLECTIVE_RANGE     = True
-ENABLE_COLLECTIVE_MIN       = True
-ENABLE_COLLECTIVE_MAX       = True
-
-
-ENABLE_CROSS_PATCH_PIXELWISE_STATS    = True       # used to calculate stats across the input patches for each pixel location
-ENABLE_CROSS_PATCH_PIXELWISE_MEAN     = True
-ENABLE_CROSS_PATCH_PIXELWISE_SUM      = False
-ENABLE_CROSS_PATCH_PIXELWISE_MIDPOINT = True
-ENABLE_CROSS_PATCH_PIXELWISE_RANGE    = True
-ENABLE_CROSS_PATCH_PIXELWISE_MIN      = True
-ENABLE_CROSS_PATCH_PIXELWISE_MAX      = True
 
 
 # --- Model ---

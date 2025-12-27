@@ -1,106 +1,118 @@
 # main.py
 import cupy as cp
+import numpy as np
+from PIL import Image
+import json
 
 from Config.image_registry import get_image_path
 from Config.layer_registry import build_input_stack
-from src.population_manager import PopulationManager
 from Config.Inputs.layers_config import layers_cfg
 
-from PIL import Image
-import numpy as np
+from src.data_utils import make_simple_neighbor_stream
+from src.train import train_streaming
+from src.neural_net import NeuralNetwork
 
 
-POP_SIZE = 1
-EPOCHS = 2
-PATCH_RADIUS = 1   # 1 → 3x3 patch, 2 → 5x5, etc.
+POP_SIZE = 10
+GENERATIONS = 2
+PATCH_RADIUS = 1
+BATCH_SIZE = 100000
+MUTATION_STD = 0.05
+TOP_K = 2
 
 
-# -----------------------------
-# Minimal image loader (replaces data_utils)
-# -----------------------------
 def load_rgb_image(path):
-    img = Image.open(path).convert("RGB")
-    arr = np.asarray(img, dtype=np.uint8)
-    return arr
+	img = Image.open(path).convert("RGB")
+	return np.asarray(img, dtype=np.uint8)
 
 
-# -----------------------------
-# Patch extractor (replaces data_utils)
-# -----------------------------
-def extract_patch_flat(X_proc: cp.ndarray, y: int, x: int, r: int) -> cp.ndarray:
-    ps = 2 * r + 1
-    patch = X_proc[y - r:y + r + 1, x - r:x + r + 1, :]  # [ps, ps, C_proc]
-    return patch.reshape(1, -1)  # [1, ps*ps*C_proc]
+def make_random_net(layer_sizes):
+	rng = cp.random.default_rng()
+	return {
+		"model": NeuralNetwork(layer_sizes),
+		"fitness": None,
+	}
+
+
+def mutate(parent):
+	new = {
+		"model": parent["model"],
+		"fitness": None,
+	}
+	return new
 
 
 def main():
+	# 1. Load target image
+	img_path = get_image_path(1)
+	Y_rgb = load_rgb_image(img_path)
+	H, W = Y_rgb.shape[:2]
 
-    # -----------------------------
-    # 1. Load target image
-    # -----------------------------
-    img_path = get_image_path(1)  # your registry is 1-based
-    Y_rgb = load_rgb_image(img_path)  # [H, W, 3], uint8
-    H, W = Y_rgb.shape[:2]
+	# 2. Build procedural inputs
+	X_u8, channel_names = build_input_stack(H, W, layers_cfg)
 
-    # -----------------------------
-    # 2. Build procedural inputs
-    # -----------------------------
-    X_u8, channel_names = build_input_stack(H, W, layers_cfg)  # [H, W, C_proc], uint8
-    C_proc = X_u8.shape[-1]
+	# 3. Build stream
+	stream = make_simple_neighbor_stream(
+		X_u8,
+		Y_rgb,
+		H,
+		W,
+		patch_size=2 * PATCH_RADIUS + 1,
+		use_patch_stats=True,
+		use_cross_patch_stats=True,
+		batch_size=BATCH_SIZE,
+	)
 
-    # Move to GPU + normalize
-    X_proc = cp.asarray(X_u8, dtype=cp.float32) / 255.0
-    Y = cp.asarray(Y_rgb, dtype=cp.float32) / 255.0
+	# 4. Build network topology
+	input_dim = stream.N_features
+	topology = [input_dim, 32, 16, 8, 3]
 
-    # -----------------------------
-    # 3. Compute input dimension
-    # -----------------------------
-    ps = 2 * PATCH_RADIUS + 1
-    patch_dim = ps * ps * C_proc
-    print(f"[info] patch size = {ps}x{ps}, C_proc = {C_proc}, input_dim = {patch_dim}")
+	# 5. Initialize population
+	population = [make_random_net(topology) for _ in range(POP_SIZE)]
 
-    # -----------------------------
-    # 4. Build topology
-    # -----------------------------
-    topology = [patch_dim, 128, 64, 32, 3]
-    print(f"[info] topology = {topology}")
+	# 6. Evolution loop
+	generation = 0
+	while generation < GENERATIONS:
+		print(f"\n=== GENERATION {generation} ===")
 
-    # -----------------------------
-    # 5. Initialize population
-    # -----------------------------
-    PopulationManager.initialize(topology, POP_SIZE, seed=123)
+		# Evaluate each network
+		for net in population:
 
-    # Valid pixel range (center must have full patch)
-    y_start, y_end = PATCH_RADIUS, H - PATCH_RADIUS
-    x_start, x_end = PATCH_RADIUS, W - PATCH_RADIUS
+			fitness, pred_buffer = train_streaming(
+				model=net["model"],
+				stream=stream,
+				batch_size=BATCH_SIZE,
+			)
+			net["fitness"] = fitness
+			pred_img = pred_buffer.reshape(H, W, 3)
+			pred_img = cp.clip(pred_img, 0, 255).astype(cp.uint8)
+			cp.save("outputs/latest_frame.npy", pred_img)
 
-    # -----------------------------
-    # 6. Training loop
-    # -----------------------------
-    for epoch in range(EPOCHS):
-        print(f"\n[epoch {epoch}] starting...")
-        PopulationManager.reset_epoch_accumulators()
+			data = {
+				"new_frame": True
+			}
 
-        # Raster order: 1 pixel → 1 forward pass
-        for y in range(y_start, y_end):
-            for x in range(x_start, x_end):
+			with open("outputs/latest_frame_meta.json", "wb") as f:
+				json.dump(data, f)
+			
 
-                # Extract procedural patch → flat vector
-                proc_patch_flat = extract_patch_flat(X_proc, y, x, PATCH_RADIUS)
+		# Sort by fitness
+		population.sort(key=lambda n: n["fitness"])
+		best = population[0]
+		print(f"Best fitness: {best['fitness']}")
 
-                # Target RGB at this pixel
-                target_rgb = Y[y, x, :]  # [3]
+		# Select survivors
+		survivors = population[:TOP_K]
 
-                # Evaluate population on this pixel
-                PopulationManager.accumulate_pixel(proc_patch_flat, target_rgb)
+		# Refill population
+		new_pop = survivors.copy()
+		while len(new_pop) < POP_SIZE:
+			parent = survivors[np.random.randint(0, TOP_K)]
+			new_pop.append(mutate(parent))
 
-        # End of epoch: compute fitness + evolve
-        PopulationManager.end_epoch(elite_frac=0.25, mutation_scale=0.05)
-
-        best = float(cp.max(PopulationManager.fitness))
-        avg = float(cp.mean(PopulationManager.fitness))
-        print(f"[epoch {epoch}] best_fitness = {best:.6f}, avg_fitness = {avg:.6f}")
+		population = new_pop
+		generation += 1
 
 
 if __name__ == "__main__":
-    main()
+	main()
