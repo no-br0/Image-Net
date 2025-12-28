@@ -2,6 +2,7 @@ import cupy as cp
 
 class NeuralNetwork:
 	def __init__(self, layer_sizes, weights=None, biases=None):
+		self.layer_sizes = layer_sizes
 
 		# Case 1: both provided → OK
 		if weights is not None and biases is not None:
@@ -26,8 +27,17 @@ class NeuralNetwork:
 			in_dim = layer_sizes[i]
 			out_dim = layer_sizes[i + 1]
 
-			w = rng.standard_normal((out_dim, in_dim), dtype=cp.float32) * 0.1
-			b = cp.zeros((out_dim,), dtype=cp.float32)
+			#w = rng.standard_normal((out_dim, in_dim), dtype=cp.float32) * 0.2
+			#b = rng.standard_normal((out_dim,), dtype=cp.float32) * 0.1
+
+			w = cp.random.normal(0.0, 0.2, (out_dim, in_dim), dtype=cp.float32)
+			#b = cp.random.normal(0.0, 0.8, (out_dim,), dtype=cp.float32)
+
+
+			bias_center = cp.random.uniform(-2.0, 2.0)
+			bias_scale = cp.random.uniform(0.1, 1.5)
+			b = cp.random.normal(bias_center, bias_scale, (out_dim,), dtype=cp.float32)
+
 
 			weights.append(w)
 			biases.append(b)
@@ -50,5 +60,17 @@ class NeuralNetwork:
 			elif out_act is not None:
 				out = out_act(out)
 		return out
+
+
+
+	def copy(self):
+		# Deep‑copy weight matrices and bias vectors
+		new_weights = [w.copy() for w in self.weights]
+		new_biases  = [b.copy() for b in self.biases]
+
+		# Construct a new network with the same architecture and cloned params
+		return NeuralNetwork(self.layer_sizes, new_weights, new_biases)
+
+
 
 

@@ -1,167 +1,187 @@
-# data_utils.py
 from src.backend_cupy import xp, to_device
 from PIL import Image
 
 # Minimal CPU I/O for images, then immediately push to GPU
 def load_grayscale_image(path, resize_to=None):
-	img = Image.open(path).convert("L")
-	if resize_to is not None:
-		img = img.resize(resize_to, Image.BILINEAR)
-	import numpy as _np
-	arr = _np.array(img, dtype=_np.uint8)[..., None]  # (H, W, 1)
-	return to_device(arr)
+    img = Image.open(path).convert("L")
+    if resize_to is not None:
+        img = img.resize(resize_to, Image.BILINEAR)
+    import numpy as _np
+    arr = _np.array(img, dtype=_np.uint8)[..., None]  # (H, W, 1)
+    return to_device(arr)
 
 def load_rgb_image(path, resize_to=None):
-	img = Image.open(path).convert("RGB")
-	if resize_to:
-		img = img.resize(resize_to, Image.LANCZOS)
-	import numpy as _np
-	arr = _np.asarray(img, dtype=_np.uint8)
-	return to_device(arr)
+    img = Image.open(path).convert("RGB")
+    if resize_to:
+        img = img.resize(resize_to, Image.LANCZOS)
+    import numpy as _np
+    arr = _np.asarray(img, dtype=_np.uint8)
+    return to_device(arr)
 
 
 def make_simple_neighbor_stream(
-	X_img,
-	Y_img,
-	H,
-	W,
-	patch_size=7,
-	use_patch_stats=True,
-	use_cross_patch_stats=True,
-	batch_size=65536,
+    X_img,
+    Y_img,
+    H,
+    W,
+    patch_size=3,
+    use_patch_stats=True,
+    use_cross_patch_stats=True,
+    batch_size=65536,
 ):
-	"""
-	Simpler, fast, GPU-native streaming:
-	  - Inputs: full P×P patch (including center), flattened
-	  - Targets: single center pixel
-	  - Optional: patch-level stats
-	  - Optional: cross-patch pixelwise stats (per-batch, shared across samples)
-	"""
+    """
+    Streaming for neighborhood-based models with FULL pixel coverage:
 
-	class SimpleStream:
-		def __init__(self, X_img, Y_img, H, W):
-			X = to_device(X_img)
-			Y = to_device(Y_img)
+      - Inputs: flattened P×P patch (per sample), for every pixel in the H×W grid.
+      - Targets: center pixel at each (y, x).
+      - Per-patch stats: mean, min, max, range per channel.
+      - Cross-patch stats: global min, max, mean, range per patch location (y,x)
+        aggregated over all patches (all pixels).
+    """
 
-			if X.ndim == 2:
-				X = X[..., None]
-			if Y.ndim == 2:
-				Y = Y[..., None]
+    class SimpleStream:
+        def __init__(self, X_img, Y_img, H, W):
+            X = to_device(X_img)
+            Y = to_device(Y_img)
 
-			self.X = X.astype(xp.float32)  # we'll normalize if needed
-			self.Y = Y.astype(xp.float32)
-			self.H = H
-			self.W = W
-			self.N_pixels = H * W
-			self.P = int(patch_size)
-			self.pad = self.P // 2
-			self.batch_size = int(batch_size)
-			self.use_patch_stats = bool(use_patch_stats)
-			self.use_cross_patch_stats = bool(use_cross_patch_stats)
+            # Ensure channel dimension
+            if X.ndim == 2:
+                X = X[..., None]
+            if Y.ndim == 2:
+                Y = Y[..., None]
 
-			H, W, Cx = self.X.shape
-			_, _, Cy = self.Y.shape
-			self.Cx = Cx
-			self.Cy = Cy
+            self.X = X.astype(xp.float32)  # (H, W, Cx)
+            self.Y = Y.astype(xp.float32)  # (H, W, Cy)
+            self.H = H
+            self.W = W
+            self.N_pixels = H * W
 
-			# Sliding-window over X, no padding; requires X to be "bigger than needed"
-			swv = xp.lib.stride_tricks.sliding_window_view
-			win = swv(self.X, (self.P, self.P), axis=(0, 1))  # (H-P+1, W-P+1, P, P, Cx)
+            self.P = int(patch_size)
+            self.pad = self.P // 2
+            self.batch_size = int(batch_size)
+            self.use_patch_stats = bool(use_patch_stats)
+            self.use_cross_patch_stats = bool(use_cross_patch_stats)
 
-			self.Hw, self.Ww = win.shape[:2]
-			self.N = self.Hw * self.Ww
-			self.patches = win.reshape(self.N, self.P, self.P, Cx)  # (N, P, P, Cx)
+            Hx, Wx, Cx = self.X.shape
+            _, _, Cy = self.Y.shape
+            self.Cx = Cx
+            self.Cy = Cy
 
-			# Center pixels as targets
-			ys = xp.arange(self.Hw, dtype=xp.int32) + self.pad
-			xs = xp.arange(self.Ww, dtype=xp.int32) + self.pad
-			gy, gx = xp.meshgrid(ys, xs, indexing="ij")
-			Y_centers = self.Y[gy, gx]  # (Hw, Ww, Cy)
-			self.targets = Y_centers.reshape(self.N, Cy)  # (N, Cy)
+            # --- PAD X, so every original pixel has a valid P×P patch ---
+            # Pad only spatial dims; keep channels intact.
+            X_padded = xp.pad(
+                self.X,
+                ((self.pad, self.pad), (self.pad, self.pad), (0, 0)),
+                mode="reflect",  # or 'edge', 'constant' as you prefer
+            )  # (H+2*pad, W+2*pad, Cx)
 
-			# --- feature dimension calculation (dynamic, but simple) ---
-			base_feats = self.P * self.P * Cx
+            swv = xp.lib.stride_tricks.sliding_window_view
+            # Sliding windows over the padded image → one patch per original pixel
+            win = swv(X_padded, (self.P, self.P), axis=(0, 1))
+            # win: (H, W, P, P, Cx)
 
-			patch_stats_feats = 0
-			if self.use_patch_stats:
-				# mean, sum, midpoint, range, min, max per-channel
-				patch_stats_feats = 6 * Cx
+            self.Hw, self.Ww = win.shape[:2]  # should be (H, W)
+            assert self.Hw == H and self.Ww == W
 
-			cross_stats_feats = 0
-			if self.use_cross_patch_stats:
-				# mean, midpoint, range, min, max, sum per pixel (all channels)
-				cross_stats_feats = 6 * self.P * self.P * Cx
+            self.N = self.Hw * self.Ww
+            # (N, P, P, Cx)
+            self.patches = win.reshape(self.N, self.P, self.P, Cx)
 
-			self.base_feats = base_feats
-			self.N_features = base_feats + patch_stats_feats + cross_stats_feats
+            # --- Targets: every pixel in Y, full coverage ---
+            ys = xp.arange(self.H, dtype=xp.int32)
+            xs = xp.arange(self.W, dtype=xp.int32)
+            gy, gx = xp.meshgrid(ys, xs, indexing="ij")  # (H, W)
 
-		def iter_minibatches(self, batch_size=None):
-			bs_default = self.batch_size if batch_size is None else int(batch_size)
+            Y_centers = self.Y[gy, gx]               # (H, W, Cy)
+            self.targets = Y_centers.reshape(self.N, Cy)  # (N, Cy)
 
-			for start in range(0, self.N, bs_default):
-				end = min(start + bs_default, self.N)
-				bs = end - start
+            # --- Flattened indices into full H×W image, full coverage ---
+            self.idx_flat = (gy * self.W + gx).reshape(self.N)  # (N,)
 
-				wb = self.patches[start:end]  # (bs, P, P, Cx)
+            # --- feature dimension calculation ---
+            base_feats = self.P * self.P * Cx  # full patch flattened
 
-				# --- base neighbor pixels (flattened P×P×Cx) ---
-				xb = wb.reshape(bs, -1)  # (bs, base_feats)
+            patch_stats_feats = 0
+            if self.use_patch_stats:
+                # mean, min, max, range per channel
+                patch_stats_feats = 4 * Cx
 
+            cross_stats_feats = 0
+            if self.use_cross_patch_stats:
+                # 4 stats per spatial location in the patch, aggregated over channels
+                cross_stats_feats = 4 * (self.P * self.P)
 
-				feats = [xb]
-				P, Cx = self.P, self.Cx
+            self.base_feats = base_feats
+            self.N_features = base_feats + patch_stats_feats + cross_stats_feats
 
-				# --- patch-level stats (per sample, per-channel) ---
-				if self.use_patch_stats:
-					patch_mean = wb.mean(axis=(1, 2))          # (bs, Cx)
-					patch_sum  = wb.sum(axis=(1, 2))           # (bs, Cx)
-					patch_min  = wb.min(axis=(1, 2))           # (bs, Cx)
-					patch_max  = wb.max(axis=(1, 2))           # (bs, Cx)
-					patch_mid  = (patch_max + patch_min) * 0.5 # (bs, Cx)
-					patch_range = patch_max - patch_min        # (bs, Cx)
+            # --- GLOBAL CROSS-PATCH STATS, aggregated over ALL patches ---
+            if self.use_cross_patch_stats:
+                # patches: (N, P, P, Cx)
+                # Collapse channels to scalar per patch-location
+                patches_scalar = self.patches.mean(axis=3)  # (N, P, P)
 
-					feats.extend([
-						patch_mean,
-						patch_sum,
-						patch_mid,
-						patch_range,
-						patch_min,
-						patch_max,
-					])
+                g_min   = patches_scalar.min(axis=0)        # (P, P)
+                g_max   = patches_scalar.max(axis=0)        # (P, P)
+                g_mean  = patches_scalar.mean(axis=0)       # (P, P)
+                g_range = g_max - g_min                     # (P, P)
 
-				# --- cross-patch pixelwise stats (shared across batch) ---
-				if self.use_cross_patch_stats:
-					# stats over batch axis (0); keep spatial + channel dims
-					pix_min  = wb.min(axis=0)              # (P, P, Cx)
-					pix_max  = wb.max(axis=0)              # (P, P, Cx)
-					pix_mean = wb.mean(axis=0)             # (P, P, Cx)
-					pix_mid   = (pix_min + pix_max) * 0.5  # (P, P, Cx)
-					pix_range = pix_max - pix_min          # (P, P, Cx)
-					pix_sum   = wb.sum(axis=0)             # (P, P, Cx)
+                self.global_pix_stats_flat = xp.concatenate(
+                    [
+                        g_min.reshape(1, -1),
+                        g_max.reshape(1, -1),
+                        g_mean.reshape(1, -1),
+                        g_range.reshape(1, -1),
+                    ],
+                    axis=1
+                )  # (1, 4 * P*P)
 
-					pix_stats = [
-						pix_mean,
-						pix_sum,
-						pix_mid,
-						pix_range,
-						pix_min,
-						pix_max,
-					]
+        def iter_minibatches(self, batch_size=None):
+            bs_default = self.batch_size if batch_size is None else int(batch_size)
 
-					# flatten + broadcast to all samples in batch
-					pix_flat = xp.concatenate(
-						[s.reshape(1, -1) for s in pix_stats],
-						axis=1
-					)  # (1, S)
-					pix_broadcast = xp.broadcast_to(pix_flat, (bs, pix_flat.shape[1]))
-					feats.append(pix_broadcast)
+            # deterministic ordering
+            all_idx = xp.arange(self.N, dtype=xp.int64)
 
-				xb_full = xp.concatenate(feats, axis=1)  # (bs, N_features)
-				yb = self.targets[start:end]             # (bs, Cy)
+            for start in range(0, self.N, bs_default):
+                end = min(start + bs_default, self.N)
+                bs = end - start
 
-				yield xb_full, yb
+                batch_sample_idx = all_idx[start:end]           # (bs,)
+                batch_px_idx = self.idx_flat[batch_sample_idx]  # (bs,)
 
-		def __len__(self):
-			return self.N
+                wb = self.patches[batch_sample_idx]             # (bs, P, P, Cx)
 
-	return SimpleStream(X_img, Y_img, H, W)
+                # Base flattened patch
+                xb = wb.reshape(bs, -1)                         # (bs, P*P*Cx)
+                feats = [xb]
+
+                # --- PER-PATCH STATS (per sample, per channel) ---
+                if self.use_patch_stats:
+                    patch_mean  = wb.mean(axis=(1, 2))          # (bs, Cx)
+                    patch_min   = wb.min(axis=(1, 2))           # (bs, Cx)
+                    patch_max   = wb.max(axis=(1, 2))           # (bs, Cx)
+                    patch_range = patch_max - patch_min         # (bs, Cx)
+
+                    feats.extend([
+                        patch_mean,
+                        patch_min,
+                        patch_max,
+                        patch_range,
+                    ])
+
+                # --- GLOBAL CROSS-PATCH STATS (same for all samples) ---
+                if self.use_cross_patch_stats:
+                    pix_broadcast = xp.broadcast_to(
+                        self.global_pix_stats_flat,
+                        (bs, self.global_pix_stats_flat.shape[1])
+                    )  # (bs, 4*P*P)
+                    feats.append(pix_broadcast)
+
+                xb_full = xp.concatenate(feats, axis=1)         # (bs, N_features)
+                yb = self.targets[batch_sample_idx]             # (bs, Cy)
+
+                yield xb_full, yb, batch_px_idx
+
+        def __len__(self):
+            return self.N
+
+    return SimpleStream(X_img, Y_img, H, W)

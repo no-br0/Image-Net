@@ -10,7 +10,7 @@ from collections import defaultdict
 PROFILE_VRAM    = False     # Set True to log VRAM each epoch
 VRAM_HEADROOM   = 0.80      # Reduce batch size if CuPy pool > 80% total
 MAX_TEMP        = 80        # °C
-WARN_TEMP       = 65        # °C
+WARN_TEMP       = 70        # °C
 
 FAN_RAMP_START  = 60        # °C
 MAX_SAFE_FAN    = 80        # % this value should never exceed 85
@@ -188,10 +188,11 @@ def aggregate_temp_log(epoch):
 
 def train_streaming(model, stream, *, batch_size):
 	"""
-	Evaluate ONE model over 'epochs' passes of the stream.
+	Evaluate ONE model over one pass of the stream.
 	- One model at a time
 	- Batched forward passes
 	- Raw integer error only (no gradients, no loss)
+	- Accumulates full-image predictions in pred_buffer using flattened pixel indices.
 	"""
 	total_time = 0.0
 
@@ -202,17 +203,19 @@ def train_streaming(model, stream, *, batch_size):
 	prep_time = 0.0
 	compute_time = 0.0
 
-	N = stream.N
-	pred_buffer = cp.zeros((N, 3), dtype=cp.float32)
+	# N = number of samples in stream (valid center pixels)
+	pred_buffer = cp.zeros((stream.N, 3), dtype=cp.float32)
 
 	for xb, yb, idx in stream.iter_minibatches(batch_size):
 		prep_end = time.perf_counter()
-		prep_time += (prep_end - t0 if batches == 0 and prep_time == 0.0 else 0.0)
+		if batches == 0 and prep_time == 0.0:
+			prep_time += (prep_end - t0)
 
 		compute_start = time.perf_counter()
 
 		# Batched forward pass
 		out = model.feedforward(xb)  # [B, C]
+		# idx are flattened H*W pixel indices; fill pred_buffer in those positions
 		pred_buffer[idx] = out
 
 		# Raw integer error
@@ -224,8 +227,6 @@ def train_streaming(model, stream, *, batch_size):
 
 		batches += 1
 
-	
-
 	cp.get_default_memory_pool().free_all_blocks()
 	xp.cuda.Device().synchronize()
 
@@ -236,5 +237,5 @@ def train_streaming(model, stream, *, batch_size):
 	cooldown_time = check_gpu_temp_and_exit(model)
 	print(f"sleep_time: {cooldown_time:.3f}s")
 
+	# Return total error and full-image prediction buffer (flattened H*W, 3)
 	return total_error, pred_buffer
-
