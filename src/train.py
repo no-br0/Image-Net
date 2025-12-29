@@ -10,7 +10,7 @@ from collections import defaultdict
 PROFILE_VRAM    = False     # Set True to log VRAM each epoch
 VRAM_HEADROOM   = 0.80      # Reduce batch size if CuPy pool > 80% total
 MAX_TEMP        = 80        # °C
-WARN_TEMP       = 70        # °C
+WARN_TEMP       = 67        # °C
 
 FAN_RAMP_START  = 60        # °C
 MAX_SAFE_FAN    = 80        # % this value should never exceed 85
@@ -232,7 +232,8 @@ def train_streaming(model, stream, *, batch_size):
 
 	epoch_time = time.perf_counter() - t0
 	total_time += epoch_time
-	print(f"error: {total_error} | batches: {batches} | time: {epoch_time:.3f}s")
+	fitness = total_error / stream.N
+	print(f"error: {total_error} | fitness: {fitness} | batches: {batches} | time: {epoch_time:.3f}s")
 	print(get_vram_usage())
 	cooldown_time = check_gpu_temp_and_exit(model)
 	print(f"sleep_time: {cooldown_time:.3f}s")

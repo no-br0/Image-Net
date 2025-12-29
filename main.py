@@ -32,11 +32,10 @@ GENERATIONS = 5
 PATCH_RADIUS = 1
 BATCH_SIZE = 100000
 TOPOLOGY = [
-	[50, 50, 50],
-	[30, 30, 30],
-	[20, 20],
-	128,
-	64,
+	[512, 512, 512],
+	[256, 256, 256],
+	[200, 200],
+	[100, 100],
 	3
 ]
 
@@ -55,72 +54,85 @@ def load_rgb_image(path):
 # =========================
 
 def build_network(topology, activation=cp.sin):
-    """
-    Group-aware compiler enforcing:
-    - Same number of groups  → block-diagonal (group-preserving)
-    - Different number groups → fully connected (merge then fan-out)
-    """
+	"""
+	Group-aware compiler enforcing:
 
-    if not topology:
-        raise ValueError("Topology must be non-empty")
+	- Represent each layer as:
+		* scalar int N      → 1 group, size [N]
+		* list[int] [a,b,…] → len(list) groups, sizes list
 
-    if not isinstance(topology[0], int):
-        raise ValueError("First topology element must be input_dim (int)")
+	- Connectivity rule:
+		* If two consecutive layers have the SAME number of groups:
+			→ use GroupedBlockDiagonalModule (group-preserving, 1-to-1 groups)
+		* If they have DIFFERENT number of groups:
+			→ use FullyConnectedModule (full mixing across all units)
 
-    input_dim = topology[0]
-    modules = []
-    current_dim = input_dim
-    current_groups = 1  # scalar layer = 1 group
+	Group sizes can change freely; only group COUNT drives whether we preserve separation.
+	"""
 
-    for layer in topology[1:]:
+	if not topology:
+		raise ValueError("Topology must be non-empty")
+	if not isinstance(topology[0], int):
+		raise ValueError("First topology element must be input_dim (int)")
 
-        # -----------------------------
-        # Case A: next layer is scalar
-        # -----------------------------
-        if isinstance(layer, int):
-            next_groups = 1
-            next_dim = layer
+	input_dim = topology[0]
 
-            if current_groups == next_groups:
-                # same group count → block-diagonal with 1 group = FC
-                modules.append(FullyConnectedModule(out_dim=layer, activation=activation))
-            else:
-                # different group count → fully connected
-                modules.append(FullyConnectedModule(out_dim=layer, activation=activation))
+	# Helper to get (group_count, group_sizes, total_dim) from a layer spec
+	def describe_layer(layer, current_dim_if_scalar=None):
+		if isinstance(layer, int):
+			return 1, [layer], layer
+		elif isinstance(layer, (list, tuple)):
+			gs = list(layer)
+			return len(gs), gs, sum(gs)
+		else:
+			raise ValueError(f"Unsupported topology entry: {layer}")
 
-            current_groups = next_groups
-            current_dim = next_dim
-            continue
+	# Describe input layer: 1 group of size input_dim
+	current_group_count = 1
+	current_group_sizes = [input_dim]
+	current_dim = input_dim
 
-        # -----------------------------
-        # Case B: next layer is grouped
-        # -----------------------------
-        if isinstance(layer, (list, tuple)):
-            next_groups = len(layer)
-            next_group_sizes = list(layer)
-            next_dim = sum(next_group_sizes)
+	modules = []
 
-            if current_groups == next_groups:
-                # same group count → block-diagonal
-                modules.append(
-                    GroupedBlockDiagonalModule(
-                        in_group_sizes=[current_dim // current_groups] * current_groups,
-                        out_group_sizes=next_group_sizes,
-                        activation=activation,
-                    )
-                )
-            else:
-                # different group count → fully connected then fan-out
-                modules.append(FullyConnectedModule(out_dim=next_dim, activation=activation))
-                modules.append(GroupedFanOutModule(group_sizes=next_group_sizes, activation=activation))
+	for layer in topology[1:]:
+		next_group_count, next_group_sizes, next_dim = describe_layer(layer)
 
-            current_groups = next_groups
-            current_dim = next_dim
-            continue
+		# Same group count → block-diagonal (if > 1), else just FC
+		if next_group_count == current_group_count:
+			if next_group_count == 1:
+				# 1 group → block-diag is just a plain FC
+				modules.append(FullyConnectedModule(out_dim=next_dim, activation=activation))
+			else:
+				# >1 groups → real block-diagonal, preserve group mapping
+				modules.append(
+					GroupedBlockDiagonalModule(
+						in_group_sizes=current_group_sizes,
+						out_group_sizes=next_group_sizes,
+						activation=activation,
+					)
+				)
 
-        raise ValueError(f"Unsupported topology entry: {layer}")
+		# Different group count → fully connected (full mixing)
+		else:
+			# different group count
+			if next_group_count == 1:
+				# grouped → scalar
+				modules.append(FullyConnectedModule(out_dim=next_dim, activation=activation))
+			else:
+				# scalar → grouped OR grouped → different grouped count
+				# First fully connect to the total dimension
+				modules.append(FullyConnectedModule(out_dim=next_dim, activation=activation))
+				# Then explicitly partition into groups
+				modules.append(GroupedFanOutModule(group_sizes=next_group_sizes, activation=activation))
 
-    return NeuralNetwork.from_modules(input_dim, modules)
+
+		# Update current layer description
+		current_group_count = next_group_count
+		current_group_sizes = next_group_sizes
+		current_dim = next_dim
+
+	return NeuralNetwork.from_modules(input_dim, modules)
+
 
 
 
@@ -215,7 +227,7 @@ def main():
 		H,
 		W,
 		patch_size=2 * PATCH_RADIUS + 1,
-		use_patch_stats=True,
+		use_patch_stats=False,
 		use_cross_patch_stats=True,
 		batch_size=BATCH_SIZE,
 	)
@@ -262,6 +274,7 @@ def main():
 
 				with open("outputs/latest_frame_meta.json", "w") as f:
 					json.dump({"new_frame": True}, f)
+
 
 		# Contract groups
 		contracted = [contract_group(g) for g in groups]

@@ -67,42 +67,49 @@ class GroupedFanOutModule(Module):
 
 
 class GroupedBlockDiagonalModule(Module):
-	"""
-	Block-diagonal grouped layer:
-	- Input is assumed logically partitioned into groups with given sizes.
-	- Output has the same total size, with the same grouping.
-	- Each group only connects internally (no cross-group connections).
+    """
+    Block-diagonal grouped layer with potentially different in/out sizes per group.
 
-	Example:
-		group_sizes = [50, 50, 50]
-		in_dim  = 150
-		out_dim = 150
-		W has 3 blocks on its diagonal, each (50 x 50), zeros elsewhere.
-	"""
-	def __init__(self, group_sizes, activation=cp.sin):
-		self.group_sizes = list(group_sizes)
-		self.activation = activation
+    - Input is logically partitioned into groups with sizes `in_group_sizes`.
+    - Output is partitioned into groups with sizes `out_group_sizes`.
+    - Each output group only connects to its corresponding input group (no cross-group connections).
+    """
 
-	def compile(self, in_dim, rng):
-		total = sum(self.group_sizes)
-		if in_dim is None:
-			raise ValueError("GroupedBlockDiagonalModule needs a known in_dim to compile.")
-		if in_dim != total:
-			raise ValueError(
-				f"GroupedBlockDiagonalModule expects in_dim == sum(group_sizes) "
-				f"({total}), but got in_dim={in_dim}"
-			)
+    def __init__(self, in_group_sizes, out_group_sizes, activation=cp.sin):
+        self.in_group_sizes = list(in_group_sizes)
+        self.out_group_sizes = list(out_group_sizes)
+        self.activation = activation
 
-		W = cp.zeros((total, total), dtype=cp.float32)
-		b = cp.zeros((total,), dtype=cp.float32)
+    def compile(self, in_dim, rng):
+        total_in = sum(self.in_group_sizes)
+        total_out = sum(self.out_group_sizes)
 
-		offset = 0
-		for g in self.group_sizes:
-			block = rng.standard_normal((g, g), dtype=cp.float32) * 0.1
-			W[offset:offset+g, offset:offset+g] = block
-			offset += g
+        if in_dim is None:
+            raise ValueError("GroupedBlockDiagonalModule needs a known in_dim to compile.")
+        if in_dim != total_in:
+            raise ValueError(
+                f"GroupedBlockDiagonalModule expects in_dim == sum(in_group_sizes) "
+                f"({total_in}), but got in_dim={in_dim}"
+            )
+        if len(self.in_group_sizes) != len(self.out_group_sizes):
+            raise ValueError(
+                f"GroupedBlockDiagonalModule requires the same number of input/output groups "
+                f"(got {len(self.in_group_sizes)} → {len(self.out_group_sizes)})."
+            )
 
-		return total, W, b, self.activation
+        W = cp.zeros((total_out, total_in), dtype=cp.float32)
+        b = cp.zeros((total_out,), dtype=cp.float32)
+
+        in_off = 0
+        out_off = 0
+        for gin, gout in zip(self.in_group_sizes, self.out_group_sizes):
+            block = rng.standard_normal((gout, gin), dtype=cp.float32) * 0.1
+            W[out_off:out_off+gout, in_off:in_off+gin] = block
+            in_off += gin
+            out_off += gout
+
+        return total_out, W, b, self.activation
+
 
 
 # =========================
