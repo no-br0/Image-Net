@@ -1,7 +1,7 @@
 # neural_net.py
 
 import cupy as cp
-
+import random
 
 # =========================
 # Module system (optional)
@@ -19,6 +19,20 @@ class Module:
 	- b:       (out_dim,) CuPy array
 	- activation_fn: callable or None
 	"""
+
+	def standard_normal(self, in_dim, out_dim, rng):
+		return rng.standard_normal((out_dim, in_dim), dtype=cp.float32) * 0.1
+
+	def uniform(self, in_dim, out_dim, rng):
+		return rng.uniform(-0.5, 0.5, (out_dim, in_dim))
+
+	def xavier_normal(self, in_dim, out_dim, rng):
+		scale = cp.sqrt(2.0 / (out_dim + in_dim))
+		return cp.random.normal(0, scale, (out_dim, in_dim)).astype(cp.float32)
+
+	def standard_cauchy(self, in_dim, out_dim, rng):
+		return rng.uniform(0, 0.05, (out_dim, in_dim)).astype(cp.float32) * 0.01
+
 	def compile(self, in_dim, rng):
 		raise NotImplementedError
 
@@ -34,8 +48,7 @@ class FullyConnectedModule(Module):
 	def compile(self, in_dim, rng):
 		if in_dim is None:
 			raise ValueError("FullyConnectedModule needs a known in_dim to compile.")
-
-		W = rng.standard_normal((self.out_dim, in_dim), dtype=cp.float32) * 0.1
+		W = self.uniform(in_dim, self.out_dim, rng)
 		b = cp.zeros((self.out_dim,), dtype=cp.float32)
 		return self.out_dim, W, b, self.activation
 
@@ -61,7 +74,7 @@ class GroupedFanOutModule(Module):
 			raise ValueError("GroupedFanOutModule needs a known in_dim to compile.")
 
 		total_out = sum(self.group_sizes)
-		W = rng.standard_normal((total_out, in_dim), dtype=cp.float32) * 0.1
+		W = self.uniform(in_dim, total_out, rng)
 		b = cp.zeros((total_out,), dtype=cp.float32)
 		return total_out, W, b, self.activation
 

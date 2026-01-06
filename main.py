@@ -24,18 +24,25 @@ from src.train import train_streaming
 # Evolution parameters
 # =========================
 
-POP_SIZE = 100
-NUM_GROUPS = 10
+IMG_NUM = 3
+
+POP_SIZE = 6
+NUM_GROUPS = 2
 GROUP_SIZE = POP_SIZE // NUM_GROUPS
 
-GENERATIONS = 5
+GENERATIONS = 500
 PATCH_RADIUS = 1
 BATCH_SIZE = 100000
 TOPOLOGY = [
-	[512, 512, 512],
-	[256, 256, 256],
-	[200, 200],
-	[100, 100],
+	#512,
+	#[256, 256],
+	#[128, 128, 128],
+	#[256, 256],
+	#256,
+	256,
+	256,
+	256,
+	128,
 	3
 ]
 
@@ -136,53 +143,82 @@ def build_network(topology, activation=cp.sin):
 
 
 
-
 # =========================
-# Evolution operators
+# Evolution operators (fixed-topology, fast)
 # =========================
 
-def mutate(parent):
-	"""
-	Simple mutation: copy weights + add noise.
-	You can replace this with crossover later.
-	"""
-	new_weights = [w + cp.random.normal(0, 0.01, w.shape) for w in parent.weights]
-	new_biases  = [b + cp.random.normal(0, 0.01, b.shape) for b in parent.biases]
-	return NeuralNetwork(weights=new_weights, biases=new_biases, activations=parent.activations)
+def mutate(parent, noise_scale=0.01):
+    """Additive Gaussian mutation that preserves shapes exactly."""
+    new_weights = [
+        w + cp.random.normal(0, noise_scale, w.shape)
+        for w in parent.weights
+    ]
+    new_biases = [
+        b + cp.random.normal(0, noise_scale, b.shape)
+        for b in parent.biases
+    ]
+    return NeuralNetwork(
+        weights=new_weights,
+        biases=new_biases,
+        activations=parent.activations,
+    )
+
+
+def crossover(a, b):
+    """Uniform crossover assuming identical shapes (true with fixed topology)."""
+    new_weights = []
+    new_biases = []
+
+    for wa, wb in zip(a.weights, b.weights):
+        mask = cp.random.random(wa.shape) < 0.5
+        child_w = cp.where(mask, wa, wb)
+        new_weights.append(child_w)
+
+    for ba, bb in zip(a.biases, b.biases):
+        mask = cp.random.random(ba.shape) < 0.5
+        child_b = cp.where(mask, ba, bb)
+        new_biases.append(child_b)
+
+    return NeuralNetwork(
+        weights=new_weights,
+        biases=new_biases,
+        activations=a.activations,
+    )
 
 
 def contract_group(group):
-	"""
-	Group contraction: keep best, collapse others into 1 mutated offspring.
-	"""
-	group.sort(key=lambda net: net.fitness)
-	survivor = group[0]
-	others = group[1:]
+    """Keep best; one child from best x second-best, then mutated."""
+    group.sort(key=lambda net: net.fitness)
+    survivor = group[0]
+    others = group[1:]
 
-	# collapse: mutate the best of the others
-	collapsed = mutate(others[0])
-	return [survivor, collapsed]
+    if not others:
+        # Only one net in group – just keep it and a mutated copy
+        return [survivor, mutate(survivor)]
+
+    child = crossover(survivor, others[0])
+    collapsed = mutate(child)
+    return [survivor, collapsed]
 
 
 def expand_group(group, target_size, external_pool):
-	"""
-	Expand group:
-	- internal breeding until size 3
-	- cross-group pairwise breeding until target_size
-	"""
-	# internal expansion
-	while len(group) < 3:
-		child = mutate(group[0])
-		group.append(child)
+    """Refill group using internal mutation, then crossover+mutation with external pool."""
+    # internal expansion from best in group
+    while len(group) < 3:
+        child = mutate(group[0])
+        group.append(child)
 
-	# cross-group expansion
-	while len(group) < target_size:
-		parent_local = group[0]
-		parent_external = external_pool[np.random.randint(0, len(external_pool))]
-		child = mutate(parent_local)  # replace with crossover later
-		group.append(child)
+    # cross-group expansion
+    while len(group) < target_size:
+        parent_local = group[0]
+        parent_external = external_pool[np.random.randint(0, len(external_pool))]
 
-	return group
+        child = crossover(parent_local, parent_external)
+        child = mutate(child)
+        group.append(child)
+
+    return group
+
 
 
 def update_global_champion(groups, global_champion):
@@ -207,13 +243,15 @@ def update_global_champion(groups, global_champion):
 	return global_champion, None
 
 
+
+
 # =========================
 # Main
 # =========================
 
 def main():
 	# 1. Load target image
-	img_path = get_image_path(1)
+	img_path = get_image_path(IMG_NUM)
 	Y_rgb = load_rgb_image(img_path)
 	H, W = Y_rgb.shape[:2]
 
@@ -241,6 +279,9 @@ def main():
 		population[i * GROUP_SIZE:(i + 1) * GROUP_SIZE]
 		for i in range(NUM_GROUPS)
 	]
+
+
+
 
 	global_champion = None
 
