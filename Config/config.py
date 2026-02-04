@@ -42,7 +42,7 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 # "qhlion_refine", "qhlion_belief_refine", "qhlion_belief_refine_adaptive"
 
 OPTIMISER                     = {
-    "name": "yogi_reversion",
+    "name": "lion",
 }
 
 """
