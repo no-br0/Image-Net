@@ -8,7 +8,7 @@ ENABLE_TELEMETRY_VIEWER = False
 
 # --- Settings ---
 TRAIN               = True
-FORCE_NEW_MODEL     = False
+FORCE_NEW_MODEL     = True
 MODEL_SEED          = 42       # Set to None for random seed
 ENABLE_SET_LR       = False
 LEARNING_RATE       = 1e-6
@@ -180,7 +180,7 @@ ENABLE_CROSS_PATCH_PIXELWISE_MAX      = True
 
 # --- Model ---
 HIDDEN_ACT                      = "sin"         # "relu", "linear", "tanh", "sin", "cos", "sigmoid_255", "tanh_255"
-OUTPUT_ACT                      = "cos_255" # "sigmoid_255", "tanh_255", "cos_255", "sin_255"
+OUTPUT_ACT                      = "cos_255" 	# "sigmoid_255", "tanh_255", "cos_255", "sin_255"
 
 
 
@@ -211,6 +211,5 @@ LOSS_NAME       = "wrapped_combined"
 
 # --- Image ---
 TARGET_IMAGE_ID     = 24
-#TARGET_IMAGE_ID     = 5
 
 INPUT_CONFIG_PATH = "Config/input_config.json"
