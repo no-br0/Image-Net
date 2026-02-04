@@ -1,4 +1,12 @@
-# Procedural-Input Neural Network with Modular Architecture & Live Telemetry
+# Running The Project
+
+## Option 1 - Docker (Recommended)
+
+Docker provides a fully configured environment with the correct CuPy + CUDA setup and all requirement libraries.
+
+__Build the image__
+'docker build -t Clean-Neural-Net'
+
 
 
 
@@ -31,5 +39,8 @@ This project serves as a foundation for research into data-efficient training, s
 - Curvature-based diagnostics for analysing optimisation behaviour.
 - Thermal-aware training that automatically pauses to cool the GPU.
 - Live telemetry streamed to a CPU-bound metrics process.
-- Real-time image preview showing training progression
-- Deterministic starting noise for consistent comparisons across runs
+- Real-time image preview showing training progression.
+- Deterministic starting noise for consistent comparisons across runs.
+
+## Architecture
+
