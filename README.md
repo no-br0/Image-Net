@@ -29,6 +29,7 @@ because containers do not have access to your system's display server by default
 
 If you want to see the live image or telemetry graphs, run those scripts locally.
 
+<br>
 
 ### Option 2 - Local Install With Virtual Environment (Required for Displays)
 
