@@ -6,3 +6,4 @@ Logs/
 Saves/
 Telemetry/telemetry_logs/
 outputs/
+venv/
