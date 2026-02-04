@@ -5,9 +5,9 @@
 Docker provides a fully configured environment with the correct CuPy + CUDA setup and all requirement libraries.
 
 __Build the image__
-'''bash
+`bash
 docker build -t Clean-Neural-Net
-'''
+`
 
 
 
