@@ -1,6 +1,10 @@
 # Procedural-Input Neural Network with Modular Architecture & Live Telemetry
 
-## *Overview*
+
+
+
+
+## Overview
 
 This Project explores a modular neural network architecture built around procedural inputs, a real-time telemetry system, and a real-time image display designed for deep interpretability.
 The system generates images from purely synthetic, deterministic inputs and includes a custom loss pipeline, curvature diagnostics, and a thermal-aware training loop.
