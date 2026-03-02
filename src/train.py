@@ -16,7 +16,7 @@ from collections import defaultdict
 PROFILE_VRAM    = False     # Set True to log VRAM each epoch
 VRAM_HEADROOM   = 0.80      # Reduce batch size if CuPy pool > 80% total
 MAX_TEMP        = 80        # °C
-WARN_TEMP       = 65        # °C
+WARN_TEMP       = 70        # °C
 
 FAN_RAMP_START  = 60        # °C
 MAX_SAFE_FAN    = 80        # % this value should never exceed 85
