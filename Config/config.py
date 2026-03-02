@@ -31,7 +31,7 @@ GRAD_CLIP                       = 1.0
 BATCH_SIZE      = 98304
 #BATCH_SIZE      = 163840
 SHUFFLE         = True
-EPOCHS          = 20
+EPOCHS          = 200
 
 ENABLE_CUSTOM_MODEL_NAME        = False
 ENABLE_INPUT_CACHING            = False
