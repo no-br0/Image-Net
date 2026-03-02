@@ -11,11 +11,12 @@ from Config.config import (
 	ENABLE_CUSTOM_MODEL_NAME, ENABLE_INPUT_CACHING, ENABLE_END_VIEWER
 )
 #from Config.Inputs.layers_config import layers_cfg
+import Config.log_dir as log_dir
 from src.loss_registry import LOSS_REGISTRY
 from Config.log_dir import (RIPPLE_LOG_PATH, 
 							GPU_LOG_PATH, GPU_TEMP_LOG_PATH,
 							LOSS_LOG_PATH,
-							SAVE_ERROR_LOG_PATH, TIME_LOG_PATH,
+							SAVE_ERROR_LOG_PATH,
 							RAW_LOSS_LOG_PATH, LOWEST_RAW_LOSS_LOG_PATH,
 							LOWEST_LOSS_LOG_PATH, TELEMETRY_LOG_FOLDER,
 							FRAME_PATH, FRAME_META_PATH, CURRENT_MODEL_NAME_PATH
@@ -140,6 +141,7 @@ def main():
 	
 	TELEMETRY_LOSS_PATH = os.path.join(TELEMETRY_LOG_FOLDER, f"{model_name}.jsonl")
 	TELEMETRY_OPTIMISER_PATH = os.path.join(TELEMETRY_LOG_FOLDER, f"{model_name}_optimiser.jsonl")
+
 	
 	if FORCE_NEW_MODEL:
 		if os.path.exists(MODEL_SAVE_PATH):
@@ -213,12 +215,14 @@ def main():
 		#if os.path.exists(TELEMETRY_LOG_PATH):
 		#    os.remove(TELEMETRY_LOG_PATH)
 	
+	TIME_LOG_PATH = log_dir.TIME_LOG
+
 	
 	prune_telemetry(TELEMETRY_LOSS_PATH, model.GLOBAL_EPOCH)
 	prune_telemetry(TELEMETRY_OPTIMISER_PATH, model.GLOBAL_EPOCH)
-
+	prune_telemetry(TIME_LOG_PATH, model.GLOBAL_EPOCH)
+	prune_telemetry(GPU_LOG_PATH, model.GLOBAL_EPOCH)
 	
-
 
 	# Build model signature from topology + input config
 	#model_signature = make_model_signature(model.topology, model.input_config)
@@ -276,14 +280,11 @@ def main():
 
 if __name__ == "__main__":
 	
-	open(RIPPLE_LOG_PATH, "w").close()
 	open(LOSS_LOG_PATH, "w").close()
-	open(GPU_LOG_PATH, "w").close()
 	open(GPU_TEMP_LOG_PATH, "w").close()
 	open(RAW_LOSS_LOG_PATH, "w").close()
 	open(LOWEST_LOSS_LOG_PATH, "w").close()
 	open(LOWEST_RAW_LOSS_LOG_PATH, "w").close()
-	open(TIME_LOG_PATH, "w").close()
 	
 	if os.path.exists(SAVE_ERROR_LOG_PATH):
 		os.remove(SAVE_ERROR_LOG_PATH)

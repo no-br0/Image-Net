@@ -1,7 +1,7 @@
 # train.py
 from Config.log_dir import (GPU_LOG_PATH, TIME_LOG,
 							LOSS_LOG_PATH, GPU_TEMP_LOG_PATH,
-							TIME_LOG_PATH, RAW_LOSS_LOG_PATH,
+							RAW_LOSS_LOG_PATH,
 							LOWEST_RAW_LOSS_LOG_PATH, LOWEST_LOSS_LOG_PATH,)
 from Config.config import (SAVE_INTERVAL, CONFIG_FILE, LOWEST_LOSS_THRESHOLD,
 						LR_DECREASE_MULTIPLIER, LR_INCREASE_MULTIPLIER,
@@ -116,7 +116,7 @@ def check_gpu_temp_and_exit(nn, epoch, poll_interval=0.20, gpu_id=0):
 	If between warn_temp and max_temp, bump fans and/or wait in short intervals until cool.
 	Optimized to reduce driver calls and I/O overhead.
 	"""
-	stats = get_vram_usage(include_thermals=True)
+	stats = get_vram_usage()
 	temp = stats.get("gpu_temp", -1)
 	total_sleep = 0.0
 	log_lines = []
@@ -162,7 +162,7 @@ def check_gpu_temp_and_exit(nn, epoch, poll_interval=0.20, gpu_id=0):
 		time.sleep(sleep_time)
 		#total_sleep += sleep_time
 
-		stats = get_vram_usage(include_thermals=True)
+		stats = get_vram_usage()
 		temp = stats.get("gpu_temp", -1)
 
 
@@ -563,7 +563,7 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 		save_time = save_end - save_start
 		
 		# --- Telemetry & thermal safety ---
-		log_vram_usage()
+		log_vram_usage(model.GLOBAL_EPOCH)
 		sleep_time = check_gpu_temp_and_exit(model, local_epoch)
 		
 		

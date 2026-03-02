@@ -5,13 +5,13 @@ import tkinter as tk
 from tkinter import BooleanVar
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from Config.log_dir import TIME_LOG
+from Config.log_dir import GPU_LOG_PATH
 
 
-class EpochTimeViewer(tk.Tk):
+class GPUViewer(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Epoch Time Viewer")
+        self.title("GPU Telemetry Viewer")
         self.geometry("900x600")
         self.configure(bg="#1e1e1e")
 
@@ -68,8 +68,8 @@ class EpochTimeViewer(tk.Tk):
 
         self.figure = Figure(facecolor="#1e1e1e")
         self.ax = self.figure.add_subplot(111)
-        self.ax.set_title("Epoch Time Breakdown", color="white")
-        self.ax.set_ylabel("Seconds", color="white")
+        self.ax.set_title("GPU Telemetry", color="white")
+        self.ax.set_ylabel("Value", color="white")
         self.ax.tick_params(colors="white")
         for spine in self.ax.spines.values():
             spine.set_color("white")
@@ -197,12 +197,12 @@ class EpochTimeViewer(tk.Tk):
         self._update_plot()
 
     def _tail_and_update(self):
-        if not os.path.exists(TIME_LOG):
+        if not os.path.exists(GPU_LOG_PATH):
             self.after(500, self._tail_and_update)
             return
 
         rows = []
-        with open(TIME_LOG, "r", encoding="utf8") as f:
+        with open(GPU_LOG_PATH, "r", encoding="utf8") as f:
             for line in f:
                 try:
                     rows.append(json.loads(line))
@@ -217,18 +217,19 @@ class EpochTimeViewer(tk.Tk):
         df["global_epoch"] = pd.to_numeric(df["global_epoch"], errors="coerce")
         df = df.dropna(subset=["global_epoch"])
 
-        # flatten epoch_breakdown into columns
-        if "epoch_breakdown" in df.columns:
-            breakdown_df = df["epoch_breakdown"].apply(pd.Series)
-            df = pd.concat([df.drop(columns=["epoch_breakdown"]), breakdown_df], axis=1)
-
         self.df = df
         self.lbl_max_epoch.config(text=f"Max: {int(df['global_epoch'].max())}")
 
         # detect all *_time keys
-        timing_keys = [c for c in df.columns if c.endswith("_time")]
+        gpu_keys = [
+			c for c in df.columns
+			if c.startswith("gpu_") or
+			c.startswith("vram_") or
+			c.startswith("pool_")
+		]
 
-        for key in timing_keys:
+
+        for key in gpu_keys:
             if key not in self.visible_keys:
                 self.visible_keys[key] = BooleanVar(value=True)
             if key not in self.lines:
@@ -275,4 +276,4 @@ class EpochTimeViewer(tk.Tk):
 
 
 if __name__ == "__main__":
-    EpochTimeViewer().mainloop()
+    GPUViewer().mainloop()
