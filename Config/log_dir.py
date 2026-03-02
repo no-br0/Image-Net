@@ -9,6 +9,8 @@ LOWEST_LOSS_LOG_PATH = "Logs/lowest_loss_log.txt"
 LOWEST_RAW_LOSS_LOG_PATH = "Logs/lowest_raw_loss_log.txt"
 TELEMETRY_LOG_FOLDER = "Telemetry/telemetry_logs/"
 
+TIME_LOG = "Telemetry/telemetry_logs/time_log.jsonl"
+
 IMAGE_SAVE_PATH = "Saves/Output_Images/"
 GIF_SAVE_PATH = "Saves/Output_GIF/"
 
