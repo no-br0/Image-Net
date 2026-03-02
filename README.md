@@ -1,5 +1,12 @@
 # Procedural-Input Neural Network (CuPy-Accelerated)
 
+## Overview
+A fully custom neural network implemented from scratch using CuPy for GPU‑accelerated computation.<br>
+The model learns to generate images from procedural inputs (radial fields, noise patterns, checkerboards, etc.) without datasets or external ML frameworks.<br>
+The system is designed for clarity, interpretability, and controlled experimentation, with a modular loss system, deterministic inputs, and real‑time telemetry for analysing optimisation behaviour.<br>
+This project demonstrates GPU programming, custom backpropagation, procedural input design, and live visualisation tooling, all built without PyTorch or TensorFlow.<br>
+
+
 ## Running The Project
 this project can be run in two ways:
 - Docker - recommended for training only
@@ -79,12 +86,6 @@ the different telemetry/image viewers include:
 - Config/Inputs/layers_config.py -> contains a list of all procedural inputs the model is using (NOTE: there can be duplicates without issue)
 
 <br>
-
-## Overview
-
-This project implements a fully custom neural network built from scratch using CuPy for GPU-accelerated array operations.<br>
-The model learns to generate an image from procedural inputs (such as radial fields, perlin noise, checkerboards etc.) without using datasets or machine learning frameworks.<br>
-The system is designed for calrity, interpretability, and experimentation, with a focus on understanding optimisation behaviour in a controlled environment.
 
 ## Key Features
 
