@@ -122,7 +122,7 @@ class NeuralNet:
         A = xp.atleast_2d(X).astype(xp.float32, copy=False)
         
         #A = (A / 127.5) - 1.0  # Normalise inputs to [-1, 1]
-        #A = (A / 255.0) # Normalise inputs to [0, 1]
+        A = (A / 255.0) # Normalise inputs to [0, 1]
         
         if not xp.isfinite(A).all():
             raise ValueError("Non-finite input to feedforward")

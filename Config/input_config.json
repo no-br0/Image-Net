@@ -5,12 +5,22 @@
         "octaves": 6
     },
     {
+        "type": "perlin",
+        "frequency": 10.0,
+        "seed": 78
+    },
+    {
         "type": "flow_field",
         "seed": 15
     },
     {
         "type": "heightmap_flow_spectrum",
         "seed": 822
+    },
+    {
+        "type": "blue_noise",
+        "mode": "field",
+        "seed": 572
     },
     {
         "type": "multi_scale_flow",
@@ -53,18 +63,8 @@
     },
     {
         "type": "checkerboard_full_gray",
-        "block_size": 3,
+        "block_size": 1,
         "seed": 42
-    },
-    {
-        "type": "checkerboard_full_gray",
-        "block_size": 7,
-        "seed": 69
-    },
-    {
-        "type": "checkerboard_full_gray",
-        "block_size": 11,
-        "seed": 2
     },
     {
         "type": "fbm_noise",
@@ -79,11 +79,9 @@
         "seed": 1990
     },
     {
-        "type": "perlin_flow"
-    },
-    {
-        "type": "bandpass",
-        "cutoff": 0.009
+        "type": "checkerboard_radial",
+        "tiles_x": 15,
+        "tiles_y": 23
     },
     {
         "type": "checkerboard_radial",
@@ -92,14 +90,27 @@
         "tiles_y": 39
     },
     {
-        "type": "checkerboard",
-        "block_size": 17
-    },
-    {
         "type": "voronoi_segmentation",
         "num_seeds": 100
     },
     {
-        "type": "grid"
+        "type": "grid",
+        "spacing": 4,
+        "thickness": 2
+    },
+    {
+        "type": "checkerboard",
+        "block_size": 4
+    },
+    {
+        "type": "radial_gradient"
+    },
+    {
+        "type": "linear_gradient",
+        "direction": "horizontal"
+    },
+    {
+        "type": "linear_gradient",
+        "direction": "vertical"
     }
 ]

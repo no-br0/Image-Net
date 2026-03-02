@@ -5,8 +5,19 @@ from src.backend_cupy import xp
 def mae(target, pred, derivative=False):
     if derivative:
         return xp.sign(pred - target) / pred.size
-    return xp.abs(pred - target)
+    return xp.mean(xp.abs(pred - target))
 
+def maxe(target, pred, derivative=False):
+	diff = pred - target
+	abs_diff = xp.abs(diff)
+
+	if derivative:
+		k = xp.argmax(abs_diff)
+		grad = xp.zeros_like(pred)
+		grad[k] = -xp.sign(diff[k])
+		return grad
+		
+	return xp.max(abs_diff)
 
 def mae_luma(target, pred, derivative=False):
     r_w, g_w, b_w = 0.2126, 0.7152, 0.0722
@@ -28,7 +39,7 @@ def mae_luma(target, pred, derivative=False):
     err[..., 0] = r_w * abs_diff
     err[..., 1] = g_w * abs_diff
     err[..., 2] = b_w * abs_diff
-    return err  # shape: (N, 3)
+    return xp.mean(err)  # shape: (N, 3)
 
 
 
@@ -53,7 +64,7 @@ def mae_shadow(target, pred, derivative=False):
     err[..., 0] = r_w * abs_diff
     err[..., 1] = g_w * abs_diff
     err[..., 2] = b_w * abs_diff
-    return err  # shape: (N, 3)
+    return xp.mean(err)  # shape: (N, 3)
 
 
 
@@ -93,7 +104,7 @@ def mae_dual_luma(target, pred, derivative=False):
     err[..., 1] += 0.5 * g_s * xp.abs(pred_shadow - target_shadow)
     err[..., 2] += 0.5 * b_s * xp.abs(pred_shadow - target_shadow)
 
-    return err  # shape: (N, 3)
+    return xp.mean(err)  # shape: (N, 3)
 
 
 
@@ -105,7 +116,7 @@ def mae_red(target, pred, derivative=False):
         return grad
     err = xp.zeros_like(pred)
     err[..., 0] = xp.abs(diff)
-    return err  # shape: (N, 3)
+    return xp.mean(err)  # shape: (N, 3)
 
 
 def mae_green(target, pred, derivative=False):
@@ -116,7 +127,7 @@ def mae_green(target, pred, derivative=False):
         return grad
     err = xp.zeros_like(pred)
     err[..., 1] = xp.abs(diff)
-    return err  # shape: (N, 3)
+    return xp.mean(err)  # shape: (N, 3)
 
 
 def mae_blue(target, pred, derivative=False):
@@ -127,7 +138,7 @@ def mae_blue(target, pred, derivative=False):
         return grad
     err = xp.zeros_like(pred)
     err[..., 2] = xp.abs(diff)
-    return err  # shape: (N, 3)
+    return xp.mean(err)  # shape: (N, 3)
 
 
 
@@ -1569,7 +1580,7 @@ def mae_yellow(target, pred, derivative=False):
     grad = xp.zeros_like(pred, dtype=xp.float32)
     grad[..., 0] = a * s
     grad[..., 1] = b * s
-    return grad
+    return xp.mean(grad)
 
 
 def mae_red_yellow(target, pred, derivative=False):
@@ -1693,7 +1704,7 @@ def mae_cyan(target, pred, derivative=False):
     grad = xp.zeros_like(pred, dtype=xp.float32)
     grad[..., 1] = a * s
     grad[..., 2] = b * s
-    return grad
+    return xp.mean(grad)
 
 
 def mae_red_cyan(target, pred, derivative=False):
@@ -1856,7 +1867,7 @@ def mae_magenta(target, pred, derivative=False):
     grad = xp.zeros_like(pred, dtype=xp.float32)
     grad[..., 0] = a * s
     grad[..., 2] = b * s
-    return grad
+    return xp.mean(grad)
 
 
 def mae_green_magenta(target, pred, derivative=False):

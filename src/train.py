@@ -5,7 +5,8 @@ from Config.log_dir import (GPU_LOG_PATH,
                             LOWEST_RAW_LOSS_LOG_PATH, LOWEST_LOSS_LOG_PATH,)
 from Config.config import (SAVE_INTERVAL, CONFIG_FILE, LOWEST_LOSS_THRESHOLD,
                            LR_DECREASE_MULTIPLIER, LR_INCREASE_MULTIPLIER,
-                           MAX_LEARNING_RATE, MIN_LEARNING_RATE, ENABLE_ADAPTIVE_LR)
+                           MAX_LEARNING_RATE, MIN_LEARNING_RATE, ENABLE_ADAPTIVE_LR, 
+						   ADAPTIVE_LR_INVERTED,)
 from src.backend_cupy import xp, get_vram_usage, log_vram_usage
 from src.loss_registry import combined_loss, wrapped_combined_loss
 import cupy as cp, numpy as np
@@ -460,11 +461,11 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
         if ENABLE_ADAPTIVE_LR:
 
             if NORM_LOWEST_RAW_LOSS is not None:
-                if norm_total_raw_loss < NORM_LOWEST_RAW_LOSS:
+                if (norm_total_raw_loss < NORM_LOWEST_RAW_LOSS) ^ ADAPTIVE_LR_INVERTED:
                     model.learning_rate *= (1 + LR_INCREASE_MULTIPLIER)
                     NORM_LOWEST_RAW_LOSS = norm_total_raw_loss
                     model.NORM_LOWEST_RAW_LOSS = NORM_LOWEST_RAW_LOSS
-                elif norm_total_raw_loss > (NORM_LOWEST_RAW_LOSS * (1 + LOWEST_LOSS_THRESHOLD)):
+                elif (norm_total_raw_loss > (NORM_LOWEST_RAW_LOSS * (1 + LOWEST_LOSS_THRESHOLD))) ^ ADAPTIVE_LR_INVERTED:
                     model.learning_rate *= (1 - LR_DECREASE_MULTIPLIER)
                 else:
                     pass

@@ -1,6 +1,6 @@
 {
     "MODEL_SAVE_PATH": "Saves\\nn_model.npz",
-    "TRAIN_IMAGE_PATH": "training/pexels-pierre-blache-651604-2901209(1).jpg",
-    "WIDTH": 1920,
-    "HEIGHT": 1080
+    "TRAIN_IMAGE_PATH": "training\\1.jpg",
+    "WIDTH": 450,
+    "HEIGHT": 360
 }

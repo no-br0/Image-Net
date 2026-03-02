@@ -14,24 +14,29 @@ from Losses import *
 
 def combined_loss(target, pred, derivative=False):
     if derivative:
+        # Backward: sum weighted gradients
         total_grad = 0.0
         for loss_name, default_weight in LOSS_CONFIG:
             loss_fn = LOSS_REGISTRY[loss_name]
             grad_val = loss_fn(target, pred, derivative=True)
-            total_grad += default_weight * grad_val  # weighting is static for gradients
+            total_grad += default_weight * grad_val
         return total_grad
 
-    # Step 1: Compute raw per-sample loss vectors
+    # Forward: compute scalar losses
     raw_vals = []
     for loss_name, default_weight in LOSS_CONFIG:
         loss_fn = LOSS_REGISTRY[loss_name]
-        val_vector = loss_fn(target, pred, derivative=False)  # shape: [batch_size]
-        raw_vals.append((loss_name, default_weight, val_vector))
+        val_scalar = loss_fn(target, pred, derivative=False)  # scalar
+        raw_vals.append((loss_name, default_weight, float(val_scalar)))
 
-    # Step 2: Determine weights (based on mean of each loss vector)
+    # Adaptive weighting (optional)
     if ENABLE_ADAPTIVE_LOSS_WEIGHTING:
         eps = 1e-8
-        weights = [float(cp.power(cp.log(cp.mean(val_vector) + 1.0 + eps), LOSS_WEIGHTING_POWER_SCALE)) for _, _, val_vector in raw_vals]
+        weights = []
+        for _, _, val_scalar in raw_vals:
+            w = float(cp.power(cp.log(val_scalar + 1.0 + eps), LOSS_WEIGHTING_POWER_SCALE))
+            weights.append(w)
+
         weights = cp.array(weights, dtype=cp.float32)
         weights /= weights.sum()
         weights = weights.tolist()
@@ -41,19 +46,19 @@ def combined_loss(target, pred, derivative=False):
         weights /= weights.sum()
         weights = weights.tolist()
 
-    # Step 3: Apply weights to each loss vector
-    total_vector = cp.zeros_like(raw_vals[0][2])  # shape: [batch_size]
+    # Combine scalar losses
+    total_scalar = 0.0
     breakdown = {}
     raw_loss = {}
 
-    for (loss_name, _, val_vector), w in zip(raw_vals, weights):
-        weighted_vector = w * val_vector
-        total_vector += weighted_vector
-        breakdown[loss_name] = cp.mean(weighted_vector)
-        raw_loss[loss_name] = cp.mean(val_vector)
-        
-    total_scalar = cp.mean(total_vector)
+    for (loss_name, _, val_scalar), w in zip(raw_vals, weights):
+        weighted = w * val_scalar
+        total_scalar += weighted
+        breakdown[loss_name] = weighted
+        raw_loss[loss_name] = val_scalar
+
     return total_scalar, breakdown, raw_loss
+
 
 
 
@@ -69,6 +74,8 @@ def wrapped_combined_loss(y_true, y_pred, derivative=False):
 LOSS_REGISTRY = {
     "combined": combined_loss,
     "wrapped_combined": wrapped_combined_loss,
+
+	"maxe": maxe,
     
     "mae": mae,
     "mae_luma": mae_luma,
@@ -154,50 +161,4 @@ LOSS_REGISTRY = {
     "mse_luma_bias": mse_luma_bias,
     "mse_luma_suppress": mse_luma_suppressed,
     
-    
-    
-    "cae": cae,
-    "cae_luma": cae_luma,
-    "cae_inverse_luma": cae_inverse_luma,
-    "cae_red": cae_red,
-    "cae_green": cae_green,
-    "cae_blue": cae_blue,
-    "cae_hue": cae_hue,
-    "cae_saturation": cae_saturation,
-    "cae_colorfulness": cae_colorfulness,
-    "cae_chromatic_entropy": cae_chromatic_entropy,
-    "cae_opponent": cae_opponent_color,
-    "cae_rgb_angle": cae_rgb_angle,
-    "cae_rg": cae_pair_rg,
-    "cae_gb": cae_pair_gb,
-    "cae_rb": cae_pair_rb,
-    "cae_ycbcr_chroma": cae_ycbcr_chroma,
-    "cae_cmyk_chroma": cae_cmyk_chroma,
-    "cae_luma_heavy": cae_luma_heavy,
-    "cae_red_bias": cae_red_bias,
-    "cae_red_suppress": cae_red_suppressed,
-    "cae_blue_bias": cae_blue_bias,
-    "cae_blue_suppress": cae_blue_suppressed,
-    "cae_green_bias": cae_green_bias,
-    "cae_green_suppress": cae_green_suppressed,
-    "cae_equalized": cae_equalized,
-    "cae_entropy_weighted": cae_entropy_weighted,
-    
-    
-    
-    "cse": cse,
-    "cse_luma": cse_luma,
-    "cse_inverse_luma": cse_inverse_luma,
-    "cse_red": cse_red,
-    "cse_green": cse_green,
-    "cse_blue": cse_blue,
-    "cse_hue": cse_hue,
-    "cse_saturation": cse_saturation,
-    "cse_colorfulness": cse_colorfulness,
-    "cse_chromatic_entropy": cse_chromatic_entropy,
-    "cse_opponent": cse_opponent_color,
-    "cse_rgb_angle": cse_rgb_angle,
-    "cse_rg": cse_pair_rg,
-    "cse_gb": cse_pair_gb,
-    "cse_rb": cse_pair_rb
 }
