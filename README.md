@@ -7,6 +7,19 @@ The system is designed for clarity, interpretability, and controlled experimenta
 This project demonstrates GPU programming, custom backpropagation, procedural input design, and live visualisation tooling, all built without PyTorch or TensorFlow.<br>
 
 
+### Training Metrics
+![Training Metrics](Images/Loss_Telemetry.PNG)
+
+### GPU Metrics
+![GPU Telemetry](Images/GPU_Telemetry.PNG)
+
+### Epoch Time Metrics
+![Epoch Time Metrics](Images/Epoch_Time.PNG)
+
+### Live Image Display
+![Live Image Display](Images/Live_Display.PNG)
+
+
 ## Running The Project
 this project can be run in two ways:
 - Docker - recommended for training only
