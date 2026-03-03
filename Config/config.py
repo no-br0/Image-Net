@@ -11,7 +11,7 @@ TRAIN               = True
 FORCE_NEW_MODEL     = True
 MODEL_SEED          = 42       # Set to None for random seed
 ENABLE_SET_LR       = False
-LEARNING_RATE       = 1e-6
+LEARNING_RATE       = 1e-4
 MAX_LEARNING_RATE   = 0.01
 MIN_LEARNING_RATE   = 1e-20
 ENABLE_ADAPTIVE_LR              = True
@@ -217,6 +217,6 @@ LOSS_NAME       = "wrapped_combined"
 
 
 # --- Image ---
-TARGET_IMAGE_ID     = 1 # 4, 6, 2, 1
+TARGET_IMAGE_ID     = 4 # 4, 6, 2, 1
 
 INPUT_CONFIG_PATH = "Config/input_config.json"
