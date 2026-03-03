@@ -8,15 +8,25 @@ This project demonstrates GPU programming, custom backpropagation, procedural in
 
 
 ### Training Metrics
+Tracks loss, derivatives, and accuracy over training, showing how the model stabilises and improves.<br><br>
 ![Training Metrics](Images/Loss_Telemetry.PNG)
 
+<br>
+
 ### GPU Metrics
+Real‑time GPU temperature, utilisation, and VRAM usage during training.<br><br>
 ![GPU Telemetry](Images/GPU_Telemetry.PNG)
 
+<br>
+
 ### Epoch Time Metrics
+Breakdown of compute, active, and sleep time per epoch, showing training loop performance.<br><br>
 ![Epoch Time Metrics](Images/Epoch_Time.PNG)
 
+<br>
+
 ### Live Image Display
+Live output from the model during training.<br><br>
 ![Live Image Display](Images/Live_Display.PNG)
 
 
