@@ -7,61 +7,42 @@ The system is designed for clarity, interpretability, and controlled experimenta
 This project demonstrates GPU programming, custom backpropagation, procedural input design, and live visualisation tooling, all built without PyTorch or TensorFlow.<br>
 
 
+## Visual Showcase
+
 ### Training Metrics
-Tracks loss, derivatives, and accuracy over training, showing how the model stabilises and improves.<br><br>
+Tracks loss, derivatives, and accuracy over training, showing how the model stabilises and improves.
+
 ![Training Metrics](Images/Loss_Telemetry.PNG)
 
-<br>
 
 ### GPU Metrics
-Real‑time GPU temperature, utilisation, and VRAM usage during training.<br><br>
+Real‑time GPU temperature, utilisation, and VRAM usage during training.
+
 ![GPU Telemetry](Images/GPU_Telemetry.PNG)
 
-<br>
 
 ### Epoch Time Metrics
-Breakdown of compute, active, and sleep time per epoch, showing training loop performance.<br><br>
+Breakdown of compute, active, and sleep time per epoch, showing training loop performance.
+
 ![Epoch Time Metrics](Images/Epoch_Time.PNG)
 
-<br>
 
 ### Live Image Display
-Live output from the model during training.<br><br>
+Live output from the model during training.
+
 ![Live Image Display](Images/Live_Display.PNG)
 
 
 ## Running The Project
 this project can be run in two ways:
-- Docker - recommended for training only
-- Local install with venv - required for displays, viewers, and any GUI windows
+- Local install with venv - (recommended) required for displays, viewers, and any GUI windows
+- Docker - useable for training
+
 
 both methods are explained below.
 
 
-### Option 1 - Docker (Recommended for Training Only)
-
-Docker provides a fully configured environment with the correct CuPy + CUDA setup and all required libraries for training.
-
-__Build the image__<br>
-`docker build -t Clean-Neural-Net`
-<br><br>
-__Run the container__<br>
-`docker run --gpus all Clean-Neural-Net`
-
-This will start the training process inside a controlled GPU-enabled environment.<br><br>
-
-
-__Important__<br>
-
-Docker is used __only for training.__<br>
-The live image display, telemetry viewer, or any GUI windows __should not be run inside Docker__,<br>
-because containers do not have access to your system's display server by default.<br>
-
-If you want to see the live image or telemetry graphs, run those scripts locally.
-
-<br>
-
-### Option 2 - Local Install With Virtual Environment (Required for Displays)
+### Option 1 - Local Install With Virtual Environment (Required for Displays)
 
 if you want to use the live image display or telemetry viewers, you must run the project locally.<br>
 A python virtual environment is the recommended way to do this.
@@ -96,6 +77,28 @@ the different telemetry/image viewers include:
 - loss_telemetry.pyw
 - optimiser_telemetry.pyw
 
+<br>
+
+### Option 2 - Docker (Recommended for Training Only)
+
+Docker provides a fully configured environment with the correct CuPy + CUDA setup and all required libraries for training.
+
+__Build the image__<br>
+`docker build -t Clean-Neural-Net`
+<br><br>
+__Run the container__<br>
+`docker run --gpus all Clean-Neural-Net`
+
+This will start the training process inside a controlled GPU-enabled environment.<br><br>
+
+
+__Important__<br>
+
+Docker is used __only for training.__<br>
+The live image display, telemetry viewer, or any GUI windows __should not be run inside Docker__,<br>
+because containers do not have access to your system's display server by default.<br>
+
+If you want to see the live image or telemetry graphs, run those scripts locally.
 
 <br>
 
@@ -103,6 +106,8 @@ the different telemetry/image viewers include:
 - main.py -> starts training
 - viewer_pygame.pyw -> starts the live image viewer
 - loss_telemetry.pyw -> starts the live network loss telemetry viewer
+- epoch_time_telemetry.pyw -> graphs the time epochs take along with the breakdown of where that time is spent
+- gpu_telemetry.pyw -> graphs the gpu temp, utilisation, and VRAM usage
 - optimiser_telemetry.pyw -> starts the live optimiser telemetry viewer (NOTE: only viable with some specific optimisers that have logging built into them.)
 
 - Config/config.py -> contains various settings for tweaking the model.
@@ -166,7 +171,7 @@ A viewer script loads these files to display:
 This project is part of ongoing research into:
 - procedural input representations
 - synthetic probing
-- opptimisation behaviour
+- optimisation behaviour
 - interpretable training dynamics
 The goal is clarity, control, and experimentation rather than production-grade image generation.
 
