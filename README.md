@@ -6,6 +6,8 @@ The model learns to generate images from procedural inputs (radial fields, noise
 The system is designed for clarity, interpretability, and controlled experimentation, with a modular loss system, deterministic inputs, and real‑time telemetry for analysing optimisation behaviour.<br>
 This project demonstrates GPU programming, custom backpropagation, procedural input design, and live visualisation tooling, all built without PyTorch or TensorFlow.<br>
 
+This project avoids datasets entirely, using procedural inputs to keep training deterministic, controllable, and lightweight enough for a single 2080 Ti.
+
 
 ## Visual Showcase
 
@@ -34,31 +36,29 @@ Live output from the model during training.
 
 
 ## Running The Project
-this project can be run in two ways:
+This project can be run in two ways:
 - Local install with venv - (recommended) required for displays, viewers, and any GUI windows
-- Docker - useable for training
+- Docker - usable for training
 
-
-both methods are explained below.
+Both methods are explained below.
 
 
 ### Option 1 - Local Install With Virtual Environment (Required for Displays)
 
-if you want to use the live image display or telemetry viewers, you must run the project locally.<br>
+If you want to use the live image display or telemetry viewers, you must run the project locally.<br>
 A python virtual environment is the recommended way to do this.
 
-<br> __1. Create and activate a virtual environment__ <br>
+**1. Create and activate a virtual environment**<br>
 	`python -m venv venv`<br>
 	`source venv/bin/activate	# Linux  / macOS`<br>
 	`venv\Scripts\activate		# Windows`<br>
 
-<br> __2. Install all dependencies__ <br>
+**2. Install all dependencies**<br>
 	`pip install -r requirements.txt`<br>
 
-this installs:
+This installs:
 - CuPy (GPU acceleration)
 - Numpy
-- CUDA
 - pandas
 - Pillow
 - pygame
@@ -79,7 +79,7 @@ the different telemetry/image viewers include:
 
 <br>
 
-### Option 2 - Docker (Recommended for Training Only)
+### Option 2 - Docker (Training Only)
 
 Docker provides a fully configured environment with the correct CuPy + CUDA setup and all required libraries for training.
 
