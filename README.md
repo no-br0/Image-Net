@@ -170,7 +170,6 @@ A viewer script loads these files to display:
 ## Project Purpose
 This project is part of ongoing research into:
 - procedural input representations
-- synthetic probing
 - optimisation behaviour
 - interpretable training dynamics
 The goal is clarity, control, and experimentation rather than production-grade image generation.
