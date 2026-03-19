@@ -6,19 +6,29 @@ from Config.log_dir import (GPU_LOG_PATH, TIME_LOG,
 from Config.config import (SAVE_INTERVAL, CONFIG_FILE, LOWEST_LOSS_THRESHOLD,
 						LR_DECREASE_MULTIPLIER, LR_INCREASE_MULTIPLIER,
 						MAX_LEARNING_RATE, MIN_LEARNING_RATE, ENABLE_ADAPTIVE_LR, 
-						ADAPTIVE_LR_INVERTED,)
+						ADAPTIVE_LR_INVERTED, COOLING_TYPE, TARGET_TEMP_BATCH, TARGET_TEMP_EPOCH,
+						SHALLOW_BATCH_COOLING, SHALLOW_COOL_TIME, TARGET_TEMP_SHALLOW_BATCH_COOLING)
 from src.backend_cupy import xp, get_vram_usage, log_vram_usage
 from src.loss_registry import combined_loss, wrapped_combined_loss
 import cupy as cp, numpy as np
 import os, json, sys, time, subprocess
 from collections import defaultdict
 
+
 PROFILE_VRAM    = False     # Set True to log VRAM each epoch
 VRAM_HEADROOM   = 0.80      # Reduce batch size if CuPy pool > 80% total
 MAX_TEMP        = 80        # °C
-WARN_TEMP       = 65        # °C
+#WARN_TEMP       = 65        # °C
 
-FAN_RAMP_START  = 60        # °C
+if COOLING_TYPE == "batch" and not SHALLOW_BATCH_COOLING:
+	WARN_TEMP = TARGET_TEMP_BATCH
+elif COOLING_TYPE == "epoch" and not SHALLOW_BATCH_COOLING:
+	WARN_TEMP = TARGET_TEMP_EPOCH
+elif SHALLOW_BATCH_COOLING:
+	WARN_TEMP = TARGET_TEMP_SHALLOW_BATCH_COOLING
+
+
+FAN_RAMP_START  = 70        # °C
 MAX_SAFE_FAN    = 80        # % this value should never exceed 85
 FAN_BUMP        = 10        # % to increase fan speed by when ramping up
 # % max fan speed
@@ -148,17 +158,22 @@ def check_gpu_temp_and_exit(nn, epoch, poll_interval=0.20, gpu_id=0):
 			gpu_log.writelines(log_lines)
 		exit(0)
 
+
+
 	# Cooldown zone: over WARN_TEMP → keep bumping fans while sleeping
 	while temp > WARN_TEMP:
 		current_speed = get_gpu_fan_speed(gpu_id)
 		target_speed = min(MAX_SAFE_FAN, current_speed + FAN_BUMP)
+		#if target_speed > current_speed and target_speed != last_speed:
+		#	set_gpu_fan_speed(target_speed, gpu_id)
+		#	log_lines.append(f"[fan-hot] {temp}°C — fan {current_speed}% -> {target_speed}%\n")
+		#	last_speed = target_speed
 		if target_speed > current_speed and target_speed != last_speed:
 			set_gpu_fan_speed(target_speed, gpu_id)
-			log_lines.append(f"[fan-hot] {temp}°C — fan {current_speed}% -> {target_speed}%\n")
 			last_speed = target_speed
 
 		sleep_time = 0.10 if temp - WARN_TEMP <= 3 else poll_interval
-		log_lines.append(f"[cooldown] GPU {temp}°C — sleeping {sleep_time:.2f}s\n")
+		#log_lines.append(f"[cooldown] GPU {temp}°C — sleeping {sleep_time:.2f}s\n")
 		time.sleep(sleep_time)
 		#total_sleep += sleep_time
 
@@ -167,13 +182,21 @@ def check_gpu_temp_and_exit(nn, epoch, poll_interval=0.20, gpu_id=0):
 
 
 	# Final log flush
-	if log_lines:
-		with open(GPU_TEMP_LOG_PATH, "a") as gpu_log:
-			gpu_log.writelines(log_lines)
+	#if log_lines:
+	#	with open(GPU_TEMP_LOG_PATH, "a") as gpu_log:
+	#		gpu_log.writelines(log_lines)
 			
 	sleep_end_time = time.perf_counter()
 	total_sleep = (sleep_end_time - sleep_start_time)
 
+	return total_sleep
+
+
+def shallow_batch_cooling(cool_time=0.10):
+	sleep_start_time = time.perf_counter()
+	time.sleep(cool_time)
+	sleep_end_time = time.perf_counter()
+	total_sleep = (sleep_end_time - sleep_start_time)
 	return total_sleep
 
 
@@ -212,6 +235,8 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 	for local_epoch in range(1, epochs + 1):
 		t0 = time.perf_counter()
 		model.GLOBAL_EPOCH += 1
+		sleep_time 		 	 = 0.0
+
 		
 		totals = defaultdict(float)
 		raw_totals = defaultdict(float)
@@ -242,6 +267,7 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 		total_samples = 0
 		# --- generate and consume batches inline ---
 		for xb, yb in stream.iter_minibatches(batch_size):
+			cp.cuda.Device().synchronize()
 			prep_end = time.perf_counter()
 			prep_time += (prep_end - prep_start)
 			
@@ -296,9 +322,16 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 			
 			# for logging the per batch gpu utilisation and VRAM allocations
 			#log_vram_usage()
-			
+			cp.cuda.Device().synchronize()
 			compute_end = time.perf_counter()
 			compute_time += (compute_end - compute_start)
+
+			if COOLING_TYPE == "batch" and not SHALLOW_BATCH_COOLING:
+				sleep_time += check_gpu_temp_and_exit(model, local_epoch)
+			elif SHALLOW_BATCH_COOLING:
+				sleep_time += shallow_batch_cooling(SHALLOW_COOL_TIME)
+
+			cp.cuda.Device().synchronize()
 			prep_start = time.perf_counter()
 			
 		# Average loss components over batches
@@ -564,10 +597,8 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 		
 		# --- Telemetry & thermal safety ---
 		log_vram_usage(model.GLOBAL_EPOCH)
-		sleep_time = check_gpu_temp_and_exit(model, local_epoch)
-		
-		
 
+		sleep_time += check_gpu_temp_and_exit(model, local_epoch)
 		
 
 		# --- Timing stats ---
