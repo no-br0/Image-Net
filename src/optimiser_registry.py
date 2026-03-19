@@ -21,4 +21,5 @@ OPTIMISER_REGISTRY = {
     "adabelief_lookahead": AdaBeliefLookahead,
     "lion_reversion": LionReversion,
     "yogi_reversion": YogiReversion,
+	"rmsprop": RMSProp,
 }

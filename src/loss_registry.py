@@ -75,6 +75,10 @@ LOSS_REGISTRY = {
     "combined": combined_loss,
     "wrapped_combined": wrapped_combined_loss,
 
+	"fft": fft_loss,
+	"edge": edge_loss,
+	"perceptual_patch": perceptual_patch_loss,
+
 	"maxe": maxe,
     
     "mae": mae,

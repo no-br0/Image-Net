@@ -8,19 +8,19 @@ ENABLE_TELEMETRY_VIEWER = False
 
 # --- Settings ---
 TRAIN               = True
-FORCE_NEW_MODEL     = True
-MODEL_SEED          = 42       # Set to None for random seed
+FORCE_NEW_MODEL     = False
+MODEL_SEED          = 42       	# Set to None for random seed
 ENABLE_SET_LR       = False
-LEARNING_RATE       = 1e-4
-MAX_LEARNING_RATE   = 0.01
-MIN_LEARNING_RATE   = 1e-20
+LEARNING_RATE       = 0.0005	#0.00020 # 2e-6
+MAX_LEARNING_RATE   = 1e-4
+MIN_LEARNING_RATE   = 1e-8
 ENABLE_ADAPTIVE_LR              = True
-LR_INCREASE_MULTIPLIER          = 0.01
+LR_INCREASE_MULTIPLIER          = 0.002
 LR_DECREASE_MULTIPLIER          = 0.004979
-LOWEST_LOSS_THRESHOLD           = 0.001
+LOWEST_LOSS_THRESHOLD           = 0.01
 # flips the adaptive LR logic so that it increases LR when loss gets worse and 
 # decreases LR when it gets better, instead of the opposite
-ADAPTIVE_LR_INVERTED 			= True
+ADAPTIVE_LR_INVERTED 			= False
 
 
 GRAD_CLIP                       = 1.0
@@ -29,9 +29,11 @@ GRAD_CLIP                       = 1.0
 #(327680 | 262144 | 245760 | 196608 | 163840 | 143744 | 131072 | 122880 | 1048576 | 98304 
 # | 65536 | 49152 | 32768 | 24576 | 16384 | 8192 | 4096 | 2048 | 1024)
 BATCH_SIZE      = 98304
+
+#BATCH_SIZE      = 24576
 #BATCH_SIZE      = 163840
-SHUFFLE         = True
-EPOCHS          = 2000
+SHUFFLE         = False
+EPOCHS          = 20000
 
 ENABLE_CUSTOM_MODEL_NAME        = False
 ENABLE_INPUT_CACHING            = False
@@ -45,9 +47,11 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 # "qhlion_refine", "qhlion_belief_refine", "qhlion_belief_refine_adaptive"
 
 OPTIMISER                     = {
-    #"name": "adabelief",
-	"name": "lion",
-	"weight_decay": 0.1,
+    "name": "rmsprop",
+	"lr": 0.00001,
+	#"name": "nesterov",
+	#"name": "lion",
+	#"weight_decay": 0.1,
 }
 
 """
@@ -90,15 +94,27 @@ SAVE_INTERVAL       = 10
 
 LOSS_CONFIG = [
     
+	("mse", 1.0),    
+	("mae", 1.0),
+	("perceptual_patch", 1.0),
+
+
+	#("mse", 0.5),    
+	#("mae", 15.0),
+	#("perceptual_patch", 0.08),
+
+	#("fft", 0.05),
+	#("edge", 1.2),
+	
     #("mae_dual_luma", 1.0),
-    ("mae", 1.0),
 	#("maxe", 0.1),
-    ("mae_luma", 1.0),
-    ("mae_shadow", 1.0),
-    ("mae_red", 1.0),
-    ("mae_green", 1.0),
-    ("mae_blue", 1.0),
-    #("mae_rg", 1.0),
+    #("mae_luma", 1.0),
+    #("mae_shadow", 1.0),
+    #("mae_red", 1.0),
+    #("mae_green", 1.0),
+    #("mae_blue", 1.0),
+    
+	#("mae_rg", 1.0),
     #("mae_gb", 1.0),
     #("mae_rb", 1.0),
     #("mae_yellow", 1.0),

@@ -79,6 +79,16 @@
         "seed": 1990
     },
     {
+        "type": "perlin_flow",
+        "freq": 0.1,
+        "octaves": 10,
+        "gain": 1.0
+    },
+    {
+        "type": "bandpass",
+        "cutoff": 0.009
+    },
+    {
         "type": "checkerboard_radial",
         "tiles_x": 15,
         "tiles_y": 23

@@ -21,9 +21,11 @@ layers_cfg = [
     {"type": "fbm_noise", "seed": 42},
     {"type": "fbm_vein", "seed": 29},
     {"type": "fbm_rock", "seed": 1990},
-    #{"type": "perlin_flow", "freq": 0.1, "octaves": 10, "gain": 1.0},
-    #{"type": "bandpass", "cutoff": 0.01},#"cutoff": 0.009},
-    {"type": "checkerboard_radial", "tiles_x": 15, "tiles_y": 23},
+    
+	{"type": "perlin_flow", "freq": 0.1, "octaves": 10, "gain": 1.0},
+    {"type": "bandpass", "cutoff": 0.009},#"cutoff": 0.01},
+    
+	{"type": "checkerboard_radial", "tiles_x": 15, "tiles_y": 23},
     {"type": "checkerboard_radial", "fade_mult": 1.1, "tiles_x": 50, "tiles_y": 39},
 	{"type": "voronoi_segmentation", "num_seeds": 100},
 	{"type": "grid", "spacing": 4, "thickness": 2},

@@ -6,3 +6,4 @@ from .experimental import *
 from .adabelief_lookahead import *
 from .lion_reversion import *
 from .yogi_reversion import *
+from .rmsprop import *
