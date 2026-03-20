@@ -1,15 +1,6 @@
 # config.py
 
-# --- Cooling ---
-# epoch: cools gpu between epochs (once per image generation cycle)
-# batch: cools gpu between batches (multiple times per epoch) (should allow gpu to maintain higher temperatures and reduce cooldown time significantly)
-COOLING_TYPE = "epoch"	# "epoch", "batch"
-TARGET_TEMP_BATCH = 73.0	# if COOLING_TYPE = "batch", gpu cools to this temperature
-TARGET_TEMP_EPOCH = 65.0	# if COOLING_TYPE = "epoch", gpu cools to this temperature
-TARGET_TEMP_SHALLOW_BATCH_COOLING = 70.0
 
-SHALLOW_BATCH_COOLING = False # if True then only epoch level cooling applies and batch level cooling is a simple stop for 0.05 seconds
-SHALLOW_COOL_TIME = 0.15 	# seconds
 
 # --- Viewer toggle ---
 ENABLE_END_VIEWER       = False
@@ -244,6 +235,6 @@ LOSS_NAME       = "wrapped_combined"
 
 
 # --- Image ---
-TARGET_IMAGE_ID     = 4 # 4, 6, 2, 1
+TARGET_IMAGE_ID     = 5 # 4, 6, 5, 2, 1
 
 INPUT_CONFIG_PATH = "Config/input_config.json"

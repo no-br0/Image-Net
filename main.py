@@ -13,13 +13,13 @@ from Config.config import (
 #from Config.Inputs.layers_config import layers_cfg
 import Config.log_dir as log_dir
 from src.loss_registry import LOSS_REGISTRY
-from Config.log_dir import (RIPPLE_LOG_PATH, 
+from Config.log_dir import ( 
 							GPU_LOG_PATH, GPU_TEMP_LOG_PATH,
 							LOSS_LOG_PATH,
 							SAVE_ERROR_LOG_PATH,
 							RAW_LOSS_LOG_PATH, LOWEST_RAW_LOSS_LOG_PATH,
 							LOWEST_LOSS_LOG_PATH, TELEMETRY_LOG_FOLDER,
-							FRAME_PATH, FRAME_META_PATH, CURRENT_MODEL_NAME_PATH
+							CURRENT_MODEL_NAME_PATH
 							)
 from Config.layer_registry import build_input_stack  # optional, not used here
 from src.train import train_streaming
@@ -30,6 +30,7 @@ from helpers.sync_input_config import sync_input_config
 from src.backend_cupy import to_cpu
 from Telemetry.telemetry import TelemetryLogger, make_model_signature
 from src.final_viewer import final_viewer
+from src.display_utils import predict_full_from_stream, publish_frame
 
 # -------- Utilities --------
 def flush_pool():
@@ -47,57 +48,6 @@ def prune_telemetry(telemetry_path, last_epoch):
 		with open(telemetry_path, "w") as f:
 			f.writelines(cleaned)
 					
-
-
-def publish_frame(arr):
-	img = to_cpu(arr)
-	if img is None:
-		return
-
-	# Match original preprocessing
-	if img.ndim == 2:
-		img = np.stack([img] * 3, axis=-1)
-	elif img.ndim == 3 and img.shape[2] == 1:
-		img = np.repeat(img, 3, axis=-1)
-
-	if img.dtype != np.uint8:
-		a = img.astype(np.float32)
-		vmax = float(a.max()) if a.size else 1.0
-		if vmax <= 1.0 + 1e-6:
-			a = a * 255.0
-		img = np.clip(a, 0, 255).astype(np.uint8)
-
-	# Save to shared file + set flag
-	os.makedirs(os.path.dirname(FRAME_PATH), exist_ok=True)
-	np.save(FRAME_PATH, img)
-	with open(FRAME_META_PATH, "w") as f:
-		json.dump({"new_frame": True}, f)
-
-def predict_full_from_stream(model, stream, *, batch_size=BATCH_SIZE):
-	xp = cp
-	H, W = stream.H, stream.W
-	N = stream.N
-	out_c = stream.output_dim
-
-	pred_flat = xp.empty((N, out_c), dtype=xp.float32)
-
-	if hasattr(stream, "cached_features") and stream.cached_features is not None:
-		xb_all = stream.cached_features
-		for i in range(0, N, batch_size):
-			j = min(i + batch_size, N)
-			pred_flat[i:j] = model.feedforward(xb_all[i:j])
-	else:
-		idx = 0
-		for xb, _ in stream.iter_minibatches(batch_size=batch_size, sync=False):
-			pred_flat[idx:idx+xb.shape[0]] = model.feedforward(xb)
-			idx += xb.shape[0]
-
-	pred_img = pred_flat.reshape(H, W, out_c)
-	xp.clip(pred_img, 0.0, 255.0, out=pred_img)
-	return pred_img.astype(xp.uint8, copy=False)
-
-
-
 
 
 def refresh_inputs_for_epoch(epoch, stream_ref, y_rgb):
@@ -241,10 +191,11 @@ def main():
 		nonlocal stream
 		if ((epoch % LIVE_UPDATE_INTERVAL == 0) or epoch == 1):
 			try:
-				pred = predict_full_from_stream(nn, stream, batch_size=BATCH_SIZE)
+				pred, sleep_time = predict_full_from_stream(nn, stream, batch_size=BATCH_SIZE)
 				publish_frame(pred)
 			except Exception as e:
 				print(f"[viewer] on_epoch_end failed: {e}")
+		return sleep_time
 
 	# Train — for per-pixel RGB, use plain MSE (avoid perceptual which expects 2D fields)
 	try:
