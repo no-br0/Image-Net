@@ -1,5 +1,5 @@
 # data_utils.py
-from src.backend_cupy import xp, to_device
+from src.backend_cupy import to_device
 from Config.config import (ENABLE_PATCH_STATS, ENABLE_PATCH_MEAN, ENABLE_PATCH_SUM, ENABLE_PATCH_MIDPOINT,
                            ENABLE_PATCH_RANGE, ENABLE_COLLECTIVE_STATS, ENABLE_COLLECTIVE_MEAN,
                            ENABLE_COLLECTIVE_SUM, ENABLE_COLLECTIVE_MIDPOINT, ENABLE_COLLECTIVE_RANGE,
@@ -9,6 +9,8 @@ from Config.config import (ENABLE_PATCH_STATS, ENABLE_PATCH_MEAN, ENABLE_PATCH_S
                            ENABLE_CROSS_PATCH_PIXELWISE_RANGE, ENABLE_CROSS_PATCH_PIXELWISE_MIN, 
                            ENABLE_CROSS_PATCH_PIXELWISE_MAX)
 from PIL import Image
+import cupy as cp
+
 
 # Minimal CPU I/O for images, then immediately push to GPU
 def load_grayscale_image(path, resize_to=None):
@@ -57,24 +59,24 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7, zero_center_inputs=False
             self.batch_size = int(batch_size)
 
             # Targets as float32 (N, Cy) in [0,255]; trim to output_dim if needed
-            Y_flat = Y_img.reshape(-1, Cy).astype(xp.float32)
+            Y_flat = Y_img.reshape(-1, Cy).astype(cp.float32)
             self.output_dim = int(output_dim)
             Y_flat = Y_flat[:, :self.output_dim]
             self.Y_flat = Y_flat
 
             # Sliding window view over reflect-padded X
-            X_pad = xp.pad(X_img,
+            X_pad = cp.pad(X_img,
                            ((self.pad, self.pad), (self.pad, self.pad), (0, 0)),
                            mode="reflect")
-            swv = xp.lib.stride_tricks.sliding_window_view
+            swv = cp.lib.stride_tricks.sliding_window_view
             self.X_win = swv(X_pad,
                              window_shape=(self.patch, self.patch),
                              axis=(0, 1))  # view, not copy
 
             # Grid indices (flattened)
-            yy = xp.arange(self.H, dtype=xp.int32)
-            xx = xp.arange(self.W, dtype=xp.int32)
-            grid_y, grid_x = xp.meshgrid(yy, xx, indexing="ij")
+            yy = cp.arange(self.H, dtype=cp.int32)
+            xx = cp.arange(self.W, dtype=cp.int32)
+            grid_y, grid_x = cp.meshgrid(yy, xx, indexing="ij")
             self.lin_y = grid_y.reshape(-1)
             self.lin_x = grid_x.reshape(-1)
 
@@ -82,10 +84,10 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7, zero_center_inputs=False
             P = self.patch
             if self.drop_center_pixel:
                 center_idx = P * (P // 2) + (P // 2)
-                all_idx = xp.arange(P * P, dtype=xp.int32)
+                all_idx = cp.arange(P * P, dtype=cp.int32)
                 self.neighbor_idx = all_idx[all_idx != center_idx]  # (P*P-1,)
             else:
-                self.neighbor_idx = xp.arange(P * P, dtype=xp.int32)
+                self.neighbor_idx = cp.arange(P * P, dtype=cp.int32)
                 
             
             self.base_feats = len(self.neighbor_idx) * self.Cx
@@ -135,22 +137,22 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7, zero_center_inputs=False
                     extra_feats += pixels_per_patch
 
             self.N_features = self.base_feats + extra_feats
-            self.nb_scratch = xp.empty((self.batch_size, self.N_features), dtype=xp.float32)
+            self.nb_scratch = cp.empty((self.batch_size, self.N_features), dtype=cp.float32)
 
-            self.yb_scratch = xp.empty((self.batch_size, self.output_dim), dtype=xp.float32)
-            self.perm = xp.arange(self.N, dtype=xp.int32)
+            self.yb_scratch = cp.empty((self.batch_size, self.output_dim), dtype=cp.float32)
+            self.perm = cp.arange(self.N, dtype=cp.int32)
             
             
         def set_epoch(self, shuffle=True, seed=None):
             if shuffle:
                 if seed is not None:
-                    rng = xp.random.RandomState(int(seed))
+                    rng = cp.random.RandomState(int(seed))
                     self.perm = rng.permutation(self.N)
                 else:
-                    rng = xp.random.RandomState(0)
+                    rng = cp.random.RandomState(0)
                     self.perm = rng.permutation(self.N)
             else:
-                self.perm = xp.arange(self.N, dtype=xp.int32)
+                self.perm = cp.arange(self.N, dtype=cp.int32)
 
         def iter_minibatches(self, batch_size=None, sync=False):
             P = self.patch
@@ -170,12 +172,12 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7, zero_center_inputs=False
 
                 # Normalize ONLY the base features
                 if self.zero_center_inputs:
-                    xp.multiply(nb, xp.float32(1.0 / 255.0),
+                    cp.multiply(nb, cp.float32(1.0 / 255.0),
                                 out=self.nb_scratch[:bs, :self.base_feats])
-                    xp.subtract(self.nb_scratch[:bs, :self.base_feats], xp.float32(0.5),
+                    cp.subtract(self.nb_scratch[:bs, :self.base_feats], cp.float32(0.5),
                                 out=self.nb_scratch[:bs, :self.base_feats])
                 else:
-                    self.nb_scratch[:bs, :self.base_feats] = nb.astype(xp.float32, copy=False)
+                    self.nb_scratch[:bs, :self.base_feats] = nb.astype(cp.float32, copy=False)
 
                 # Append extras after base_feats
                 offset = self.base_feats
@@ -290,7 +292,7 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7, zero_center_inputs=False
                 self.yb_scratch[:bs] = self.Y_flat[sel]
 
                 if sync:
-                    xp.cuda.Device().synchronize()
+                    cp.cuda.Device().synchronize()
 
                 yield self.nb_scratch[:bs], self.yb_scratch[:bs]
 
@@ -324,11 +326,11 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7, zero_center_inputs=False
             wb = self.X_win[iy, ix, :, :, :].reshape(1, self.patch * self.patch, self.Cx)
             nb = wb[:, self.neighbor_idx, :].reshape(1, -1)
             if self.zero_center_inputs:
-                nb = nb.astype(xp.float32)
-                xp.multiply(nb, xp.float32(1.0 / 255.0), out=nb)
-                xp.subtract(nb, xp.float32(0.5), out=nb)
+                nb = nb.astype(cp.float32)
+                cp.multiply(nb, cp.float32(1.0 / 255.0), out=nb)
+                cp.subtract(nb, cp.float32(0.5), out=nb)
             else:
-                nb = nb.astype(xp.float32)
+                nb = nb.astype(cp.float32)
             yb = self.Y_flat[idx:idx+1]
             return nb, yb
 

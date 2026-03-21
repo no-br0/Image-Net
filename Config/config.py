@@ -34,7 +34,7 @@ BATCH_SIZE      = 98304
 
 #BATCH_SIZE      = 24576
 #BATCH_SIZE      = 163840
-SHUFFLE         = False
+SHUFFLE         = True
 EPOCHS          = 20000
 
 ENABLE_CUSTOM_MODEL_NAME        = False

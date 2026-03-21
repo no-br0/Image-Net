@@ -10,6 +10,7 @@ def predict_full_from_stream(model, stream, *, batch_size=BATCH_SIZE):
 	H, W = stream.H, stream.W
 	N = stream.N
 	out_c = stream.output_dim
+	stream.set_epoch(shuffle=False)
 	sleep_time = 0
 
 	pred_flat = cp.empty((N, out_c), dtype=cp.float32)

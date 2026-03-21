@@ -221,7 +221,7 @@ def main():
 			for ch_idx, name in enumerate(channel_names):
 				img_list.append((f"Input: {name}", X_u8[..., [ch_idx]]))
 			
-			pred_img = predict_full_from_stream(model, stream, batch_size=BATCH_SIZE)
+			pred_img, _ = predict_full_from_stream(model, stream, batch_size=BATCH_SIZE)
 			img_list.append(("Model Output", pred_img))
 
 			final_viewer(img_list)
