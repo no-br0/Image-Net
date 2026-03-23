@@ -31,8 +31,11 @@ layers_cfg = [
 	{"type": "grid", "spacing": 4, "thickness": 2},
 	{"type": "checkerboard", "block_size": 4},
 	{"type": "radial_gradient"},
-	{"type": "linear_gradient", "direction": "horizontal"},
-	{"type": "linear_gradient", "direction": "vertical"},
+	#{"type": "linear_gradient", "direction": "horizontal"},
+	#{"type": "linear_gradient", "direction": "vertical"},
+
+
+
 
     #{"type": "perlin", "frequency": 100.0, "octaves": 6},
 	#{"type": "flow_field", "seed": 15},

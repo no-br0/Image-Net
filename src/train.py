@@ -371,11 +371,12 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 		cb_start = time.perf_counter()
 		if on_epoch_end is not None:
 			try:
-				on_epoch_end(local_epoch, model)
+				cb_sleep_time = on_epoch_end(local_epoch, model)
 			except Exception as e:
 				print(f"[train] on_epoch_end failed: {e}")
 		cb_end = time.perf_counter()
-		callback_time = cb_end - cb_start
+		callback_time = (cb_end - cb_start) - cb_sleep_time
+		sleep_time += cb_sleep_time
 		# --- Periodic save ---
 		
 		save_start = time.perf_counter()

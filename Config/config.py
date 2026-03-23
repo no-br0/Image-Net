@@ -177,7 +177,7 @@ DROP_CENTER_PIXEL               = False  # If True, the center pixel of the patc
 
 
 
-ENABLE_PATCH_STATS          = True
+ENABLE_PATCH_STATS          = False
 ENABLE_PATCH_MEAN           = True
 ENABLE_PATCH_SUM            = False
 ENABLE_PATCH_MIDPOINT       = True

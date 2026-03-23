@@ -114,13 +114,5 @@
     },
     {
         "type": "radial_gradient"
-    },
-    {
-        "type": "linear_gradient",
-        "direction": "horizontal"
-    },
-    {
-        "type": "linear_gradient",
-        "direction": "vertical"
     }
 ]
