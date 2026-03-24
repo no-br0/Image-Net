@@ -50,29 +50,6 @@ def prune_telemetry(telemetry_path, last_epoch):
 					
 
 
-def refresh_inputs_for_epoch(epoch, stream_ref, y_rgb):
-	"""Rebuild input stack with ripple variation for given epoch."""
-	# triggers new variation
-	if os.path.exists(INPUT_CONFIG_PATH):
-		with open(INPUT_CONFIG_PATH, "r") as f:
-			layers_cfg = json.load(f)
-	X_new, _ = build_input_stack(int(y_rgb.shape[0]), int(y_rgb.shape[1]), layers_cfg)  
-	# If stream supports in‑place refresh, use it
-	if hasattr(stream_ref, "refresh_inputs"):
-		stream_ref.refresh_inputs(X_new)
-	else:
-		# Rebuild the stream object
-		return make_neighbor_stream(
-			X_img=X_new,
-			Y_img=y_rgb,
-			patch_size=PATCH_SIZE,
-			zero_center_inputs=True,
-			output_dim=3,
-			drop_center_pixel=DROP_CENTER_PIXEL,
-			batch_size=BATCH_SIZE
-		)
-	return stream_ref
-
 def save_model_name(model_name):
 	data = {"model_name": model_name}
 	with open(CURRENT_MODEL_NAME_PATH, "w") as f:
