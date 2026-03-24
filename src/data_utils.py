@@ -29,7 +29,7 @@ def load_rgb_image(path, resize_to=None):
     arr = _np.asarray(img, dtype=_np.uint8)
     return to_device(arr)
 
-def make_neighbor_stream(X_img, Y_img, *, patch_size=7, zero_center_inputs=False, 
+def make_neighbor_stream(X_img, Y_img, *, patch_size=7, 
                          output_dim=3, batch_size=65536):
     """
     GPU-native streaming dataset with fixed-size scratch buffers and epoch-level shuffling.
@@ -39,7 +39,7 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7, zero_center_inputs=False
     """
 
     class Stream:
-        def __init__(self, X_img, Y_img, patch_size, zero_center_inputs, 
+        def __init__(self, X_img, Y_img, patch_size,
                      output_dim, batch_size):
             X_img = to_device(X_img)
             Y_img = to_device(Y_img)
@@ -53,7 +53,6 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7, zero_center_inputs=False
             _, _, Cy = Y_img.shape
             self.patch = int(patch_size)
             self.pad = self.patch // 2
-            self.zero_center_inputs = bool(zero_center_inputs)
             self.N = self.H * self.W
             self.batch_size = int(batch_size)
 
@@ -79,7 +78,7 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7, zero_center_inputs=False
             self.lin_y = grid_y.reshape(-1)
             self.lin_x = grid_x.reshape(-1)
 
-            # Precompute neighbor indices (drop center)
+            # Precompute neighbor indices
             P = self.patch
             self.neighbor_idx = cp.arange(P * P, dtype=cp.int32)
                 
@@ -165,13 +164,7 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7, zero_center_inputs=False
                 nb = nb.reshape(bs, -1)  # (bs, self.base_feats)
 
                 # Normalize ONLY the base features
-                if self.zero_center_inputs:
-                    cp.multiply(nb, cp.float32(1.0 / 255.0),
-                                out=self.nb_scratch[:bs, :self.base_feats])
-                    cp.subtract(self.nb_scratch[:bs, :self.base_feats], cp.float32(0.5),
-                                out=self.nb_scratch[:bs, :self.base_feats])
-                else:
-                    self.nb_scratch[:bs, :self.base_feats] = nb.astype(cp.float32, copy=False)
+                self.nb_scratch[:bs, :self.base_feats] = nb.astype(cp.float32, copy=False)
 
                 # Append extras after base_feats
                 offset = self.base_feats
@@ -319,13 +312,9 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7, zero_center_inputs=False
             ix = self.lin_x[idx]
             wb = self.X_win[iy, ix, :, :, :].reshape(1, self.patch * self.patch, self.Cx)
             nb = wb[:, self.neighbor_idx, :].reshape(1, -1)
-            if self.zero_center_inputs:
-                nb = nb.astype(cp.float32)
-                cp.multiply(nb, cp.float32(1.0 / 255.0), out=nb)
-                cp.subtract(nb, cp.float32(0.5), out=nb)
-            else:
-                nb = nb.astype(cp.float32)
+
+            nb = nb.astype(cp.float32)
             yb = self.Y_flat[idx:idx+1]
             return nb, yb
 
-    return Stream(X_img, Y_img, patch_size, zero_center_inputs, output_dim, batch_size)
+    return Stream(X_img, Y_img, patch_size, output_dim, batch_size)

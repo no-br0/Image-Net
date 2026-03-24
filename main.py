@@ -102,7 +102,7 @@ def main():
 
 	# Stream: neighbors (+coords) -> center RGB
 	stream = make_neighbor_stream(X_u8, Y_rgb, patch_size=PATCH_SIZE, 
-								zero_center_inputs=False, output_dim=3, 
+								output_dim=3,
 								batch_size=BATCH_SIZE)
 	if ENABLE_INPUT_CACHING:
 		stream.set_epoch(shuffle=False)
