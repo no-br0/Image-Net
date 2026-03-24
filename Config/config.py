@@ -1,6 +1,9 @@
 # config.py
 
-
+# --- Generalisation Settings ---
+ENABLE_ROTATE_TARGET_IMAGE 		= True
+ROTATE_TARGET_FREQ         		= 50
+ENABLE_TARGET_ROTATION_SHUFFLE 	= False
 
 # --- Viewer toggle ---
 ENABLE_END_VIEWER       = False
@@ -34,7 +37,7 @@ BATCH_SIZE      = 98304
 
 #BATCH_SIZE      = 24576
 #BATCH_SIZE      = 163840
-SHUFFLE         = True
+ENABLE_SHUFFLE         = True
 EPOCHS          = 20000
 
 ENABLE_CUSTOM_MODEL_NAME        = False
@@ -51,44 +54,8 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 OPTIMISER                     = {
     "name": "rmsprop",
 	"lr": 0.00001,
-	#"name": "nesterov",
-	#"name": "lion",
-	#"weight_decay": 0.1,
 }
 
-"""
-OPTIMISER                       = {
-    "name": "adabelief_lookahead",
-    "beta1": 0.92,
-    "beta2": 0.998,
-    "lr_floor": 1e-15,
-    "gradient_dampening": 0.01,
-    "lookahead_alpha": 0.4,
-    "use_flatness_reg": False,
-    "use_kick_mechanism": False,
-    "use_lr_modulation": False,
-    "use_trust_gate": True,
-    "use_curvature": True,
-    "curvature_lambda": 1.0,
-    "curvature_beta": 0.08,
-    "curv_beta": 0.9,
-    "curv_ratio_trust": 0.6,
-    "curv_ratio_lr": 0.3,
-    "trust_gate_floor": 0.15,
-    "cycle_length": 200,
-    "lr_cycle_amp": 0.4,
-    "stall_curv_thresh": 0.01,
-    "stall_grad_thresh": 1e-3,
-    "momentum_boost": 0.05,
-    "curv_kick_thresh": 0.4,
-    "num_rademacher": 8,
-    "stall_curv_thresh": 0.01,
-    
-}
-"""
-
-#LION_BETA1                      = 0.9
-#MOMENTUM                        = 0.8
 
 SAVE_AFTER          = True
 SAVE_INTERVAL       = 10
@@ -100,69 +67,6 @@ LOSS_CONFIG = [
 	("mae", 1.0),
 	("perceptual_patch", 1.0),
 
-
-	#("mse", 0.5),    
-	#("mae", 15.0),
-	#("perceptual_patch", 0.08),
-
-	#("fft", 0.05),
-	#("edge", 1.2),
-	
-    #("mae_dual_luma", 1.0),
-	#("maxe", 0.1),
-    #("mae_luma", 1.0),
-    #("mae_shadow", 1.0),
-    #("mae_red", 1.0),
-    #("mae_green", 1.0),
-    #("mae_blue", 1.0),
-    
-	#("mae_rg", 1.0),
-    #("mae_gb", 1.0),
-    #("mae_rb", 1.0),
-    #("mae_yellow", 1.0),
-    #("mae_cyan", 1.0),
-    #("mae_magenta", 1.0), 
-    
-    #("mae_blue_yellow", 1.0),
-    #("mae_red_yellow", 1.0),
-    #("mae_green_yellow", 1.0),
-    #("mae_red_cyan", 1.0),
-    #("mae_blue_cyan", 1.0),
-    #("mae_green_cyan", 1.0),
-    #("mae_green_magenta", 1.0),
-    #("mae_red_magenta", 1.0),
-    #("mae_blue_magenta", 1.0),
-    #("mae_cyan_yellow", 1.0),
-    #("mae_magenta_yellow", 1.0),
-    #("mae_cyan_magenta", 1.0),
-    
-    
-    #("mae_colorfulness", 1.0),
-    #("mae_equalized", 1.0),
-    
-    #("mae_hue", 1.0),
-    #("mae_saturation", 1.0),
-    #("mae_chromatic_entropy", 1.0),
-    #("mae_opponent", 1.0),
-    #("mae_rgb_angle", 1.0),
-
-    
-    #("mae_ycbcr_chroma", 1.0),
-    #("mae_cmyk_chroma", 1.0),
-    #("mae_luma_heavy", 1.0),
-    #("mae_red_bias", 1.0),
-    #("mae_green_bias", 1.0),
-    #("mae_blue_bias", 1.0),
-    #("mae_red_suppress", 1.0),
-    #("mae_blue_suppress", 1.0),
-    #("mae_green_suppress", 1.0),
-    #("mae_hue_bias", 1.0),
-    #("mae_hue_suppress", 1.0),
-    #("mae_saturation_bias", 1.0),
-    #("mae_saturation_suppress", 1.0),
-    #("mae_luma_bias", 1.0),
-    #("mae_luma_suppress", 1.0),
-
     ]
 
 # ==================
@@ -172,7 +76,6 @@ LOSS_CONFIG = [
 # --- Inputs ---
 # should be an odd number with a minimum of 1
 PATCH_SIZE                      = 7
-DROP_CENTER_PIXEL               = False  # If True, the center pixel of the patch is not included in the input features
 
 
 
@@ -208,15 +111,6 @@ HIDDEN_ACT                      = "sin"         # "relu", "linear", "tanh", "sin
 OUTPUT_ACT                      = "sigmoid_255" # "sigmoid_255", "tanh_255", "cos_255", "sin_255"
 
 
-
-
-
-
-
-STYLE_MODE                      = True
-
-
-
 # --- Model save/load ---
 
 CONFIG_FILE                 = "Config/settings.json"
@@ -224,15 +118,8 @@ SAVE_FOLDER                 = "Saves"
 DEFAULT_MODEL_NAME          = "nn_model"
 
 
-
-
-
-
 # --- Training ---
 LOSS_NAME       = "wrapped_combined"
-
-
-
 
 # --- Image ---
 TARGET_IMAGE_ID     = 5 # 4, 6, 5, 2, 1

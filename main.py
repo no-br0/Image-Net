@@ -4,10 +4,10 @@ import cupy as cp
 import numpy as np
 #from backend_cupy import get_vram_usage
 from Config.config import (
-	EPOCHS, BATCH_SIZE, SHUFFLE, TARGET_IMAGE_ID,
+	EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, TARGET_IMAGE_ID,
 	PATCH_SIZE, OUTPUT_ACT, HIDDEN_ACT, LEARNING_RATE, INPUT_CONFIG_PATH,
 	GRAD_CLIP, MODEL_SEED, FORCE_NEW_MODEL, DEFAULT_MODEL_NAME, SAVE_FOLDER, 
-	LOSS_NAME, TRAIN, DROP_CENTER_PIXEL, LIVE_UPDATE_INTERVAL, CONFIG_FILE, 
+	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL, CONFIG_FILE, 
 	ENABLE_CUSTOM_MODEL_NAME, ENABLE_INPUT_CACHING, ENABLE_END_VIEWER
 )
 #from Config.Inputs.layers_config import layers_cfg
@@ -103,7 +103,6 @@ def main():
 	# Stream: neighbors (+coords) -> center RGB
 	stream = make_neighbor_stream(X_u8, Y_rgb, patch_size=PATCH_SIZE, 
 								zero_center_inputs=False, output_dim=3, 
-								drop_center_pixel=DROP_CENTER_PIXEL,
 								batch_size=BATCH_SIZE)
 	if ENABLE_INPUT_CACHING:
 		stream.set_epoch(shuffle=False)
@@ -183,7 +182,7 @@ def main():
 				model, stream,
 				epochs=EPOCHS,
 				batch_size=bs,
-				shuffle=SHUFFLE,
+				shuffle=ENABLE_SHUFFLE,
 				error_func=LOSS_REGISTRY[LOSS_NAME],
 				on_epoch_end=on_epoch_end,
 				telemetry_logger=telemetry_logger

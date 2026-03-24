@@ -30,7 +30,7 @@ def load_rgb_image(path, resize_to=None):
     return to_device(arr)
 
 def make_neighbor_stream(X_img, Y_img, *, patch_size=7, zero_center_inputs=False, 
-                         output_dim=3, drop_center_pixel=False, batch_size=65536):
+                         output_dim=3, batch_size=65536):
     """
     GPU-native streaming dataset with fixed-size scratch buffers and epoch-level shuffling.
 
@@ -40,7 +40,7 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7, zero_center_inputs=False
 
     class Stream:
         def __init__(self, X_img, Y_img, patch_size, zero_center_inputs, 
-                     output_dim, drop_center_pixel, batch_size):
+                     output_dim, batch_size):
             X_img = to_device(X_img)
             Y_img = to_device(Y_img)
 
@@ -54,7 +54,6 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7, zero_center_inputs=False
             self.patch = int(patch_size)
             self.pad = self.patch // 2
             self.zero_center_inputs = bool(zero_center_inputs)
-            self.drop_center_pixel = bool(drop_center_pixel)
             self.N = self.H * self.W
             self.batch_size = int(batch_size)
 
@@ -82,12 +81,7 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7, zero_center_inputs=False
 
             # Precompute neighbor indices (drop center)
             P = self.patch
-            if self.drop_center_pixel:
-                center_idx = P * (P // 2) + (P // 2)
-                all_idx = cp.arange(P * P, dtype=cp.int32)
-                self.neighbor_idx = all_idx[all_idx != center_idx]  # (P*P-1,)
-            else:
-                self.neighbor_idx = cp.arange(P * P, dtype=cp.int32)
+            self.neighbor_idx = cp.arange(P * P, dtype=cp.int32)
                 
             
             self.base_feats = len(self.neighbor_idx) * self.Cx
@@ -334,4 +328,4 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7, zero_center_inputs=False
             yb = self.Y_flat[idx:idx+1]
             return nb, yb
 
-    return Stream(X_img, Y_img, patch_size, zero_center_inputs, output_dim, drop_center_pixel, batch_size)
+    return Stream(X_img, Y_img, patch_size, zero_center_inputs, output_dim, batch_size)
