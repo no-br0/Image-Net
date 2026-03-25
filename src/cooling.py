@@ -195,11 +195,13 @@ def aggregate_temp_log(epoch):
 
 
 def post_epoch_cooling(nn, epoch):
+	cp.cuda.Device().synchronize()
 	return check_gpu_temp_and_exit(nn, epoch, TARGET_TEMP_POST_EPOCH)
 
 
 def post_batch_cooling(nn, epoch):
 	if ENABLE_BATCH_COOLING:
+		cp.cuda.Device().synchronize()
 		if ENABLE_SHALLOW_BATCH_COOLING:
 			return shallow_batch_cooling(SHALLOW_BATCH_COOL_TIME)
 		else:
@@ -210,12 +212,14 @@ def post_batch_cooling(nn, epoch):
 
 def pre_display_cooling(nn, epoch):
 	if ENABLE_PRE_DISPLAY_COOLING:
+		cp.cuda.Device().synchronize()
 		return check_gpu_temp_and_exit(nn, epoch, TARGET_TEMP_PRE_DISPLAY)
 	else:
 		return 0
 
 def display_batch_cooling(nn, epoch):
 	if ENABLE_DISPLAY_BATCH_COOLING:
+		cp.cuda.Device().synchronize()
 		if ENABLE_SHALLOW_DISPLAY_BATCH_COOLING:
 			return shallow_batch_cooling(SHALLOW_DISPLAY_COOL_TIME)
 		else:
