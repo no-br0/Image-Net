@@ -6,7 +6,7 @@ from Config.log_dir import (GPU_LOG_PATH, TIME_LOG,
 from Config.config import (SAVE_INTERVAL, CONFIG_FILE, LOWEST_LOSS_THRESHOLD,
 						LR_DECREASE_MULTIPLIER, LR_INCREASE_MULTIPLIER,
 						MAX_LEARNING_RATE, MIN_LEARNING_RATE, ENABLE_ADAPTIVE_LR, 
-						ADAPTIVE_LR_INVERTED,)
+						ADAPTIVE_LR_INVERTED, ROTATE_TARGET_FREQ, ENABLE_ROTATE_TARGET_IMAGE,)
 from src.backend_cupy import xp, get_vram_usage, log_vram_usage
 from src.loss_registry import combined_loss, wrapped_combined_loss
 import cupy as cp, numpy as np
@@ -34,11 +34,17 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 	previous_raw_breakdown = model.PREVIOUS_RAW_BREAKDOWN
 	previous_raw_breakdown_delta = model.PREVIOUS_RAW_BREAKDOWN_DELTA
 	previous_abs_raw_loss_delta = model.PREVIOUS_ABS_RAW_LOSS_DELTA
+	input_config = model.input_config
 	
 	for local_epoch in range(1, epochs + 1):
 		t0 = time.perf_counter()
 		model.GLOBAL_EPOCH += 1
 		sleep_time 		 	 = 0.0
+
+		# when its time to rotate the target image rebuilds the stream
+		if ENABLE_ROTATE_TARGET_IMAGE and model.GLOBAL_EPOCH % ROTATE_TARGET_FREQ == 0:
+			
+			pass
 
 		
 		totals = defaultdict(float)

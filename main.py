@@ -124,7 +124,8 @@ def main():
 	model = NeuralNet(topology, LEARNING_RATE, 
 					HIDDEN_ACT, 
 					OUTPUT_ACT, GRAD_CLIP,
-					MODEL_SEED)
+					MODEL_SEED,
+					input_config=layers_cfg)
 	print("[stage] Model initialised with topology:", topology)
 	
 	if FORCE_NEW_MODEL is False:

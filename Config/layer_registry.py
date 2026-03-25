@@ -41,6 +41,15 @@ LAYER_REGISTRY = {
     "checkerboard_radial": gen_checkerboard_radial,
 }
 
+
+def inject_input_seeds(input_config, target_image_seed:int):
+	rng = cp.random.RandomState(int(target_image_seed))
+
+	for i in range(len(input_config)):
+		input_config[i]["seed"] = rng.randint()
+	
+	return input_config
+
 def build_input_stack(H: int, W: int, layers_cfg: List[Dict]) -> Tuple[xp.ndarray, List[str]]:
     """
     Build a stacked (H, W, C) uint8 tensor on GPU from a list of layer configs.
