@@ -32,7 +32,7 @@ def _merge_new_images():
         if path.suffix.lower() in supported_exts and str(path) not in existing_files:
             _registry["images"][str(next_id)] = {
                 "filename": str(path),
-                "seeds": {}
+                "seed": {}
             }
             next_id += 1
 
@@ -52,7 +52,7 @@ def _build_registry():
     for idx, path in enumerate(image_paths, start=1):
         registry["images"][str(idx)] = {
             "filename": str(path),
-            "seeds": {}  # can be populated later
+            "seed": {}  # can be populated later
         }
     return registry
 
@@ -77,13 +77,13 @@ def get_image_path(image_id):
 
 
 
-def get_seeds(image_id):
+def get_seed(image_id):
     reg = _load_registry()
-    return reg["images"][str(image_id)]["seeds"]
+    return reg["images"][str(image_id)]["seed"]
 
 
 
 def set_seed(image_id, layer_name, seed_value):
     reg = _load_registry()
-    reg["images"][str(image_id)]["seeds"][layer_name] = seed_value
+    reg["images"][str(image_id)]["seed"][layer_name] = seed_value
     _save_registry()
