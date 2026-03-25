@@ -95,8 +95,7 @@ def main():
 	
 	
 	X_u8, channel_names = build_input_stack(H, W, layers_cfg)
-	h0, w0 = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
-	print(f"[config] H={h0}, W={w0}, epochs={EPOCHS}, batch_size={BATCH_SIZE}")
+	print(f"[config] H={H}, W={W}, epochs={EPOCHS}, batch_size={BATCH_SIZE}")
 	
 	
 

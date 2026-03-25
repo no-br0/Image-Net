@@ -6,7 +6,8 @@ from Config.log_dir import (GPU_LOG_PATH, TIME_LOG,
 from Config.config import (SAVE_INTERVAL, CONFIG_FILE, LOWEST_LOSS_THRESHOLD,
 						LR_DECREASE_MULTIPLIER, LR_INCREASE_MULTIPLIER,
 						MAX_LEARNING_RATE, MIN_LEARNING_RATE, ENABLE_ADAPTIVE_LR, 
-						ADAPTIVE_LR_INVERTED, ROTATE_TARGET_FREQ, ENABLE_ROTATE_TARGET_IMAGE,)
+						ADAPTIVE_LR_INVERTED, ROTATE_TARGET_FREQ, ENABLE_ROTATE_TARGET_IMAGE,
+						PATCH_SIZE, )
 from src.backend_cupy import xp, get_vram_usage, log_vram_usage
 from src.loss_registry import combined_loss, wrapped_combined_loss
 import cupy as cp, numpy as np
@@ -14,8 +15,9 @@ import os, json, sys, time, subprocess
 from collections import defaultdict
 from src.cooling import (post_epoch_cooling, post_batch_cooling, pre_display_cooling)
 from src.display_utils import compute_accuracy_metrics
-
-
+from Config.layer_registry import inject_input_seeds, build_input_stack
+from Config.image_registry import get_registry_size, get_seed, get_image_path
+from src.data_utils import load_rgb_image, make_neighbor_stream
 
 
 
@@ -36,6 +38,11 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 	previous_abs_raw_loss_delta = model.PREVIOUS_ABS_RAW_LOSS_DELTA
 	input_config = model.input_config
 	
+	if model.TARGET_IMAGE == None:
+		model.TARGET_IMAGE = 1
+
+	reg_size = get_registry_size()
+
 	for local_epoch in range(1, epochs + 1):
 		t0 = time.perf_counter()
 		model.GLOBAL_EPOCH += 1
@@ -43,9 +50,19 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 
 		# when its time to rotate the target image rebuilds the stream
 		if ENABLE_ROTATE_TARGET_IMAGE and model.GLOBAL_EPOCH % ROTATE_TARGET_FREQ == 0:
+			if model.TARGET_IMAGE == reg_size:
+				model.TARGET_IMAGE = 1
+			else:
+				model.TARGET_IMAGE += 1
 			
-			pass
-
+			input_config = inject_input_seeds(input_config, get_seed(model.TARGET_IMAGE))
+			Y_rgb = load_rgb_image(get_image_path(model.TARGET_IMAGE))
+			H, W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
+			X_u8, channel_names = build_input_stack(H, W, input_config)
+			stream = make_neighbor_stream(X_u8, Y_rgb, patch_size=PATCH_SIZE, 
+										output_dim=3,
+										batch_size=batch_size)
+		
 		
 		totals = defaultdict(float)
 		raw_totals = defaultdict(float)
