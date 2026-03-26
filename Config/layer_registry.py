@@ -3,6 +3,8 @@ from typing import Dict, List, Tuple
 import cupy as cp
 from src.backend_cupy import xp
 from Inputs import *  # all your @free_after generators
+import random
+import sys
 
 # Registry of layer names -> generator function
 LAYER_REGISTRY = {
@@ -43,10 +45,10 @@ LAYER_REGISTRY = {
 
 
 def inject_input_seeds(input_config, target_image_seed:int):
-	rng = cp.random.RandomState(int(target_image_seed))
+	rng = random.Random(target_image_seed)
 
 	for i in range(len(input_config)):
-		input_config[i]["seed"] = rng.randint()
+		input_config[i]["seed"] = rng.randint(1, sys.maxsize)
 	
 	return input_config
 

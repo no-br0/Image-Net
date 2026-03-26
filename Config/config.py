@@ -13,7 +13,7 @@ ENABLE_TELEMETRY_VIEWER = False
 
 # --- Settings ---
 TRAIN               = True
-FORCE_NEW_MODEL     = False
+FORCE_NEW_MODEL     = True
 MODEL_SEED          = 42       	# Set to None for random seed
 ENABLE_SET_LR       = False
 LEARNING_RATE       = 0.0005	#0.00020 # 2e-6
