@@ -21,7 +21,7 @@ from Config.log_dir import (
 							LOWEST_LOSS_LOG_PATH, TELEMETRY_LOG_FOLDER,
 							CURRENT_MODEL_NAME_PATH
 							)
-from Config.layer_registry import build_input_stack  # optional, not used here
+from Config.layer_registry import build_input_stack, inject_input_seeds  # optional, not used here
 from src.train import train_streaming
 from src.neural_net import NeuralNet
 from src.data_utils import make_neighbor_stream, load_rgb_image
@@ -92,9 +92,10 @@ def main():
 	
 	
 	layers_cfg = sync_input_config(MODEL_SAVE_PATH)
+	input_config = inject_input_seeds(layers_cfg, 0)
 	
 	
-	X_u8, channel_names = build_input_stack(H, W, layers_cfg)
+	X_u8, channel_names = build_input_stack(H, W, input_config)
 	print(f"[config] H={H}, W={W}, epochs={EPOCHS}, batch_size={BATCH_SIZE}")
 	
 	
@@ -108,7 +109,7 @@ def main():
 		stream.cache_full_features()
 	
 	flush_pool()
-	
+
 	
 	
 	# Model: input features -> 3 outputs (RGB)
@@ -179,7 +180,7 @@ def main():
 			bs = BATCH_SIZE
 			print(f"[train] Using batch size: {bs}")
 			train_streaming(
-				model, stream,
+				model,
 				epochs=EPOCHS,
 				batch_size=bs,
 				shuffle=ENABLE_SHUFFLE,

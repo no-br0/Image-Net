@@ -20,8 +20,19 @@ from Config.image_registry import get_registry_size, get_seed, get_image_path
 from src.data_utils import load_rgb_image, make_neighbor_stream
 
 
+def build_stream(input_config, model, batch_size):
+	input_config = inject_input_seeds(input_config, get_seed(model.TARGET_IMAGE))
+	Y_rgb = load_rgb_image(get_image_path(model.TARGET_IMAGE))
+	H, W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
+	X_u8, channel_names = build_input_stack(H, W, input_config)
+	stream = make_neighbor_stream(X_u8, Y_rgb, patch_size=PATCH_SIZE, 
+								output_dim=3,
+								batch_size=batch_size)
+	
+	return stream
 
-def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
+
+def train_streaming(model, *, epochs, batch_size, shuffle=True,
 					error_func=None, on_epoch_end=None, telemetry_logger=None):
 	LOWEST_LOSS          = model.LOWEST_LOSS
 	LOWEST_RAW_LOSS      = model.LOWEST_RAW_LOSS
@@ -43,6 +54,8 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 
 	reg_size = get_registry_size()
 
+	stream = build_stream(input_config, model, batch_size)
+
 	for local_epoch in range(1, epochs + 1):
 		t0 = time.perf_counter()
 		model.GLOBAL_EPOCH += 1
@@ -55,13 +68,7 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 			else:
 				model.TARGET_IMAGE += 1
 			
-			input_config = inject_input_seeds(input_config, get_seed(model.TARGET_IMAGE))
-			Y_rgb = load_rgb_image(get_image_path(model.TARGET_IMAGE))
-			H, W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
-			X_u8, channel_names = build_input_stack(H, W, input_config)
-			stream = make_neighbor_stream(X_u8, Y_rgb, patch_size=PATCH_SIZE, 
-										output_dim=3,
-										batch_size=batch_size)
+			stream = build_stream(input_config, model, batch_size)
 		
 		
 		totals = defaultdict(float)
