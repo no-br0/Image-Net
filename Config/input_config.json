@@ -2,103 +2,130 @@
     {
         "type": "perlin",
         "frequency": 100.0,
-        "octaves": 6
+        "octaves": 6,
+        "seed": 398945938642050648
     },
     {
         "type": "perlin",
-        "frequency": 10.0
+        "frequency": 10.0,
+        "seed": 8258708663123833671
     },
     {
-        "type": "flow_field"
+        "type": "flow_field",
+        "seed": 1113154408943535408
     },
     {
-        "type": "heightmap_flow_spectrum"
+        "type": "heightmap_flow_spectrum",
+        "seed": 1840038019859553985
     },
     {
         "type": "blue_noise",
-        "mode": "field"
+        "mode": "field",
+        "seed": 3202067333979746323
     },
     {
-        "type": "multi_scale_flow"
+        "type": "multi_scale_flow",
+        "seed": 4880998575455036677
     },
     {
-        "type": "procedural_curvature"
+        "type": "procedural_curvature",
+        "seed": 5392961813720846895
     },
     {
-        "type": "gradient_edges"
+        "type": "gradient_edges",
+        "seed": 5487902683668175491
     },
     {
-        "type": "fractal"
+        "type": "fractal",
+        "seed": 993060469328972715
     },
     {
-        "type": "gaussian_noise"
+        "type": "gaussian_noise",
+        "seed": 3798798140915319565
     },
     {
         "type": "simplex_noise",
-        "scale": 5.0
+        "scale": 5.0,
+        "seed": 8928295235131167503
     },
     {
         "type": "simplex_noise",
-        "scale": 100.0
+        "scale": 100.0,
+        "seed": 7696987544870047250
     },
     {
-        "type": "laplacian_gaussian"
+        "type": "laplacian_gaussian",
+        "seed": 7132434983843433870
     },
     {
-        "type": "curl_noise_flow"
+        "type": "curl_noise_flow",
+        "seed": 8275222728799417186
     },
     {
         "type": "voronoi_cells",
-        "num_seeds": 50
+        "num_seeds": 50,
+        "seed": 210852010459788790
     },
     {
         "type": "checkerboard_full_gray",
-        "block_size": 1
+        "block_size": 1,
+        "seed": 5696387218432177827
     },
     {
-        "type": "fbm_noise"
+        "type": "fbm_noise",
+        "seed": 8108685934005720498
     },
     {
-        "type": "fbm_vein"
+        "type": "fbm_vein",
+        "seed": 8489195103584199903
     },
     {
-        "type": "fbm_rock"
+        "type": "fbm_rock",
+        "seed": 1050464412090659624
     },
     {
         "type": "perlin_flow",
         "freq": 0.1,
         "octaves": 10,
-        "gain": 1.0
+        "gain": 1.0,
+        "seed": 4202232653692109980
     },
     {
         "type": "bandpass",
-        "cutoff": 0.009
+        "cutoff": 0.009,
+        "seed": 7988313051067107704
     },
     {
         "type": "checkerboard_radial",
         "tiles_x": 15,
-        "tiles_y": 23
+        "tiles_y": 23,
+        "seed": 679777452184353361
     },
     {
         "type": "checkerboard_radial",
         "fade_mult": 1.1,
         "tiles_x": 50,
-        "tiles_y": 39
+        "tiles_y": 39,
+        "seed": 908423481049567047
     },
     {
         "type": "voronoi_segmentation",
-        "num_seeds": 100
+        "num_seeds": 100,
+        "seed": 154976595211752710
     },
     {
         "type": "grid",
         "spacing": 4,
-        "thickness": 2
+        "thickness": 2,
+        "seed": 5341229687738699143
     },
     {
         "type": "checkerboard",
-        "block_size": 4
+        "block_size": 4,
+        "seed": 3903145421351804772
     },
     {
-        "type": "radial_gradient"
+        "type": "radial_gradient",
+        "seed": 7865659871980626854
     }
 ]

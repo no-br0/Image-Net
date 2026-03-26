@@ -2,7 +2,7 @@
 
 # --- Generalisation Settings ---
 ENABLE_ROTATE_TARGET_IMAGE 		= True
-ROTATE_TARGET_FREQ         		= 50
+ROTATE_TARGET_FREQ         		= 5
 ENABLE_TARGET_ROTATION_SHUFFLE 	= False
 
 # --- Viewer toggle ---
@@ -13,7 +13,7 @@ ENABLE_TELEMETRY_VIEWER = False
 
 # --- Settings ---
 TRAIN               = True
-FORCE_NEW_MODEL     = True
+FORCE_NEW_MODEL     = False
 MODEL_SEED          = 42       	# Set to None for random seed
 ENABLE_SET_LR       = False
 LEARNING_RATE       = 0.0005	#0.00020 # 2e-6

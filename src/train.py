@@ -68,6 +68,8 @@ def train_streaming(model, *, epochs, batch_size, shuffle=True,
 			else:
 				model.TARGET_IMAGE += 1
 			
+			del stream
+			cp.get_default_memory_pool().free_all_blocks()
 			stream = build_stream(input_config, model, batch_size)
 		
 		
