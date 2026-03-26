@@ -172,6 +172,8 @@ def main():
 				publish_frame(pred)
 			except Exception as e:
 				print(f"[viewer] on_epoch_end failed: {e}")
+		else:
+			sleep_time = 0
 		return sleep_time
 
 	# Train — for per-pixel RGB, use plain MSE (avoid perceptual which expects 2D fields)
