@@ -8,7 +8,7 @@ ENABLE_TARGET_ROTATION_SHUFFLE 	= False
 # --- Viewer toggle ---
 ENABLE_END_VIEWER       = False
 ENABLE_LIVE_VIEWER      = True
-LIVE_UPDATE_INTERVAL    = 1  # Epochs per update
+LIVE_UPDATE_INTERVAL    = 5  # Epochs per update
 ENABLE_TELEMETRY_VIEWER = False
 
 # --- Settings ---

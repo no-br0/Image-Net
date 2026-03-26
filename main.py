@@ -189,9 +189,10 @@ def main():
 				telemetry_logger=telemetry_logger
 			)
 	except KeyboardInterrupt:
-		print("[ctrl-c] Interrupted — saving model…")
-		if MODEL_SAVE_PATH is not None:
-			model.save(MODEL_SAVE_PATH)
+		print("[ctrl-c] Interrupted — ending training…")
+		#print("[ctrl-c] Interrupted — saving model…")
+		#if MODEL_SAVE_PATH is not None:
+		#	model.save(MODEL_SAVE_PATH)
 	finally:
 		if ENABLE_END_VIEWER:
 			img_list = []
