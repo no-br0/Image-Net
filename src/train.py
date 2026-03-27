@@ -28,7 +28,6 @@ def build_stream(input_config, model, batch_size):
 	stream = make_neighbor_stream(X_u8, Y_rgb, patch_size=PATCH_SIZE, 
 								output_dim=3,
 								batch_size=batch_size)
-	
 	return stream
 
 
@@ -68,6 +67,7 @@ def train_streaming(model, *, epochs, batch_size, shuffle=True,
 			else:
 				model.TARGET_IMAGE += 1
 			
+			stream.delete_data()
 			del stream
 			cp.get_default_memory_pool().free_all_blocks()
 			stream = build_stream(input_config, model, batch_size)

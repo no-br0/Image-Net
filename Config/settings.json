@@ -1,6 +1,6 @@
 {
     "MODEL_SAVE_PATH": "Saves\\nn_model.npz",
-    "TRAIN_IMAGE_PATH": "training\\Fantasy_06.jpg",
+    "TRAIN_IMAGE_PATH": "training\\pexels-arnesh-yadram-391884-1046209(1).jpg",
     "WIDTH": 1920,
-    "HEIGHT": 1181
+    "HEIGHT": 1183
 }

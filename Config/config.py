@@ -2,7 +2,7 @@
 
 # --- Generalisation Settings ---
 ENABLE_ROTATE_TARGET_IMAGE 		= True
-ROTATE_TARGET_FREQ         		= 50
+ROTATE_TARGET_FREQ         		= 5
 ENABLE_TARGET_ROTATION_SHUFFLE 	= False
 
 # --- Viewer toggle ---
@@ -122,6 +122,6 @@ DEFAULT_MODEL_NAME          = "nn_model"
 LOSS_NAME       = "wrapped_combined"
 
 # --- Image ---
-TARGET_IMAGE_ID     = 5 # 4, 6, 5, 2, 1
+TARGET_IMAGE_ID     = 2 # 4, 6, 5, 2, 1
 
 INPUT_CONFIG_PATH = "Config/input_config.json"
