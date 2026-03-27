@@ -65,7 +65,7 @@ LOSS_CONFIG = [
     
 	("mse", 1.0),    
 	("mae", 1.0),
-	("perceptual_patch", 1.0),
+	#("perceptual_patch", 1.0),
 
     ]
 

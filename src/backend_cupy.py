@@ -4,7 +4,6 @@ import numpy as np
 import subprocess, json
 from Config.log_dir import GPU_LOG_PATH
 
-xp = cp
 rng = cp.random.default_rng
 
 # Optional scratch cache for common shapes
