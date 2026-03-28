@@ -1,22 +1,17 @@
-Logs/loss_log.txt
-Logs/perceptual_log.txt
-Logs/ripple_log.txt
-Logs/gpu_log.txt
-Logs/
-Saves/
-Telemetry/telemetry_logs/
-outputs/
 venv/
 
-training/Fantasy_06.jpg
-training/Fantasy_05.jpeg
-training/1.jpg
-training/2.jpg
-training/City_01.jpg
-training/Leaf.jpg
-training/Sunset_02.jpg
-training/space_04.jpg
-training/Temp/
+Logs/*
+!Logs/.keep
+
+Saves/*
+!Saves/.keep
+
+Telemetry/telemetry_logs/*
+!Telemetry/telemetry_logs/.keep
+
+outputs/*
+!outputs/.keep
+
 training/*
 !training/.keep
 
