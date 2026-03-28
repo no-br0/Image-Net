@@ -46,13 +46,13 @@ Both methods are explained below.
 ### Training Images Required
 Before running `main.py`, you must place at least one training image inside the `training/` directory.
 
-This folder is intentionally empty in the repository — its contents are ignored by Git so each user can supply their own images locally.  
-Without training images, the network will not run.
+This folder is intentionally empty in the repository — its contents are ignored by Git so each user can supply their own images locally.
 
 Add your images here:<br>
 	`training/`
 
-Training will not start without images in this folder.
+**Training will not start without images in this folder.**
+
 
 
 ### Option 1 - Local Install With Virtual Environment (Required for Displays)
