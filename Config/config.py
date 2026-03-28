@@ -1,5 +1,7 @@
 # config.py
 
+WORKER_CHUNK_SIZE = 20
+
 # --- Generalisation Settings ---
 ENABLE_ROTATE_TARGET_IMAGE 		= True
 ROTATE_TARGET_FREQ         		= 5
@@ -8,7 +10,7 @@ ENABLE_TARGET_ROTATION_SHUFFLE 	= False
 # --- Viewer toggle ---
 ENABLE_END_VIEWER       = False
 ENABLE_LIVE_VIEWER      = True
-LIVE_UPDATE_INTERVAL    = 10  # Epochs per update
+LIVE_UPDATE_INTERVAL    = 5  # Epochs per update
 ENABLE_TELEMETRY_VIEWER = False
 
 # --- Settings ---
@@ -59,7 +61,7 @@ OPTIMISER                     = {
 
 
 SAVE_AFTER          = True
-SAVE_INTERVAL       = 10
+SAVE_INTERVAL       = 2
 
 
 LOSS_CONFIG = [
