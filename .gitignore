@@ -17,3 +17,9 @@ training/Leaf.jpg
 training/Sunset_02.jpg
 training/space_04.jpg
 training/Temp/
+training/*
+!training/.keep
+
+Config/image_registry.json
+Config/input_config.json
+Config/settings.json

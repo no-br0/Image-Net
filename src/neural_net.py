@@ -212,13 +212,13 @@ class NeuralNet:
 			"PREVIOUS_RAW_LOSS": float(self.PREVIOUS_RAW_LOSS),
 			"PREVIOUS_LOSS_DELTA": float(self.PREVIOUS_LOSS_DELTA),
 			"PREVIOUS_RAW_LOSS_DELTA": float(self.PREVIOUS_RAW_LOSS_DELTA),
-			"PREVIOUS_RAW_BREAKDOWN": self.PREVIOUS_RAW_BREAKDOWN,
-			"PREVIOUS_RAW_BREAKDOWN_DELTA": self.PREVIOUS_RAW_BREAKDOWN_DELTA,
+			"PREVIOUS_RAW_BREAKDOWN": {k: float(v) for k, v in self.PREVIOUS_RAW_BREAKDOWN.items()} if self.PREVIOUS_RAW_BREAKDOWN else None,
+			"PREVIOUS_RAW_BREAKDOWN_DELTA": {k: float(v) for k, v in self.PREVIOUS_RAW_BREAKDOWN_DELTA.items()} if self.PREVIOUS_RAW_BREAKDOWN_DELTA else None,
 			"PREVIOUS_ABS_RAW_LOSS_DELTA": float(self.PREVIOUS_ABS_RAW_LOSS_DELTA),
 			"optimiser_state": self.optimiser.get_state(),
 			"seed": int(self.seed),
 			"TARGET_IMAGE": int(self.TARGET_IMAGE),
-			"model_name": self.model_name,
+			"model_name": str(self.model_name),
 		}
 		
 		
@@ -264,7 +264,7 @@ class NeuralNet:
 		h_act = npz["hidden_activation"].item()
 		o_act = npz["output_activation"].item()
 		
-		model_name = npz["model_name"]
+		model_name = str(npz["model_name"])
 
 		if "input_config" in npz:
 			input_config = npz["input_config"].tolist()
@@ -280,8 +280,10 @@ class NeuralNet:
 		nn.PREVIOUS_RAW_LOSS = float(npz["PREVIOUS_RAW_LOSS"])
 		nn.PREVIOUS_LOSS_DELTA = float(npz["PREVIOUS_LOSS_DELTA"])
 		nn.PREVIOUS_RAW_LOSS_DELTA = float(npz["PREVIOUS_RAW_LOSS_DELTA"])
-		nn.PREVIOUS_RAW_BREAKDOWN = npz["PREVIOUS_RAW_BREAKDOWN"].item()
-		nn.PREVIOUS_RAW_BREAKDOWN_DELTA = npz["PREVIOUS_RAW_BREAKDOWN_DELTA"].item()
+		raw = npz["PREVIOUS_RAW_BREAKDOWN"].item()
+		nn.PREVIOUS_RAW_BREAKDOWN = {k: float(v) for k, v in raw.items()}
+		raw_delta = npz["PREVIOUS_RAW_BREAKDOWN_DELTA"].item()
+		nn.PREVIOUS_RAW_BREAKDOWN_DELTA = {k: float(v) for k, v in raw_delta.items()}
 		nn.PREVIOUS_ABS_RAW_LOSS_DELTA = npz["PREVIOUS_ABS_RAW_LOSS_DELTA"].item()
 
 		if "GLOBAL_EPOCH" in npz:
@@ -304,6 +306,7 @@ class NeuralNet:
 			
 		nn.optimiser = OPTIMISER_REGISTRY.get(npz["optimiser_state"].item()["name"])(OPTIMISER)
 		nn.optimiser.load_state(npz["optimiser_state"].item())
+		
 		
 		print(f"[load] Model loaded from {path}")
 		return nn

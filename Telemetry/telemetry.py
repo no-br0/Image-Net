@@ -1,5 +1,6 @@
 # telemetry.py
 import os, json, hashlib, datetime
+import numpy as np
 
 class TelemetryLogger:
     def __init__(self, log_dir, model_signature, enabled=True):
@@ -35,8 +36,25 @@ class TelemetryLogger:
             "_model_signature": self.model_signature,
             **epoch_metrics
         }
-        with open(self.log_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry) + "\n")
+
+        try:
+            with open(self.log_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(entry) + "\n")
+        except TypeError as e:
+            print("\n[telemetry] JSON TypeError:", e)
+
+            def walk(path, obj):
+                if isinstance(obj, np.ndarray):
+                    print(f"  NDARRAY at {path}: shape={obj.shape}, dtype={obj.dtype}")
+                elif isinstance(obj, dict):
+                    for k, v in obj.items():
+                        walk(f"{path}.{k}", v)
+                elif isinstance(obj, list):
+                    for i, v in enumerate(obj):
+                        walk(f"{path}[{i}]", v)
+
+            walk("entry", entry)
+            raise
 
 def make_model_signature(topology, input_config):
     """Create a stable hash for model identity."""

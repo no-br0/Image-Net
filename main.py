@@ -7,7 +7,7 @@ from Config.config import (
 	EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, TARGET_IMAGE_ID,
 	PATCH_SIZE, OUTPUT_ACT, HIDDEN_ACT, LEARNING_RATE, INPUT_CONFIG_PATH,
 	GRAD_CLIP, MODEL_SEED, FORCE_NEW_MODEL, DEFAULT_MODEL_NAME, SAVE_FOLDER, 
-	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL, CONFIG_FILE, 
+	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL, CONFIG_FILE, SAVE_INTERVAL,
 	ENABLE_CUSTOM_MODEL_NAME, ENABLE_INPUT_CACHING, ENABLE_END_VIEWER, WORKER_CHUNK_SIZE
 )
 #from Config.Inputs.layers_config import layers_cfg
@@ -135,8 +135,8 @@ def main():
 			if MODEL_SAVE_PATH is not None:
 				model = model.load(MODEL_SAVE_PATH)
 		except Exception as e:
-			import traceback
-			traceback.print_exc()
+			#import traceback
+			#traceback.print_exc()
 			print(f"[stage] Failed to load model: {e}")
 			#if os.path.exists(TELEMETRY_LOG_PATH):
 			#    os.remove(TELEMETRY_LOG_PATH)
@@ -222,19 +222,26 @@ def main():
 								publish_frame(pred)
 							except Exception as e:
 								print(f"[viewer] live update failed: {e}")
-						
+
 						parent_conn.send("continue")
 
 					elif msg == "done":
 						model = NeuralNet.from_state(payload)
 						break
-				
+					
+					if model.GLOBAL_EPOCH % SAVE_INTERVAL == 0:
+						model.save(MODEL_SAVE_PATH)
+
 				p.join()
 				remaining -= this_chunk
 			pass
 
 	except KeyboardInterrupt:
 		print("[ctrl-c] Interrupted — ending training…")
+		try:
+			p.join()
+		except Exception as e:
+			print("[ctrl-c] Failed to join worker process: ", e)
 		#print("[ctrl-c] Interrupted — saving model…")
 		#if MODEL_SAVE_PATH is not None:
 		#	model.save(MODEL_SAVE_PATH)
