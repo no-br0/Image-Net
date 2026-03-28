@@ -62,11 +62,13 @@ def train_streaming(model, *, epochs, batch_size, shuffle=True,
 
 		# when its time to rotate the target image rebuilds the stream
 		if ENABLE_ROTATE_TARGET_IMAGE and model.GLOBAL_EPOCH % ROTATE_TARGET_FREQ == 0:
-			if model.TARGET_IMAGE == reg_size:
-				model.TARGET_IMAGE = 1
-			else:
-				model.TARGET_IMAGE += 1
+			#if model.TARGET_IMAGE == reg_size:
+			#	model.TARGET_IMAGE = 1
+			#else:
+			#	model.TARGET_IMAGE += 1
 			
+			model.TARGET_IMAGE = int(((model.GLOBAL_EPOCH // ROTATE_TARGET_FREQ) % reg_size) + 1)
+
 			stream.delete_data()
 			del stream
 			cp.get_default_memory_pool().free_all_blocks()
