@@ -10,12 +10,12 @@ ENABLE_TARGET_ROTATION_SHUFFLE 	= False
 # --- Viewer toggle ---
 ENABLE_END_VIEWER       = False
 ENABLE_LIVE_VIEWER      = True
-LIVE_UPDATE_INTERVAL    = 5  # Epochs per update
+LIVE_UPDATE_INTERVAL    = 1  # Epochs per update
 ENABLE_TELEMETRY_VIEWER = False
 
 # --- Settings ---
 TRAIN               = True
-FORCE_NEW_MODEL     = True
+FORCE_NEW_MODEL     = False
 MODEL_SEED          = 42       	# Set to None for random seed
 ENABLE_SET_LR       = False
 LEARNING_RATE       = 0.0005	#0.00020 # 2e-6
@@ -56,12 +56,13 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 
 OPTIMISER                     = {
     "name": "rmsprop",
-	"lr": 0.00001,
+	"lr": 0.000001,
+	#"lr": 0.00001,
 }
 
 
 SAVE_AFTER          = True
-SAVE_INTERVAL       = 2
+SAVE_INTERVAL       = 5
 
 
 LOSS_CONFIG = [

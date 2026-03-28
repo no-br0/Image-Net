@@ -506,8 +506,8 @@ def train_streaming(model, *, epochs, batch_size, shuffle=True,
 			}
 		}
 
-		with open(TIME_LOG, "a") as f:
-			f.write(json.dumps(timing_log) + "\n")
+		#with open(TIME_LOG, "a") as f:
+		#	f.write(json.dumps(timing_log) + "\n")
 
 
 		
@@ -523,3 +523,5 @@ def train_streaming(model, *, epochs, batch_size, shuffle=True,
 		cp.get_default_memory_pool().free_all_blocks()
 		# used to prevent kernel queuing   
 		cp.cuda.Device().synchronize()
+
+		return timing_log

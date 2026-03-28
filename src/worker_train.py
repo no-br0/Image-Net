@@ -9,7 +9,7 @@ def worker_main(conn, model_state, epochs, batch_size, loss_name, shuffle):
 
     for _ in range(epochs):
         # run exactly ONE epoch
-        train_streaming(
+        timing_log = train_streaming(
             model,
             epochs=1,
             batch_size=batch_size,
@@ -20,7 +20,10 @@ def worker_main(conn, model_state, epochs, batch_size, loss_name, shuffle):
         )
 
         # send updated model to main
-        conn.send(("epoch", model.to_state()))
+        conn.send(("epoch", {
+			"state": model.to_state(),
+			"timing": timing_log,	
+		}))
 
         # wait for main to tell us to continue
         cmd = conn.recv()

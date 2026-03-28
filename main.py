@@ -1,5 +1,6 @@
 # main.py
 import os, json
+import time
 import cupy as cp
 import numpy as np
 #from backend_cupy import get_vram_usage
@@ -214,14 +215,27 @@ def main():
 					msg, payload = parent_conn.recv()
 
 					if msg == "epoch":
-						model = NeuralNet.from_state(payload)
+						state = payload["state"]
+						timing = payload["timing"]
 
+						model = NeuralNet.from_state(state)
+
+						cb_start = time.perf_counter()
 						if ((model.GLOBAL_EPOCH % LIVE_UPDATE_INTERVAL == 0) or model.GLOBAL_EPOCH == 1):
 							try:
-								pred, _ = predict_full_from_stream(model, stream, batch_size=BATCH_SIZE)
+								pred, sleep_time = predict_full_from_stream(model, stream, batch_size=BATCH_SIZE)
 								publish_frame(pred)
 							except Exception as e:
 								print(f"[viewer] live update failed: {e}")
+						cb_end = time.perf_counter()
+						callback_time = (cb_end - cb_start) - sleep_time
+
+						timing["epoch_breakdown"]["callback_time"] = callback_time
+						timing["epoch_breakdown"]["sleep_time"] += sleep_time
+						timing["epoch_time"] += callback_time + sleep_time
+
+						with open(TIME_LOG_PATH, "a") as f:
+							f.write(json.dumps(timing) + "\n")
 
 						parent_conn.send("continue")
 
