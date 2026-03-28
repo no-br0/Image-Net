@@ -1,6 +1,0 @@
-{
-    "MODEL_SAVE_PATH": "Saves\\nn_model.npz",
-    "TRAIN_IMAGE_PATH": "training\\Fantasy_06.jpg",
-    "WIDTH": 1920,
-    "HEIGHT": 1181
-}
