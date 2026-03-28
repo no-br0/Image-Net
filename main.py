@@ -8,7 +8,7 @@ from Config.config import (
 	PATCH_SIZE, OUTPUT_ACT, HIDDEN_ACT, LEARNING_RATE, INPUT_CONFIG_PATH,
 	GRAD_CLIP, MODEL_SEED, FORCE_NEW_MODEL, DEFAULT_MODEL_NAME, SAVE_FOLDER, 
 	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL, CONFIG_FILE, 
-	ENABLE_CUSTOM_MODEL_NAME, ENABLE_INPUT_CACHING, ENABLE_END_VIEWER
+	ENABLE_CUSTOM_MODEL_NAME, ENABLE_INPUT_CACHING, ENABLE_END_VIEWER, WORKER_CHUNK_SIZE
 )
 #from Config.Inputs.layers_config import layers_cfg
 import Config.log_dir as log_dir
@@ -31,6 +31,8 @@ from src.backend_cupy import to_cpu
 from Telemetry.telemetry import TelemetryLogger, make_model_signature
 from src.final_viewer import final_viewer
 from src.display_utils import predict_full_from_stream, publish_frame
+from src.worker_train import worker_main
+import multiprocessing as mp
 
 # -------- Utilities --------
 def flush_pool():
@@ -121,7 +123,7 @@ def main():
 	#topology = [stream.N_features, 1280, 960, 768, 512, 3]
 
 
-	model = NeuralNet(topology, LEARNING_RATE, 
+	model = NeuralNet(topology, model_name,LEARNING_RATE, 
 					HIDDEN_ACT, 
 					OUTPUT_ACT, GRAD_CLIP,
 					MODEL_SEED,
@@ -178,18 +180,59 @@ def main():
 
 	# Train — for per-pixel RGB, use plain MSE (avoid perceptual which expects 2D fields)
 	try:
+		#if TRAIN:
+		#	bs = BATCH_SIZE
+		#	print(f"[train] Using batch size: {bs}")
+		#	train_streaming(
+		#		model,
+		#		epochs=EPOCHS,
+		#		batch_size=bs,
+		#		shuffle=ENABLE_SHUFFLE,
+		#		error_func=LOSS_REGISTRY[LOSS_NAME],
+		#		on_epoch_end=on_epoch_end,
+		#		telemetry_logger=telemetry_logger
+		#	)
 		if TRAIN:
 			bs = BATCH_SIZE
+			chunk_size=WORKER_CHUNK_SIZE
+			remaining = EPOCHS
+
 			print(f"[train] Using batch size: {bs}")
-			train_streaming(
-				model,
-				epochs=EPOCHS,
-				batch_size=bs,
-				shuffle=ENABLE_SHUFFLE,
-				error_func=LOSS_REGISTRY[LOSS_NAME],
-				on_epoch_end=on_epoch_end,
-				telemetry_logger=telemetry_logger
-			)
+			print(f"[train] Using worker chunks of {chunk_size} epochs")
+
+			while remaining > 0:
+				this_chunk = min(chunk_size, remaining)
+
+				parent_conn, child_conn = mp.Pipe()
+				p = mp.Process(
+					target=worker_main,
+					args=(child_conn, model.to_state(), this_chunk, bs, LOSS_NAME, ENABLE_SHUFFLE),
+				)
+				p.start()
+
+				while True:
+					msg, payload = parent_conn.recv()
+
+					if msg == "epoch":
+						model = NeuralNet.from_state(payload)
+
+						if ((model.GLOBAL_EPOCH % LIVE_UPDATE_INTERVAL == 0) or model.GLOBAL_EPOCH == 1):
+							try:
+								pred, _ = predict_full_from_stream(model, stream, batch_size=BATCH_SIZE)
+								publish_frame(pred)
+							except Exception as e:
+								print(f"[viewer] live update failed: {e}")
+						
+						parent_conn.send("continue")
+
+					elif msg == "done":
+						model = NeuralNet.from_state(payload)
+						break
+				
+				p.join()
+				remaining -= this_chunk
+			pass
+
 	except KeyboardInterrupt:
 		print("[ctrl-c] Interrupted — ending training…")
 		#print("[ctrl-c] Interrupted — saving model…")

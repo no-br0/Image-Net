@@ -1,7 +1,7 @@
 # train.py
 from Config.log_dir import (GPU_LOG_PATH, TIME_LOG,
 							LOSS_LOG_PATH, GPU_TEMP_LOG_PATH,
-							RAW_LOSS_LOG_PATH,
+							RAW_LOSS_LOG_PATH, TELEMETRY_LOG_FOLDER,
 							LOWEST_RAW_LOSS_LOG_PATH, LOWEST_LOSS_LOG_PATH,)
 from Config.config import (SAVE_INTERVAL, CONFIG_FILE, LOWEST_LOSS_THRESHOLD,
 						LR_DECREASE_MULTIPLIER, LR_INCREASE_MULTIPLIER,
@@ -18,6 +18,7 @@ from src.display_utils import compute_accuracy_metrics
 from Config.layer_registry import inject_input_seeds, build_input_stack
 from Config.image_registry import get_registry_size, get_seed, get_image_path
 from src.data_utils import load_rgb_image, make_neighbor_stream
+from Telemetry.telemetry import TelemetryLogger
 
 
 def build_stream(input_config, model, batch_size):
@@ -54,6 +55,12 @@ def train_streaming(model, *, epochs, batch_size, shuffle=True,
 	reg_size = get_registry_size()
 
 	stream = build_stream(input_config, model, batch_size)
+
+	telemetry_logger = TelemetryLogger(
+		log_dir=TELEMETRY_LOG_FOLDER,
+		model_signature=model.model_name,
+		enabled=True,
+	)
 
 	for local_epoch in range(1, epochs + 1):
 		t0 = time.perf_counter()
@@ -403,12 +410,14 @@ def train_streaming(model, *, epochs, batch_size, shuffle=True,
 		sleep_time += pre_display_cooling(model, local_epoch)
 
 		cb_start = time.perf_counter()
-		if on_epoch_end is not None:
-			try:
-				cb_sleep_time = on_epoch_end(local_epoch, model)
-			except Exception as e:
-				print(f"[train] on_epoch_end failed: {e}")
-		cp.cuda.Device().synchronize()
+		#if on_epoch_end is not None:
+		#	try:
+		#		cb_sleep_time = on_epoch_end(local_epoch, model)
+		#	except Exception as e:
+		#		print(f"[train] on_epoch_end failed: {e}")
+		#cp.cuda.Device().synchronize()
+		cb_sleep_time = 0
+
 		cb_end = time.perf_counter()
 		callback_time = (cb_end - cb_start) - cb_sleep_time
 		sleep_time += cb_sleep_time
@@ -451,7 +460,7 @@ def train_streaming(model, *, epochs, batch_size, shuffle=True,
 		model.optimiser.log_epoch_telemetry(model.GLOBAL_EPOCH)
 		
 		
-		if telemetry_logger.enabled is not None and telemetry_logger.enabled:
+		if telemetry_logger is not None and telemetry_logger.enabled:
 			epoch_metrics = {
 				"global_epoch": model.GLOBAL_EPOCH,
 				"learning_rate": model.learning_rate,

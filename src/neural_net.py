@@ -18,7 +18,7 @@ def _act_name(fn):
 
 
 class NeuralNet:
-	def __init__(self, topology, learning_rate=0.0005,
+	def __init__(self, topology, model_name, learning_rate=0.0005,
 				hidden_activation_function=_ACT_MAP["relu"],
 				output_activation_function=_ACT_MAP["linear"],
 				grad_clip_norm=1.0, seed=42,
@@ -26,6 +26,7 @@ class NeuralNet:
 		
 		self.topology = list(topology)
 		self.learning_rate = float(learning_rate)
+		self.model_name = model_name
 		
 		self.hidden_activation = (
 			_ACT_MAP[hidden_activation_function]
@@ -217,6 +218,7 @@ class NeuralNet:
 			"optimiser_state": self.optimiser.get_state(),
 			"seed": int(self.seed),
 			"TARGET_IMAGE": int(self.TARGET_IMAGE),
+			"model_name": self.model_name,
 		}
 		
 		
@@ -254,6 +256,7 @@ class NeuralNet:
 		else:
 			lr = float(npz["learning_rate"])
 		
+		
 
 		topology = npz["topology"].tolist()
 		gcn = float(npz["grad_clip_norm"])
@@ -261,13 +264,15 @@ class NeuralNet:
 		h_act = npz["hidden_activation"].item()
 		o_act = npz["output_activation"].item()
 		
+		model_name = npz["model_name"]
+
 		if "input_config" in npz:
 			input_config = npz["input_config"].tolist()
 			os.makedirs(os.path.dirname(INPUT_CONFIG_PATH), exist_ok=True)
 			with open(INPUT_CONFIG_PATH, "w") as f:
 				json.dump(input_config, f, indent=4)
 		
-		nn = NeuralNet(topology, lr, h_act, o_act, gcn, input_config=input_config)
+		nn = NeuralNet(topology, model_name, lr, h_act, o_act, gcn, input_config=input_config)
 		nn.LOWEST_LOSS = float(npz["LOWEST_LOSS"])
 		nn.LOWEST_RAW_LOSS = float(npz["LOWEST_RAW_LOSS"])
 		nn.NORM_LOWEST_RAW_LOSS = float(npz["NORM_LOWEST_RAW_LOSS"])
@@ -301,4 +306,77 @@ class NeuralNet:
 		nn.optimiser.load_state(npz["optimiser_state"].item())
 		
 		print(f"[load] Model loaded from {path}")
+		return nn
+
+
+
+
+
+	def to_state(self):
+		import numpy as np
+
+		return {
+			"GLOBAL_EPOCH": float(self.GLOBAL_EPOCH),
+			"input_config": self.input_config,
+			"LOWEST_LOSS": float(self.LOWEST_LOSS) if self.LOWEST_LOSS is not None else None,
+			"LOWEST_RAW_LOSS": float(self.LOWEST_RAW_LOSS) if self.LOWEST_RAW_LOSS is not None else None,
+			"NORM_LOWEST_RAW_LOSS": float(self.NORM_LOWEST_RAW_LOSS) if self.NORM_LOWEST_RAW_LOSS is not None else None,
+			"topology": list(self.topology),
+			"learning_rate": float(self.learning_rate),
+			"grad_clip_norm": float(self.grad_clip_norm if self.grad_clip_norm is not None else -1),
+			"hidden_activation": _act_name(self.hidden_activation),
+			"output_activation": _act_name(self.output_activation),
+			"PREVIOUS_LOSS": float(self.PREVIOUS_LOSS) if self.PREVIOUS_LOSS is not None else None,
+			"PREVIOUS_RAW_LOSS": float(self.PREVIOUS_RAW_LOSS) if self.PREVIOUS_RAW_LOSS is not None else None,
+			"PREVIOUS_LOSS_DELTA": float(self.PREVIOUS_LOSS_DELTA) if self.PREVIOUS_LOSS_DELTA is not None else None,
+			"PREVIOUS_RAW_LOSS_DELTA": float(self.PREVIOUS_RAW_LOSS_DELTA) if self.PREVIOUS_RAW_LOSS_DELTA is not None else None,
+			"PREVIOUS_RAW_BREAKDOWN": self.PREVIOUS_RAW_BREAKDOWN,
+			"PREVIOUS_RAW_BREAKDOWN_DELTA": self.PREVIOUS_RAW_BREAKDOWN_DELTA,
+			"PREVIOUS_ABS_RAW_LOSS_DELTA": float(self.PREVIOUS_ABS_RAW_LOSS_DELTA) if self.PREVIOUS_ABS_RAW_LOSS_DELTA is not None else None,
+			"optimiser_state": self.optimiser.get_state(),
+			"seed": int(self.seed),
+			"TARGET_IMAGE": int(self.TARGET_IMAGE) if self.TARGET_IMAGE is not None else -1,
+			"weights": [to_cpu(W) for W in self.weights],
+			"bias": [to_cpu(b) for b in self.bias],
+			"model_name": self.model_name,
+		}
+
+	@classmethod
+	def from_state(cls, state):
+		import cupy as xp
+
+		topology = state["topology"]
+		lr = state["learning_rate"]
+		gcn = state["grad_clip_norm"]
+		gcn = None if gcn < 0 else gcn
+		h_act = state["hidden_activation"]
+		o_act = state["output_activation"]
+		input_config = state["input_config"]
+		model_name = state["model_name"]
+
+		nn = NeuralNet(topology, model_name, lr, h_act, o_act, gcn, seed=state["seed"], input_config=input_config)
+
+		nn.LOWEST_LOSS = state["LOWEST_LOSS"]
+		nn.LOWEST_RAW_LOSS = state["LOWEST_RAW_LOSS"]
+		nn.NORM_LOWEST_RAW_LOSS = state["NORM_LOWEST_RAW_LOSS"]
+		nn.PREVIOUS_LOSS = state["PREVIOUS_LOSS"]
+		nn.PREVIOUS_RAW_LOSS = state["PREVIOUS_RAW_LOSS"]
+		nn.PREVIOUS_LOSS_DELTA = state["PREVIOUS_LOSS_DELTA"]
+		nn.PREVIOUS_RAW_LOSS_DELTA = state["PREVIOUS_RAW_LOSS_DELTA"]
+		nn.PREVIOUS_RAW_BREAKDOWN = state["PREVIOUS_RAW_BREAKDOWN"]
+		nn.PREVIOUS_RAW_BREAKDOWN_DELTA = state["PREVIOUS_RAW_BREAKDOWN_DELTA"]
+		nn.PREVIOUS_ABS_RAW_LOSS_DELTA = state["PREVIOUS_ABS_RAW_LOSS_DELTA"]
+
+		nn.GLOBAL_EPOCH = state["GLOBAL_EPOCH"]
+		nn.seed = state["seed"]
+		nn.TARGET_IMAGE = None if state["TARGET_IMAGE"] == -1 else state["TARGET_IMAGE"]
+
+		# restore weights/bias
+		nn.weights = [to_device(W).astype(xp.float32, copy=False) for W in state["weights"]]
+		nn.bias    = [to_device(b).astype(xp.float32, copy=False) for b in state["bias"]]
+
+		# restore optimiser
+		nn.optimiser = OPTIMISER_REGISTRY.get(state["optimiser_state"]["name"])(OPTIMISER)
+		nn.optimiser.load_state(state["optimiser_state"])
+
 		return nn
