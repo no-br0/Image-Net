@@ -36,11 +36,23 @@ Live output from the model during training.
 
 
 ## Running The Project
+
 This project can be run in two ways:
 - Local install with venv - (recommended) required for displays, viewers, and any GUI windows
 - Docker - usable for training
 
 Both methods are explained below.
+
+### Training Images Required
+Before running `main.py`, you must place at least one training image inside the `training/` directory.
+
+This folder is intentionally empty in the repository — its contents are ignored by Git so each user can supply their own images locally.  
+Without training images, the network will not run.
+
+Add your images here:<br>
+	`training/`
+
+Training will not start without images in this folder.
 
 
 ### Option 1 - Local Install With Virtual Environment (Required for Displays)
