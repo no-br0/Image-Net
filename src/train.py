@@ -1,25 +1,38 @@
 # train.py
 from Config.log_dir import (GPU_LOG_PATH, TIME_LOG,
 							LOSS_LOG_PATH, GPU_TEMP_LOG_PATH,
-							RAW_LOSS_LOG_PATH,
+							RAW_LOSS_LOG_PATH, TELEMETRY_LOG_FOLDER,
 							LOWEST_RAW_LOSS_LOG_PATH, LOWEST_LOSS_LOG_PATH,)
 from Config.config import (SAVE_INTERVAL, CONFIG_FILE, LOWEST_LOSS_THRESHOLD,
 						LR_DECREASE_MULTIPLIER, LR_INCREASE_MULTIPLIER,
 						MAX_LEARNING_RATE, MIN_LEARNING_RATE, ENABLE_ADAPTIVE_LR, 
-						ADAPTIVE_LR_INVERTED,)
-from src.backend_cupy import xp, get_vram_usage, log_vram_usage
+						ADAPTIVE_LR_INVERTED, ROTATE_TARGET_FREQ, ENABLE_ROTATE_TARGET_IMAGE,
+						PATCH_SIZE, )
+from src.backend_cupy import get_vram_usage, log_vram_usage
 from src.loss_registry import combined_loss, wrapped_combined_loss
 import cupy as cp, numpy as np
 import os, json, sys, time, subprocess
 from collections import defaultdict
 from src.cooling import (post_epoch_cooling, post_batch_cooling, pre_display_cooling)
 from src.display_utils import compute_accuracy_metrics
+from Config.layer_registry import inject_input_seeds, build_input_stack
+from Config.image_registry import get_registry_size, get_seed, get_image_path
+from src.data_utils import load_rgb_image, make_neighbor_stream
+from Telemetry.telemetry import TelemetryLogger
 
 
+def build_stream(input_config, model, batch_size):
+	input_config = inject_input_seeds(input_config, get_seed(model.TARGET_IMAGE))
+	Y_rgb = load_rgb_image(get_image_path(model.TARGET_IMAGE))
+	H, W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
+	X_u8, channel_names = build_input_stack(H, W, input_config)
+	stream = make_neighbor_stream(X_u8, Y_rgb, patch_size=PATCH_SIZE, 
+								output_dim=3,
+								batch_size=batch_size)
+	return stream
 
 
-
-def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
+def train_streaming(model, *, epochs, batch_size, shuffle=True,
 					error_func=None, on_epoch_end=None, telemetry_logger=None):
 	LOWEST_LOSS          = model.LOWEST_LOSS
 	LOWEST_RAW_LOSS      = model.LOWEST_RAW_LOSS
@@ -34,12 +47,40 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 	previous_raw_breakdown = model.PREVIOUS_RAW_BREAKDOWN
 	previous_raw_breakdown_delta = model.PREVIOUS_RAW_BREAKDOWN_DELTA
 	previous_abs_raw_loss_delta = model.PREVIOUS_ABS_RAW_LOSS_DELTA
+	input_config = model.input_config
 	
+	if model.TARGET_IMAGE == None:
+		model.TARGET_IMAGE = 1
+
+	reg_size = get_registry_size()
+
+	stream = build_stream(input_config, model, batch_size)
+
+	telemetry_logger = TelemetryLogger(
+		log_dir=TELEMETRY_LOG_FOLDER,
+		model_signature=model.model_name,
+		enabled=True,
+	)
+
 	for local_epoch in range(1, epochs + 1):
 		t0 = time.perf_counter()
 		model.GLOBAL_EPOCH += 1
 		sleep_time 		 	 = 0.0
 
+		# when its time to rotate the target image rebuilds the stream
+		if ENABLE_ROTATE_TARGET_IMAGE and model.GLOBAL_EPOCH % ROTATE_TARGET_FREQ == 0:
+			#if model.TARGET_IMAGE == reg_size:
+			#	model.TARGET_IMAGE = 1
+			#else:
+			#	model.TARGET_IMAGE += 1
+			
+			model.TARGET_IMAGE = int(((model.GLOBAL_EPOCH // ROTATE_TARGET_FREQ) % reg_size) + 1)
+
+			stream.delete_data()
+			del stream
+			cp.get_default_memory_pool().free_all_blocks()
+			stream = build_stream(input_config, model, batch_size)
+		
 		
 		totals = defaultdict(float)
 		raw_totals = defaultdict(float)
@@ -369,12 +410,14 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 		sleep_time += pre_display_cooling(model, local_epoch)
 
 		cb_start = time.perf_counter()
-		if on_epoch_end is not None:
-			try:
-				cb_sleep_time = on_epoch_end(local_epoch, model)
-			except Exception as e:
-				print(f"[train] on_epoch_end failed: {e}")
-		cp.cuda.Device().synchronize()
+		#if on_epoch_end is not None:
+		#	try:
+		#		cb_sleep_time = on_epoch_end(local_epoch, model)
+		#	except Exception as e:
+		#		print(f"[train] on_epoch_end failed: {e}")
+		#cp.cuda.Device().synchronize()
+		cb_sleep_time = 0
+
 		cb_end = time.perf_counter()
 		callback_time = (cb_end - cb_start) - cb_sleep_time
 		sleep_time += cb_sleep_time
@@ -417,7 +460,7 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 		model.optimiser.log_epoch_telemetry(model.GLOBAL_EPOCH)
 		
 		
-		if telemetry_logger.enabled is not None and telemetry_logger.enabled:
+		if telemetry_logger is not None and telemetry_logger.enabled:
 			epoch_metrics = {
 				"global_epoch": model.GLOBAL_EPOCH,
 				"learning_rate": model.learning_rate,
@@ -463,8 +506,8 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 			}
 		}
 
-		with open(TIME_LOG, "a") as f:
-			f.write(json.dumps(timing_log) + "\n")
+		#with open(TIME_LOG, "a") as f:
+		#	f.write(json.dumps(timing_log) + "\n")
 
 
 		
@@ -479,4 +522,6 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 			
 		cp.get_default_memory_pool().free_all_blocks()
 		# used to prevent kernel queuing   
-		xp.cuda.Device().synchronize()
+		cp.cuda.Device().synchronize()
+
+		return timing_log

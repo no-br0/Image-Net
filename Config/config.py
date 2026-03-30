@@ -1,8 +1,10 @@
 # config.py
 
+WORKER_CHUNK_SIZE = 20
+
 # --- Generalisation Settings ---
 ENABLE_ROTATE_TARGET_IMAGE 		= True
-ROTATE_TARGET_FREQ         		= 50
+ROTATE_TARGET_FREQ         		= 5
 ENABLE_TARGET_ROTATION_SHUFFLE 	= False
 
 # --- Viewer toggle ---
@@ -33,7 +35,8 @@ GRAD_CLIP                       = 1.0
 
 #(327680 | 262144 | 245760 | 196608 | 163840 | 143744 | 131072 | 122880 | 1048576 | 98304 
 # | 65536 | 49152 | 32768 | 24576 | 16384 | 8192 | 4096 | 2048 | 1024)
-BATCH_SIZE      = 98304
+#BATCH_SIZE      = 98304
+BATCH_SIZE      = 49152
 
 #BATCH_SIZE      = 24576
 #BATCH_SIZE      = 163840
@@ -53,19 +56,21 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 
 OPTIMISER                     = {
     "name": "rmsprop",
-	"lr": 0.00001,
+	"lr": 0.0001,
+	#"lr": 0.000001,
+	#"lr": 0.00001,
 }
 
 
 SAVE_AFTER          = True
-SAVE_INTERVAL       = 10
+SAVE_INTERVAL       = 5
 
 
 LOSS_CONFIG = [
     
 	("mse", 1.0),    
 	("mae", 1.0),
-	("perceptual_patch", 1.0),
+	#("perceptual_patch", 1.0),
 
     ]
 
@@ -122,6 +127,6 @@ DEFAULT_MODEL_NAME          = "nn_model"
 LOSS_NAME       = "wrapped_combined"
 
 # --- Image ---
-TARGET_IMAGE_ID     = 5 # 4, 6, 5, 2, 1
+TARGET_IMAGE_ID     = 2 # 4, 6, 5, 2, 1
 
 INPUT_CONFIG_PATH = "Config/input_config.json"
