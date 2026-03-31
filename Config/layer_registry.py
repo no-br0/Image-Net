@@ -1,8 +1,8 @@
 # layer_registry.py
 from typing import Dict, List, Tuple
 import cupy as cp
-from src.backend_cupy import xp
 from Inputs import *  # all your @free_after generators
+
 
 # Registry of layer names -> generator function
 LAYER_REGISTRY = {
@@ -41,7 +41,7 @@ LAYER_REGISTRY = {
     "checkerboard_radial": gen_checkerboard_radial,
 }
 
-def build_input_stack(H: int, W: int, layers_cfg: List[Dict]) -> Tuple[xp.ndarray, List[str]]:
+def build_input_stack(H: int, W: int, layers_cfg: List[Dict]) -> Tuple[cp.ndarray, List[str]]:
     """
     Build a stacked (H, W, C) uint8 tensor on GPU from a list of layer configs.
     VRAM‑tight: preallocates entire channel buffer and writes in place.
@@ -61,7 +61,7 @@ def build_input_stack(H: int, W: int, layers_cfg: List[Dict]) -> Tuple[xp.ndarra
         pool.free_all_blocks()
 
     # ---- Pass 2: allocate output buffer ----
-    chan_buf = xp.empty((total_C, H, W), dtype=xp.float32)
+    chan_buf = cp.zeros((total_C, H, W), dtype=cp.float32)
     names: List[str] = []
     idx = 0
 
@@ -77,9 +77,9 @@ def build_input_stack(H: int, W: int, layers_cfg: List[Dict]) -> Tuple[xp.ndarra
         pool.free_all_blocks()
 
     # ---- Final: scale to uint8 and reshape ----
-    xp.clip(chan_buf, 0.0, 1.0, out=chan_buf)
-    chan_buf *= xp.float32(255.0)
-    X_u8 = xp.moveaxis(chan_buf.astype(xp.uint8, copy=False), 0, -1)  # (H, W, C)
+    cp.clip(chan_buf, 0.0, 1.0, out=chan_buf)
+    chan_buf *= cp.float32(255.0)
+    X_u8 = cp.moveaxis(chan_buf.astype(cp.uint8, copy=False), 0, -1)  # (H, W, C)
 
     pool.free_all_blocks()
     return X_u8, names

@@ -7,7 +7,7 @@ from Config.config import (SAVE_INTERVAL, CONFIG_FILE, LOWEST_LOSS_THRESHOLD,
 						LR_DECREASE_MULTIPLIER, LR_INCREASE_MULTIPLIER,
 						MAX_LEARNING_RATE, MIN_LEARNING_RATE, ENABLE_ADAPTIVE_LR, 
 						ADAPTIVE_LR_INVERTED,)
-from src.backend_cupy import xp, get_vram_usage, log_vram_usage
+from src.backend_cupy import cp, get_vram_usage, log_vram_usage
 from src.loss_registry import combined_loss, wrapped_combined_loss
 import cupy as cp, numpy as np
 import os, json, sys, time, subprocess
@@ -479,4 +479,4 @@ def train_streaming(model, stream, *, epochs, batch_size, shuffle=True,
 			
 		cp.get_default_memory_pool().free_all_blocks()
 		# used to prevent kernel queuing   
-		xp.cuda.Device().synchronize()
+		cp.cuda.Device().synchronize()

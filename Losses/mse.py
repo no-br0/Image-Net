@@ -1,17 +1,17 @@
-from src.backend_cupy import xp
+from src.backend_cupy import cp
 
 
 def mse(target, pred, derivative=False):
     if derivative:
         return (2 * (pred - target) / pred.size).reshape(pred.shape)
-    return xp.mean((pred - target) ** 2)
+    return cp.mean((pred - target) ** 2)
 
 
 
 def mse_luma(target, pred, derivative=False):
     """Mean Squared Error on luminance channel, with optional derivative."""
-    pred   = pred.astype(xp.float32)
-    target = target.astype(xp.float32)
+    pred   = pred.astype(cp.float32)
+    target = target.astype(cp.float32)
 
     # Rec. 709 luma weights
     r_w, g_w, b_w = 0.2126, 0.7152, 0.0722
@@ -23,7 +23,7 @@ def mse_luma(target, pred, derivative=False):
     diff = pred_luma - target_luma
 
     if derivative:
-        grad = xp.zeros_like(pred)
+        grad = cp.zeros_like(pred)
         # Scale by total number of luminance elements to match mean()
         scale = diff.size
         grad[..., 0] = (2.0 * r_w * diff) / scale
@@ -31,7 +31,7 @@ def mse_luma(target, pred, derivative=False):
         grad[..., 2] = (2.0 * b_w * diff) / scale
         return grad
 
-    return xp.mean(diff ** 2)
+    return cp.mean(diff ** 2)
 
 
 
@@ -48,18 +48,18 @@ def mse_inverse_luma(target, pred, derivative=False):
         pred = pred[None, :]
 
     # Luma weights (Rec. 709)
-    w = xp.array([0.2126, 0.7152, 0.0722], dtype=xp.float32)
+    w = cp.array([0.2126, 0.7152, 0.0722], dtype=cp.float32)
 
     # Inverse luminance values
-    Yt_inv = 1.0 - xp.sum(target * w, axis=-1, keepdims=True)
-    Yp_inv = 1.0 - xp.sum(pred   * w, axis=-1, keepdims=True)
+    Yt_inv = 1.0 - cp.sum(target * w, axis=-1, keepdims=True)
+    Yp_inv = 1.0 - cp.sum(pred   * w, axis=-1, keepdims=True)
 
     # Squared error in inverse-luma space
     sq_err = (Yt_inv - Yp_inv) ** 2
 
     if not derivative:
         # Sum of squared errors (you can divide by N if you want mean)
-        return xp.sum(sq_err, dtype=xp.float32)
+        return cp.sum(sq_err, dtype=cp.float32)
 
     # Gradient wrt Yp_inv for MSE: d/dYp_inv ( (Yt_inv - Yp_inv)^2 ) = 2*(Yp_inv - Yt_inv)
     grad_Y_inv = 2.0 * (Yp_inv - Yt_inv)
@@ -69,7 +69,7 @@ def mse_inverse_luma(target, pred, derivative=False):
 
     # Backprop to RGB channels
     grad = grad_Y * w[None, :]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -77,26 +77,26 @@ def mse_inverse_luma(target, pred, derivative=False):
 def mse_red(target, pred, derivative=False):
     diff = pred[..., 0] - target[..., 0]
     if derivative:
-        grad = xp.zeros_like(pred)
+        grad = cp.zeros_like(pred)
         grad[..., 0] = (2.0 * diff / diff.size)
         return grad
-    return xp.mean(diff ** 2)
+    return cp.mean(diff ** 2)
 
 def mse_green(target, pred, derivative=False):
     diff = pred[..., 1] - target[..., 1]
     if derivative:
-        grad = xp.zeros_like(pred)
+        grad = cp.zeros_like(pred)
         grad[..., 1] = (2.0 * diff / diff.size)
         return grad
-    return xp.mean(diff ** 2)
+    return cp.mean(diff ** 2)
 
 def mse_blue(target, pred, derivative=False):
     diff = pred[..., 2] - target[..., 2]
     if derivative:
-        grad = xp.zeros_like(pred)
+        grad = cp.zeros_like(pred)
         grad[..., 2] = (2.0 * diff / diff.size)
         return grad
-    return xp.mean(diff ** 2)
+    return cp.mean(diff ** 2)
 
 
 
@@ -119,11 +119,11 @@ def mse_hue(target, pred, derivative=False):
 
     def rgb_to_hue_components(rgb):
         r, g, b = rgb[:, 0], rgb[:, 1], rgb[:, 2]
-        maxc = xp.maximum(xp.maximum(r, g), b)
-        minc = xp.minimum(xp.minimum(r, g), b)
+        maxc = cp.maximum(cp.maximum(r, g), b)
+        minc = cp.minimum(cp.minimum(r, g), b)
         delta = maxc - minc
 
-        hue6 = xp.zeros_like(maxc)
+        hue6 = cp.zeros_like(maxc)
         mask = delta > eps
 
         idx_r = (maxc == r) & mask
@@ -135,8 +135,8 @@ def mse_hue(target, pred, derivative=False):
         idx_b = (maxc == b) & mask
         hue6[idx_b] = ((r[idx_b] - g[idx_b]) / (delta[idx_b] + eps)) + 4
 
-        hue_rad = (hue6 / 6.0) * (2 * xp.pi)
-        return xp.cos(hue_rad), xp.sin(hue_rad), hue_rad, maxc, minc, delta, idx_r, idx_g, idx_b, mask, hue6
+        hue_rad = (hue6 / 6.0) * (2 * cp.pi)
+        return cp.cos(hue_rad), cp.sin(hue_rad), hue_rad, maxc, minc, delta, idx_r, idx_g, idx_b, mask, hue6
 
     # Target and prediction hue components
     ct, st, _, _, _, _, _, _, _, _, _ = rgb_to_hue_components(target)
@@ -148,19 +148,19 @@ def mse_hue(target, pred, derivative=False):
     sq_err = diff_c ** 2 + diff_s ** 2
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     # dL/dcp and dL/dsp for MSE (mean)
     grad_cp = (2.0 / batch_size) * diff_c
     grad_sp = (2.0 / batch_size) * diff_s
 
     # Backprop through cos/sin to hue_rad
-    grad_hue_rad = (-grad_cp * xp.sin(hue_rad_p) +
-                     grad_sp * xp.cos(hue_rad_p))
+    grad_hue_rad = (-grad_cp * cp.sin(hue_rad_p) +
+                     grad_sp * cp.cos(hue_rad_p))
 
     # Backprop hue_rad -> RGB via HSV chain rule
-    grad = xp.zeros_like(pred, dtype=xp.float32)
-    k = (2.0 * xp.pi) / 6.0  # d(hue_rad)/dh6
+    grad = cp.zeros_like(pred, dtype=cp.float32)
+    k = (2.0 * cp.pi) / 6.0  # d(hue_rad)/dh6
 
     # Case: max = R
     denom_r = (delta_p[idx_r_p] ** 2) + eps
@@ -189,7 +189,7 @@ def mse_hue(target, pred, derivative=False):
     # Mask out undefined hue (delta ~ 0)
     grad[~mask_p] = 0.0
 
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -211,10 +211,10 @@ def mse_saturation(target, pred, derivative=False):
 
     def rgb_to_saturation(rgb):
         r, g, b = rgb[:, 0], rgb[:, 1], rgb[:, 2]
-        maxc = xp.maximum(xp.maximum(r, g), b)
-        minc = xp.minimum(xp.minimum(r, g), b)
+        maxc = cp.maximum(cp.maximum(r, g), b)
+        minc = cp.minimum(cp.minimum(r, g), b)
         delta = maxc - minc
-        sat = xp.where(maxc > eps, delta / (maxc + eps), 0.0)
+        sat = cp.where(maxc > eps, delta / (maxc + eps), 0.0)
         return sat, maxc, minc, delta
 
     st, _, _, _ = rgb_to_saturation(target)
@@ -225,13 +225,13 @@ def mse_saturation(target, pred, derivative=False):
     sq_err = r ** 2
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     # Gradient wrt saturation prediction for MSE mean
     dL_dS = (2.0 / batch_size) * r
 
     # Backprop saturation -> RGB
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     mask_max_r = (pred[:, 0] == maxc_p)
     mask_max_g = (pred[:, 1] == maxc_p)
     mask_max_b = (pred[:, 2] == maxc_p)
@@ -246,7 +246,7 @@ def mse_saturation(target, pred, derivative=False):
     grad[:, 1] += dL_dS * (mask_max_g * dS_dmax + mask_min_g * dS_dmin)
     grad[:, 2] += dL_dS * (mask_max_b * dS_dmax + mask_min_b * dS_dmin)
 
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -271,7 +271,7 @@ def mse_colorfulness(target, pred, derivative=False):
         r, g, b = rgb[:, 0], rgb[:, 1], rgb[:, 2]
         rg = r - g
         yb = 0.5 * (r + g) - b
-        return xp.sqrt(rg**2 + yb**2 + eps)
+        return cp.sqrt(rg**2 + yb**2 + eps)
 
     ct = colorfulness_metric(target)
     cp = colorfulness_metric(pred)
@@ -281,7 +281,7 @@ def mse_colorfulness(target, pred, derivative=False):
     sq_err = r_cf ** 2
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     # dL/dC_pred for mean MSE
     grad_c = (2.0 / batch_size) * r_cf
@@ -290,17 +290,17 @@ def mse_colorfulness(target, pred, derivative=False):
     r, g, b = pred[:, 0], pred[:, 1], pred[:, 2]
     rg = r - g
     yb = 0.5 * (r + g) - b
-    denom = xp.sqrt(rg**2 + yb**2 + eps)
+    denom = cp.sqrt(rg**2 + yb**2 + eps)
 
     dC_dR = (rg + 0.5 * yb) / denom
     dC_dG = (-rg + 0.5 * yb) / denom
     dC_dB = (-yb) / denom
 
-    grad = xp.stack([grad_c * dC_dR,
+    grad = cp.stack([grad_c * dC_dR,
                      grad_c * dC_dG,
                      grad_c * dC_dB], axis=1)
 
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -323,9 +323,9 @@ def mse_chromatic_entropy(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def entropy_metric(rgb):
-        total = xp.sum(rgb, axis=1, keepdims=True) + eps
+        total = cp.sum(rgb, axis=1, keepdims=True) + eps
         p = rgb / total
-        entropy = -xp.sum(p * xp.log(p + eps), axis=1)  # shape: (N,)
+        entropy = -cp.sum(p * cp.log(p + eps), axis=1)  # shape: (N,)
         return entropy
 
     et = entropy_metric(target)
@@ -336,18 +336,18 @@ def mse_chromatic_entropy(target, pred, derivative=False):
     sq_err = r ** 2
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     # dL/dE_pred for mean MSE
     grad_e = (2.0 / batch_size) * r  # shape: (N,)
 
     # dE/dRGB
-    total = xp.sum(pred, axis=1, keepdims=True) + eps
+    total = cp.sum(pred, axis=1, keepdims=True) + eps
     p = pred / total
-    dE_dRGB = - (xp.log(p + eps) + 1.0) / total  # shape: (N,3)
+    dE_dRGB = - (cp.log(p + eps) + 1.0) / total  # shape: (N,3)
 
     grad = grad_e[:, None] * dE_dRGB
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -369,34 +369,34 @@ def mse_rgb_angle(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     # Cosine of angle between RGB vectors
-    dot = xp.sum(target * pred, axis=1)
-    norm_t = xp.sqrt(xp.sum(target**2, axis=1) + eps)
-    norm_p = xp.sqrt(xp.sum(pred**2, axis=1) + eps)
+    dot = cp.sum(target * pred, axis=1)
+    norm_t = cp.sqrt(cp.sum(target**2, axis=1) + eps)
+    norm_p = cp.sqrt(cp.sum(pred**2, axis=1) + eps)
     cos_theta = dot / (norm_t * norm_p + eps)
-    cos_theta = xp.clip(cos_theta, -1.0, 1.0)
+    cos_theta = cp.clip(cos_theta, -1.0, 1.0)
 
     # Angle in radians
-    angle = xp.arccos(cos_theta)
+    angle = cp.arccos(cos_theta)
 
     # Squared error in angle space
     sq_err = angle ** 2
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     # dL/dθ for mean MSE
     grad_theta = (2.0 / batch_size) * angle
 
     # dθ/dRGB_pred
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     for i in range(3):
         d_dot = target[:, i]
         d_norm_p = pred[:, i] / norm_p
         d_cos = (d_dot * norm_p - dot * d_norm_p) / (norm_t * norm_p**2 + eps)
-        d_theta = -1.0 / xp.sqrt(1.0 - cos_theta**2 + eps) * d_cos
+        d_theta = -1.0 / cp.sqrt(1.0 - cos_theta**2 + eps) * d_cos
         grad[:, i] = grad_theta * d_theta
 
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -420,29 +420,29 @@ def mse_opponent_color(target, pred, derivative=False):
     def opponent_transform(rgb):
         rg = rgb[:, 0] - rgb[:, 1]
         by = 0.5 * (rgb[:, 0] + rgb[:, 1]) - rgb[:, 2]
-        ld = xp.mean(rgb, axis=1)
-        return xp.stack([rg, by, ld], axis=1)
+        ld = cp.mean(rgb, axis=1)
+        return cp.stack([rg, by, ld], axis=1)
 
     ot = opponent_transform(target)
     op = opponent_transform(pred)
 
     # Squared error in opponent space
     r = op - ot
-    sq_err = xp.sum(r**2, axis=1)  # per-sample squared magnitude
+    sq_err = cp.sum(r**2, axis=1)  # per-sample squared magnitude
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     # Gradient in opponent space for mean MSE
     grad_o = (2.0 / batch_size) * r  # shape: (N, 3)
 
     # Backprop opponent -> RGB
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = grad_o[:, 0] + 0.5 * grad_o[:, 1] + (1.0 / 3.0) * grad_o[:, 2]
     grad[:, 1] = -grad_o[:, 0] + 0.5 * grad_o[:, 1] + (1.0 / 3.0) * grad_o[:, 2]
     grad[:, 2] = -grad_o[:, 1] + (1.0 / 3.0) * grad_o[:, 2]
 
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -464,13 +464,13 @@ def mse_pair_rg(target, pred, derivative=False):
     sq_err = r ** 2
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     g = (2.0 / batch_size) * r
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[:, 0] = g
     grad[:, 1] = -g
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 def mse_pair_rb(target, pred, derivative=False):
@@ -491,13 +491,13 @@ def mse_pair_rb(target, pred, derivative=False):
     sq_err = r ** 2
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     g = (2.0 / batch_size) * r
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[:, 0] = g
     grad[:, 2] = -g
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 def mse_pair_gb(target, pred, derivative=False):
@@ -518,13 +518,13 @@ def mse_pair_gb(target, pred, derivative=False):
     sq_err = r ** 2
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     g = (2.0 / batch_size) * r
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[:, 1] = g
     grad[:, 2] = -g
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -543,10 +543,10 @@ def mse_ycbcr_chroma(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     # RGB -> YCbCr conversion
-    M = xp.array([[ 0.299,     0.587,     0.114   ],
+    M = cp.array([[ 0.299,     0.587,     0.114   ],
                   [-0.168736, -0.331264,  0.5     ],
-                  [ 0.5,     -0.418688, -0.081312]], dtype=xp.float32)
-    offset = xp.array([0.0, 0.5, 0.5], dtype=xp.float32)
+                  [ 0.5,     -0.418688, -0.081312]], dtype=cp.float32)
+    offset = cp.array([0.0, 0.5, 0.5], dtype=cp.float32)
 
     ycbcr_t = target @ M.T + offset
     ycbcr_p = pred   @ M.T + offset
@@ -556,7 +556,7 @@ def mse_ycbcr_chroma(target, pred, derivative=False):
     sq_err = diff ** 2
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     # Gradient in Cb/Cr space for mean MSE
     grad_cbc = (2.0 / batch_size) * diff  # shape (N, 2)
@@ -565,7 +565,7 @@ def mse_ycbcr_chroma(target, pred, derivative=False):
     M_cbcr = M[1:, :]  # shape (2, 3)
     grad_rgb = grad_cbc @ M_cbcr  # (N,3)
 
-    return grad_rgb.astype(xp.float32, copy=False)
+    return grad_rgb.astype(cp.float32, copy=False)
 
 
 
@@ -587,8 +587,8 @@ def mse_cmyk_chroma(target, pred, derivative=False):
     cmy_p = 1.0 - pred
 
     # Extract K
-    k_t = xp.min(cmy_t, axis=1, keepdims=True)
-    k_p = xp.min(cmy_p, axis=1, keepdims=True)
+    k_t = cp.min(cmy_t, axis=1, keepdims=True)
+    k_p = cp.min(cmy_p, axis=1, keepdims=True)
 
     # Normalised CMY (subtract K, divide by 1-K)
     cmyk_t = (cmy_t - k_t) / (1.0 - k_t + eps)
@@ -599,7 +599,7 @@ def mse_cmyk_chroma(target, pred, derivative=False):
     sq_err = diff ** 2
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     # --- Backward ---
     grad_cmyk = (2.0 / batch_size) * diff  # dL/d(C',M',Y')
@@ -630,9 +630,9 @@ def mse_cmyk_chroma(target, pred, derivative=False):
     grad_M += min_mask[:, 1:2] * grad_K
     grad_Y += min_mask[:, 2:3] * grad_K
 
-    grad_cmy = xp.concatenate([grad_C, grad_M, grad_Y], axis=1)
+    grad_cmy = cp.concatenate([grad_C, grad_M, grad_Y], axis=1)
     grad_rgb = -grad_cmy
-    return grad_rgb.astype(xp.float32, copy=False)
+    return grad_rgb.astype(cp.float32, copy=False)
 
 
 def mse_luma_heavy(target, pred, derivative=False):
@@ -651,29 +651,29 @@ def mse_luma_heavy(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * 0.7
+        l = cp.mean(rgb, axis=1) * 0.7
         r = rgb[:, 0] * 0.1
         g = rgb[:, 1] * 0.1
         b = rgb[:, 2] * 0.1
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
 
     r = tp - tt
-    sq_err = xp.sum(r**2, axis=1)
+    sq_err = cp.sum(r**2, axis=1)
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     grad_t = (2.0 / batch_size)[:, None] * r
 
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (0.7/3.0) * grad_t[:, 0] + 0.1 * grad_t[:, 1]
     grad[:, 1] = (0.7/3.0) * grad_t[:, 0] + 0.1 * grad_t[:, 2]
     grad[:, 2] = (0.7/3.0) * grad_t[:, 0] + 0.1 * grad_t[:, 3]
 
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -690,26 +690,26 @@ def mse_red_bias(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * 0.2
+        l = cp.mean(rgb, axis=1) * 0.2
         r = rgb[:, 0] * 0.6
         g = rgb[:, 1] * 0.2
         b = rgb[:, 2] * 0.0
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
     r = tp - tt
-    sq_err = xp.sum(r**2, axis=1)
+    sq_err = cp.sum(r**2, axis=1)
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     grad_t = (2.0 / batch_size) * r
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (0.2/3.0) * grad_t[:, 0] + 0.6 * grad_t[:, 1]
     grad[:, 1] = (0.2/3.0) * grad_t[:, 0] + 0.2 * grad_t[:, 2]
     grad[:, 2] = (0.2/3.0) * grad_t[:, 0] + 0.0 * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -726,26 +726,26 @@ def mse_red_suppressed(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * 0.3
+        l = cp.mean(rgb, axis=1) * 0.3
         r = rgb[:, 0] * 0.05
         g = rgb[:, 1] * 0.35
         b = rgb[:, 2] * 0.3
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
     r = tp - tt
-    sq_err = xp.sum(r**2, axis=1)
+    sq_err = cp.sum(r**2, axis=1)
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     grad_t = (2.0 / batch_size) * r
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (0.3/3.0) * grad_t[:, 0] + 0.05 * grad_t[:, 1]
     grad[:, 1] = (0.3/3.0) * grad_t[:, 0] + 0.35 * grad_t[:, 2]
     grad[:, 2] = (0.3/3.0) * grad_t[:, 0] + 0.3 * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -763,26 +763,26 @@ def mse_green_bias(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * 0.2
+        l = cp.mean(rgb, axis=1) * 0.2
         r = rgb[:, 0] * 0.2
         g = rgb[:, 1] * 0.6
         b = rgb[:, 2] * 0.0
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
     r = tp - tt
-    sq_err = xp.sum(r**2, axis=1)
+    sq_err = cp.sum(r**2, axis=1)
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     grad_t = (2.0 / batch_size) * r
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (0.2/3.0) * grad_t[:, 0] + 0.2 * grad_t[:, 1]
     grad[:, 1] = (0.2/3.0) * grad_t[:, 0] + 0.6 * grad_t[:, 2]
     grad[:, 2] = (0.2/3.0) * grad_t[:, 0] + 0.0 * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 def mse_green_suppressed(target, pred, derivative=False):
@@ -799,26 +799,26 @@ def mse_green_suppressed(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * 0.3
+        l = cp.mean(rgb, axis=1) * 0.3
         r = rgb[:, 0] * 0.35
         g = rgb[:, 1] * 0.05
         b = rgb[:, 2] * 0.3
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
     r = tp - tt
-    sq_err = xp.sum(r**2, axis=1)
+    sq_err = cp.sum(r**2, axis=1)
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     grad_t = (2.0 / batch_size) * r
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (0.3/3.0) * grad_t[:, 0] + 0.35 * grad_t[:, 1]
     grad[:, 1] = (0.3/3.0) * grad_t[:, 0] + 0.05 * grad_t[:, 2]
     grad[:, 2] = (0.3/3.0) * grad_t[:, 0] + 0.3 * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 def mse_blue_bias(target, pred, derivative=False):
@@ -835,26 +835,26 @@ def mse_blue_bias(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * 0.2
+        l = cp.mean(rgb, axis=1) * 0.2
         r = rgb[:, 0] * 0.2
         g = rgb[:, 1] * 0.0
         b = rgb[:, 2] * 0.6
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
     r = tp - tt
-    sq_err = xp.sum(r**2, axis=1)
+    sq_err = cp.sum(r**2, axis=1)
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     grad_t = (2.0 / batch_size) * r
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (0.2/3.0) * grad_t[:, 0] + 0.2 * grad_t[:, 1]
     grad[:, 1] = (0.2/3.0) * grad_t[:, 0] + 0.0 * grad_t[:, 2]
     grad[:, 2] = (0.2/3.0) * grad_t[:, 0] + 0.6 * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 def mse_blue_suppressed(target, pred, derivative=False):
@@ -871,26 +871,26 @@ def mse_blue_suppressed(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * 0.3
+        l = cp.mean(rgb, axis=1) * 0.3
         r = rgb[:, 0] * 0.475
         g = rgb[:, 1] * 0.475
         b = rgb[:, 2] * 0.05
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
     r = tp - tt
-    sq_err = xp.sum(r**2, axis=1)
+    sq_err = cp.sum(r**2, axis=1)
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     grad_t = (2.0 / batch_size) * r
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (0.3/3.0) * grad_t[:, 0] + 0.475 * grad_t[:, 1]
     grad[:, 1] = (0.3/3.0) * grad_t[:, 0] + 0.475 * grad_t[:, 2]
     grad[:, 2] = (0.3/3.0) * grad_t[:, 0] + 0.05 * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 def mse_equalized(target, pred, derivative=False):
@@ -907,26 +907,26 @@ def mse_equalized(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * 0.25
+        l = cp.mean(rgb, axis=1) * 0.25
         r = rgb[:, 0] * 0.25
         g = rgb[:, 1] * 0.25
         b = rgb[:, 2] * 0.25
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
     r = tp - tt
-    sq_err = xp.sum(r**2, axis=1)
+    sq_err = cp.sum(r**2, axis=1)
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     grad_t = (2.0 / batch_size) * r
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (0.25/3.0) * grad_t[:, 0] + 0.25 * grad_t[:, 1]
     grad[:, 1] = (0.25/3.0) * grad_t[:, 0] + 0.25 * grad_t[:, 2]
     grad[:, 2] = (0.25/3.0) * grad_t[:, 0] + 0.25 * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -953,43 +953,43 @@ def mse_entropy_weighted(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def channel_entropy(vec):
-        hist = xp.histogram(vec, bins=bins, range=(vmin, vmax))[0].astype(xp.float32, copy=False)
-        s = hist.sum(dtype=xp.float32)
-        p = xp.where(s > 0, hist / (s + eps), xp.zeros_like(hist))
+        hist = cp.histogram(vec, bins=bins, range=(vmin, vmax))[0].astype(cp.float32, copy=False)
+        s = hist.sum(dtype=cp.float32)
+        p = cp.where(s > 0, hist / (s + eps), cp.zeros_like(hist))
         mask = p > 0
-        return -(p[mask] * xp.log2(p[mask])).sum(dtype=xp.float32)
+        return -(p[mask] * cp.log2(p[mask])).sum(dtype=cp.float32)
 
-    luma_t = xp.mean(target, axis=1)
+    luma_t = cp.mean(target, axis=1)
     ent_l = channel_entropy(luma_t)
     ent_r = channel_entropy(target[:, 0])
     ent_g = channel_entropy(target[:, 1])
     ent_b = channel_entropy(target[:, 2])
 
-    ent = xp.stack([ent_l, ent_r, ent_g, ent_b]).astype(xp.float32, copy=False)
-    ent_sum = ent.sum(dtype=xp.float32)
-    w = xp.where(ent_sum > 0, ent / (ent_sum + eps), xp.zeros_like(ent))
+    ent = cp.stack([ent_l, ent_r, ent_g, ent_b]).astype(cp.float32, copy=False)
+    ent_sum = ent.sum(dtype=cp.float32)
+    w = cp.where(ent_sum > 0, ent / (ent_sum + eps), cp.zeros_like(ent))
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * w[0]
+        l = cp.mean(rgb, axis=1) * w[0]
         r = rgb[:, 0] * w[1]
         g = rgb[:, 1] * w[2]
         b = rgb[:, 2] * w[3]
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
     r = tp - tt
-    sq_err = xp.sum(r**2, axis=1)
+    sq_err = cp.sum(r**2, axis=1)
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     grad_t = (2.0 / batch_size) * r
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (w[0] / 3.0) * grad_t[:, 0] + w[1] * grad_t[:, 1]
     grad[:, 1] = (w[0] / 3.0) * grad_t[:, 0] + w[2] * grad_t[:, 2]
     grad[:, 2] = (w[0] / 3.0) * grad_t[:, 0] + w[3] * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -1005,16 +1005,16 @@ def mse_hue_bias(target, pred, derivative=False):
     target, pred = target[:N], pred[:N]
     batch = float(N)
 
-    sq6 = xp.sqrt(6.0)
-    sq2 = xp.sqrt(2.0)
+    sq6 = cp.sqrt(6.0)
+    sq2 = cp.sqrt(2.0)
     w_h, w_s, w_l = 0.6, 0.1333333, 0.1333333
 
     def uvsl(x):
         r, g, b = x[:, 0], x[:, 1], x[:, 2]
         u = (2.0*r - g - b) / sq6
         v = (g - b) / sq2
-        s = xp.sqrt(u*u + v*v + eps)
-        a = xp.arctan2(v, u)  # radians
+        s = cp.sqrt(u*u + v*v + eps)
+        a = cp.arctan2(v, u)  # radians
         l = (r + g + b) / 3.0
         return u, v, s, a, l
 
@@ -1025,7 +1025,7 @@ def mse_hue_bias(target, pred, derivative=False):
     def ang_diff(a1, a0):
         d = a1 - a0
         # wrap to [-pi, pi)
-        return (d + xp.pi) % (2.0 * xp.pi) - xp.pi
+        return (d + cp.pi) % (2.0 * cp.pi) - cp.pi
 
     dh = ang_diff(ap, at)
     ds = sp - st
@@ -1038,7 +1038,7 @@ def mse_hue_bias(target, pred, derivative=False):
     r2 = r_h*r_h + r_s*r_s + r_l*r_l
 
     if not derivative:
-        return xp.mean(r2, dtype=xp.float32)
+        return cp.mean(r2, dtype=cp.float32)
 
     # Gradients in weighted transform space
     gh_w = (2.0 / batch) * r_h
@@ -1054,8 +1054,8 @@ def mse_hue_bias(target, pred, derivative=False):
     denom = (up*up + vp*vp + eps)
     dh_du = -vp / denom
     dh_dv =  up / denom
-    ds_du =  xp.where(sp > 0, up / sp, 0.0)
-    ds_dv =  xp.where(sp > 0, vp / sp, 0.0)
+    ds_du =  cp.where(sp > 0, up / sp, 0.0)
+    ds_dv =  cp.where(sp > 0, vp / sp, 0.0)
 
     gu = gh * dh_du + gs * ds_du
     gv = gh * dh_dv + gs * ds_dv
@@ -1064,7 +1064,7 @@ def mse_hue_bias(target, pred, derivative=False):
     du_dr, du_dg, du_db =  2.0/sq6, -1.0/sq6, -1.0/sq6
     dv_dr, dv_dg, dv_db =  0.0,     1.0/sq2,  -1.0/sq2
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[:, 0] = (gu * du_dr + gv * dv_dr) + gl / 3.0  # dL/dR
     grad[:, 1] = (gu * du_dg + gv * dv_dg) + gl / 3.0  # dL/dG
     grad[:, 2] = (gu * du_db + gv * dv_db) + gl / 3.0  # dL/dB
@@ -1083,16 +1083,16 @@ def mse_hue_suppressed(target, pred, derivative=False):
     target, pred = target[:N], pred[:N]
     batch = float(N)
 
-    sq6 = xp.sqrt(6.0)
-    sq2 = xp.sqrt(2.0)
+    sq6 = cp.sqrt(6.0)
+    sq2 = cp.sqrt(2.0)
     w_h, w_s, w_l = 0.05, 0.3166666, 0.3166666
 
     def uvsl(x):
         r, g, b = x[:, 0], x[:, 1], x[:, 2]
         u = (2.0*r - g - b) / sq6
         v = (g - b) / sq2
-        s = xp.sqrt(u*u + v*v + eps)
-        a = xp.arctan2(v, u)
+        s = cp.sqrt(u*u + v*v + eps)
+        a = cp.arctan2(v, u)
         l = (r + g + b) / 3.0
         return u, v, s, a, l
 
@@ -1100,7 +1100,7 @@ def mse_hue_suppressed(target, pred, derivative=False):
     up, vp, sp, ap, lp = uvsl(pred)
 
     def ang_diff(a1, a0):
-        return (a1 - a0 + xp.pi) % (2.0 * xp.pi) - xp.pi
+        return (a1 - a0 + cp.pi) % (2.0 * cp.pi) - cp.pi
 
     dh = ang_diff(ap, at)
     ds = sp - st
@@ -1112,7 +1112,7 @@ def mse_hue_suppressed(target, pred, derivative=False):
     r2 = r_h*r_h + r_s*r_s + r_l*r_l
 
     if not derivative:
-        return xp.mean(r2, dtype=xp.float32)
+        return cp.mean(r2, dtype=cp.float32)
 
     gh_w = (2.0 / batch) * r_h
     gs_w = (2.0 / batch) * r_s
@@ -1125,18 +1125,18 @@ def mse_hue_suppressed(target, pred, derivative=False):
     denom = (up*up + vp*vp + eps)
     dh_du = -vp / denom
     dh_dv =  up / denom
-    ds_du =  xp.where(sp > 0, up / sp, 0.0)
-    ds_dv =  xp.where(sp > 0, vp / sp, 0.0)
+    ds_du =  cp.where(sp > 0, up / sp, 0.0)
+    ds_dv =  cp.where(sp > 0, vp / sp, 0.0)
 
     gu = gh * dh_du + gs * ds_du
     gv = gh * dh_dv + gs * ds_dv
 
-    sq6 = xp.sqrt(6.0)
-    sq2 = xp.sqrt(2.0)
+    sq6 = cp.sqrt(6.0)
+    sq2 = cp.sqrt(2.0)
     du_dr, du_dg, du_db =  2.0/sq6, -1.0/sq6, -1.0/sq6
     dv_dr, dv_dg, dv_db =  0.0,     1.0/sq2,  -1.0/sq2
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[:, 0] = (gu * du_dr + gv * dv_dr) + gl / 3.0
     grad[:, 1] = (gu * du_dg + gv * dv_dg) + gl / 3.0
     grad[:, 2] = (gu * du_db + gv * dv_db) + gl / 3.0
@@ -1157,16 +1157,16 @@ def mse_saturation_bias(target, pred, derivative=False):
     target, pred = target[:N], pred[:N]
     batch = float(N)
 
-    sq6 = xp.sqrt(6.0)
-    sq2 = xp.sqrt(2.0)
+    sq6 = cp.sqrt(6.0)
+    sq2 = cp.sqrt(2.0)
     w_h, w_s, w_l = 0.1333333, 0.6, 0.1333333
 
     def uvsl(x):
         r, g, b = x[:, 0], x[:, 1], x[:, 2]
         u = (2.0*r - g - b) / sq6
         v = (g - b) / sq2
-        s = xp.sqrt(u*u + v*v + eps)
-        a = xp.arctan2(v, u)
+        s = cp.sqrt(u*u + v*v + eps)
+        a = cp.arctan2(v, u)
         l = (r + g + b) / 3.0
         return u, v, s, a, l
 
@@ -1174,7 +1174,7 @@ def mse_saturation_bias(target, pred, derivative=False):
     up, vp, sp, ap, lp = uvsl(pred)
 
     def ang_diff(a1, a0):
-        return (a1 - a0 + xp.pi) % (2.0 * xp.pi) - xp.pi
+        return (a1 - a0 + cp.pi) % (2.0 * cp.pi) - cp.pi
 
     dh = ang_diff(ap, at)
     ds = sp - st
@@ -1186,7 +1186,7 @@ def mse_saturation_bias(target, pred, derivative=False):
     r2 = r_h*r_h + r_s*r_s + r_l*r_l
 
     if not derivative:
-        return xp.mean(r2, dtype=xp.float32)
+        return cp.mean(r2, dtype=cp.float32)
 
     gh_w = (2.0 / batch) * r_h
     gs_w = (2.0 / batch) * r_s
@@ -1199,8 +1199,8 @@ def mse_saturation_bias(target, pred, derivative=False):
     denom = (up*up + vp*vp + eps)
     dh_du = -vp / denom
     dh_dv =  up / denom
-    ds_du =  xp.where(sp > 0, up / sp, 0.0)
-    ds_dv =  xp.where(sp > 0, vp / sp, 0.0)
+    ds_du =  cp.where(sp > 0, up / sp, 0.0)
+    ds_dv =  cp.where(sp > 0, vp / sp, 0.0)
 
     gu = gh * dh_du + gs * ds_du
     gv = gh * dh_dv + gs * ds_dv
@@ -1208,7 +1208,7 @@ def mse_saturation_bias(target, pred, derivative=False):
     du_dr, du_dg, du_db =  2.0/sq6, -1.0/sq6, -1.0/sq6
     dv_dr, dv_dg, dv_db =  0.0,     1.0/sq2,  -1.0/sq2
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[:, 0] = (gu * du_dr + gv * dv_dr) + gl / 3.0
     grad[:, 1] = (gu * du_dg + gv * dv_dg) + gl / 3.0
     grad[:, 2] = (gu * du_db + gv * dv_db) + gl / 3.0
@@ -1227,16 +1227,16 @@ def mse_saturation_suppressed(target, pred, derivative=False):
     target, pred = target[:N], pred[:N]
     batch = float(N)
 
-    sq6 = xp.sqrt(6.0)
-    sq2 = xp.sqrt(2.0)
+    sq6 = cp.sqrt(6.0)
+    sq2 = cp.sqrt(2.0)
     w_h, w_s, w_l = 0.3166666, 0.05, 0.3166666
 
     def uvsl(x):
         r, g, b = x[:, 0], x[:, 1], x[:, 2]
         u = (2.0*r - g - b) / sq6
         v = (g - b) / sq2
-        s = xp.sqrt(u*u + v*v + eps)
-        a = xp.arctan2(v, u)
+        s = cp.sqrt(u*u + v*v + eps)
+        a = cp.arctan2(v, u)
         l = (r + g + b) / 3.0
         return u, v, s, a, l
 
@@ -1244,7 +1244,7 @@ def mse_saturation_suppressed(target, pred, derivative=False):
     up, vp, sp, ap, lp = uvsl(pred)
 
     def ang_diff(a1, a0):
-        return (a1 - a0 + xp.pi) % (2.0 * xp.pi) - xp.pi
+        return (a1 - a0 + cp.pi) % (2.0 * cp.pi) - cp.pi
 
     dh = ang_diff(ap, at)
     ds = sp - st
@@ -1256,7 +1256,7 @@ def mse_saturation_suppressed(target, pred, derivative=False):
     r2 = r_h*r_h + r_s*r_s + r_l*r_l
 
     if not derivative:
-        return xp.mean(r2, dtype=xp.float32)
+        return cp.mean(r2, dtype=cp.float32)
 
     gh_w = (2.0 / batch) * r_h
     gs_w = (2.0 / batch) * r_s
@@ -1269,8 +1269,8 @@ def mse_saturation_suppressed(target, pred, derivative=False):
     denom = (up*up + vp*vp + eps)
     dh_du = -vp / denom
     dh_dv =  up / denom
-    ds_du =  xp.where(sp > 0, up / sp, 0.0)
-    ds_dv =  xp.where(sp > 0, vp / sp, 0.0)
+    ds_du =  cp.where(sp > 0, up / sp, 0.0)
+    ds_dv =  cp.where(sp > 0, vp / sp, 0.0)
 
     gu = gh * dh_du + gs * ds_du
     gv = gh * dh_dv + gs * ds_dv
@@ -1278,7 +1278,7 @@ def mse_saturation_suppressed(target, pred, derivative=False):
     du_dr, du_dg, du_db =  2.0/sq6, -1.0/sq6, -1.0/sq6
     dv_dr, dv_dg, dv_db =  0.0,     1.0/sq2,  -1.0/sq2
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[:, 0] = (gu * du_dr + gv * dv_dr) + gl / 3.0
     grad[:, 1] = (gu * du_dg + gv * dv_dg) + gl / 3.0
     grad[:, 2] = (gu * du_db + gv * dv_db) + gl / 3.0
@@ -1300,27 +1300,27 @@ def mse_luma_bias(target, pred, derivative=False):
     wL, wR, wG, wB = 0.6, 0.1333333, 0.1333333, 0.1333333
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * wL
+        l = cp.mean(rgb, axis=1) * wL
         r = rgb[:, 0] * wR
         g = rgb[:, 1] * wG
         b = rgb[:, 2] * wB
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
 
     r = tp - tt
-    sq_err = xp.sum(r**2, axis=1)
+    sq_err = cp.sum(r**2, axis=1)
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     grad_t = (2.0 / batch_size) * r
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (wL/3.0) * grad_t[:, 0] + wR * grad_t[:, 1]
     grad[:, 1] = (wL/3.0) * grad_t[:, 0] + wG * grad_t[:, 2]
     grad[:, 2] = (wL/3.0) * grad_t[:, 0] + wB * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -1338,27 +1338,27 @@ def mse_luma_suppressed(target, pred, derivative=False):
     wL, wR, wG, wB = 0.05, 0.3166666, 0.3166666, 0.3166666
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * wL
+        l = cp.mean(rgb, axis=1) * wL
         r = rgb[:, 0] * wR
         g = rgb[:, 1] * wG
         b = rgb[:, 2] * wB
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
 
     r = tp - tt
-    sq_err = xp.sum(r**2, axis=1)
+    sq_err = cp.sum(r**2, axis=1)
 
     if not derivative:
-        return xp.mean(sq_err, dtype=xp.float32)
+        return cp.mean(sq_err, dtype=cp.float32)
 
     grad_t = (2.0 / batch_size) * r
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (wL/3.0) * grad_t[:, 0] + wR * grad_t[:, 1]
     grad[:, 1] = (wL/3.0) * grad_t[:, 0] + wG * grad_t[:, 2]
     grad[:, 2] = (wL/3.0) * grad_t[:, 0] + wB * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 

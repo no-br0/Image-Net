@@ -1,11 +1,13 @@
 # neural_net.py
-from src.backend_cupy import xp, rng, to_device, to_cpu, _ACT_MAP
+from src.backend_cupy import to_device, to_cpu, _ACT_MAP
 from Losses import mse
 from Config.log_dir import SAVE_ERROR_LOG_PATH
 from Config.Inputs.layers_config import layers_cfg
 from Config.config import INPUT_CONFIG_PATH, ENABLE_SET_LR, LEARNING_RATE, OPTIMISER, GRAD_CLIP
 import json, os
 from src.optimiser_registry import OPTIMISER_REGISTRY
+import cupy as cp
+import numpy as np
 
 def _act_name(fn):
     for name, f in _ACT_MAP.items():
@@ -38,7 +40,7 @@ class NeuralNet:
         )
         
         self.grad_clip_norm = grad_clip_norm
-        self.rng = xp.random.RandomState(seed)
+        self.rng = cp.random.RandomState(seed)
         self.seed = seed
         self.batch_index = 0
         
@@ -59,8 +61,8 @@ class NeuralNet:
         # Forward/backward reusable buffers
         self.netIns = [None] * self.size   # pre-activation Z
         self.netOuts = [None] * self.size  # activation A (input to each layer)
-        self.grad_W_buf = [xp.empty_like(w) for w in self.weights]
-        self.grad_b_buf = [xp.empty_like(b) for b in self.bias]
+        self.grad_W_buf = [cp.zeros_like(w) for w in self.weights]
+        self.grad_b_buf = [cp.zeros_like(b) for b in self.bias]
         self.delta_buf = None  # shaped to current output on first backprop
 
         
@@ -86,14 +88,14 @@ class NeuralNet:
     def _init_weights_and_biases(self):
         for i in range(len(self.topology) - 1):
             fan_in, fan_out = int(self.topology[i]), int(self.topology[i + 1])
-            #std = xp.sqrt(2.0 / fan_in) # HE initialization
-            std =  xp.sqrt(1.0 / fan_in) # Xavier initialization
+            #std = cp.sqrt(2.0 / fan_in) # HE initialization
+            std =  cp.sqrt(1.0 / fan_in) # Xavier initialization
 
-            W = self.rng.normal(0.0, std, size=(fan_in, fan_out)).astype(xp.float32)
-            b = self.rng.uniform(-xp.pi, xp.pi, size=(1, fan_out)).astype(xp.float32)
-            #W = xp.random.normal(0.0, std, size=(fan_in, fan_out)).astype(xp.float32)
-            #b = xp.random.uniform(-xp.pi, xp.pi, size=(1, fan_out)).astype(xp.float32)
-            #b = xp.random.normal(0.1, 0.01, size=(1, fan_out)).astype(xp.float32)
+            W = self.rng.normal(0.0, std, size=(fan_in, fan_out)).astype(cp.float32)
+            b = self.rng.uniform(-cp.pi, cp.pi, size=(1, fan_out)).astype(cp.float32)
+            #W = cp.random.normal(0.0, std, size=(fan_in, fan_out)).astype(cp.float32)
+            #b = cp.random.uniform(-cp.pi, cp.pi, size=(1, fan_out)).astype(cp.float32)
+            #b = cp.random.normal(0.1, 0.01, size=(1, fan_out)).astype(cp.float32)
             self.weights.append(W)
             self.bias.append(b)
 
@@ -103,7 +105,7 @@ class NeuralNet:
         if self.grad_clip_norm is None:
             return grad_W, grad_b
         def clip(g):
-            norm = xp.linalg.norm(g)
+            norm = cp.linalg.norm(g)
             if norm > self.grad_clip_norm and norm > 0:
                 g *= self.grad_clip_norm / norm
             return g
@@ -119,12 +121,12 @@ class NeuralNet:
 
     def feedforward(self, X):
         """Forward pass with buffer reuse and NaN/Inf guard."""
-        A = xp.atleast_2d(X).astype(xp.float32, copy=False)
+        A = cp.atleast_2d(X).astype(cp.float32, copy=False)
         
         #A = (A / 127.5) - 1.0  # Normalise inputs to [-1, 1]
         A = (A / 255.0) # Normalise inputs to [0, 1]
         
-        if not xp.isfinite(A).all():
+        if not cp.isfinite(A).all():
             raise ValueError("Non-finite input to feedforward")
         for idx, W in enumerate(self.weights):
             b = self.bias[idx]
@@ -151,7 +153,7 @@ class NeuralNet:
         
         # Ensure delta buffer matches current output shape
         if self.delta_buf is None or self.delta_buf.shape != output.shape:
-            self.delta_buf = xp.empty_like(output)
+            self.delta_buf = cp.zeros_like(output)
         delta = self.delta_buf
 
         # Last layer delta
@@ -160,7 +162,7 @@ class NeuralNet:
         except TypeError:
             d_err = output - target_output
         d_act_out = self.output_activation(self.netIns[-1], derivative=True)
-        xp.multiply(d_err, d_act_out, out=delta)  # shape: (bs, n_out_last)
+        cp.multiply(d_err, d_act_out, out=delta)  # shape: (bs, n_out_last)
 
         # Backward through layers
         for layer in range(self.size - 1, -1, -1):
@@ -170,12 +172,12 @@ class NeuralNet:
             # Ensure grad buffers are correct shape (matches weights)
             needed_W_shape = (A_prev.shape[1], delta.shape[1])
             if self.grad_W_buf[layer].shape != needed_W_shape:
-                self.grad_W_buf[layer] = xp.empty(needed_W_shape, dtype=xp.float32)
+                self.grad_W_buf[layer] = cp.zeros(needed_W_shape, dtype=cp.float32)
             if self.grad_b_buf[layer].shape != (1, delta.shape[1]):
-                self.grad_b_buf[layer] = xp.empty((1, delta.shape[1]), dtype=xp.float32)
+                self.grad_b_buf[layer] = cp.zeros((1, delta.shape[1]), dtype=cp.float32)
 
-            xp.matmul(A_prev.T, delta, out=self.grad_W_buf[layer])            # (n_in, n_out)
-            xp.sum(delta, axis=0, keepdims=True, out=self.grad_b_buf[layer])  # (1, n_out)
+            cp.matmul(A_prev.T, delta, out=self.grad_W_buf[layer])            # (n_in, n_out)
+            cp.sum(delta, axis=0, keepdims=True, out=self.grad_b_buf[layer])  # (1, n_out)
 
             # Apply update
             self._apply_momentum_update(layer, self.grad_W_buf[layer], self.grad_b_buf[layer])
@@ -184,15 +186,14 @@ class NeuralNet:
             if layer > 0:
                 W_cur = self.weights[layer]                # (n_in, n_out)
                 # New delta: (bs, n_in)
-                delta = xp.matmul(delta, W_cur.T)
+                delta = cp.matmul(delta, W_cur.T)
                 # Multiply by hidden activation derivative at previous layer pre-activation
                 d_act_hidden = self.hidden_activation(self.netIns[layer - 1], derivative=True)
-                xp.multiply(delta, d_act_hidden, out=delta)
+                cp.multiply(delta, d_act_hidden, out=delta)
 
 
 
     def save(self, path):
-        import numpy as np
         
         data = {
             "GLOBAL_EPOCH": float(self.GLOBAL_EPOCH),
@@ -240,9 +241,6 @@ class NeuralNet:
 
     @staticmethod
     def load(path):
-        import numpy as np
-        import cupy as xp
-        from Config.config import (INPUT_CONFIG_PATH)
         
         npz = np.load(path, allow_pickle=True)
         
@@ -285,8 +283,8 @@ class NeuralNet:
             
             
         for i in range(len(topology) - 1):
-            nn.weights[i] = to_device(npz[f"W{i}"]).astype(xp.float32, copy=False)
-            nn.bias[i]    = to_device(npz[f"b{i}"]).astype(xp.float32, copy=False)
+            nn.weights[i] = to_device(npz[f"W{i}"]).astype(cp.float32, copy=False)
+            nn.bias[i]    = to_device(npz[f"b{i}"]).astype(cp.float32, copy=False)
             
         nn.optimiser = OPTIMISER_REGISTRY.get(npz["optimiser_state"].item()["name"])(OPTIMISER)
         nn.optimiser.load_state(npz["optimiser_state"].item())
