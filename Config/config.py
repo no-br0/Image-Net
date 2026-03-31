@@ -13,7 +13,7 @@ ENABLE_TELEMETRY_VIEWER = False
 
 # --- Settings ---
 TRAIN               = True
-FORCE_NEW_MODEL     = False
+FORCE_NEW_MODEL     = True
 MODEL_SEED          = 42       	# Set to None for random seed
 ENABLE_SET_LR       = False
 LEARNING_RATE       = 0.0005	#0.00020 # 2e-6
@@ -33,7 +33,8 @@ GRAD_CLIP                       = 1.0
 
 #(327680 | 262144 | 245760 | 196608 | 163840 | 143744 | 131072 | 122880 | 1048576 | 98304 
 # | 65536 | 49152 | 32768 | 24576 | 16384 | 8192 | 4096 | 2048 | 1024)
-BATCH_SIZE      = 98304
+#BATCH_SIZE      = 98304
+BATCH_SIZE	 	 = 49152
 
 #BATCH_SIZE      = 24576
 #BATCH_SIZE      = 163840
@@ -65,7 +66,7 @@ LOSS_CONFIG = [
     
 	("mse", 1.0),    
 	("mae", 1.0),
-	("perceptual_patch", 1.0),
+	#("perceptual_patch", 1.0),
 
     ]
 
@@ -122,6 +123,6 @@ DEFAULT_MODEL_NAME          = "nn_model"
 LOSS_NAME       = "wrapped_combined"
 
 # --- Image ---
-TARGET_IMAGE_ID     = 5 # 4, 6, 5, 2, 1
+TARGET_IMAGE_ID     = 27 # 4, 6, 5, 2, 1
 
 INPUT_CONFIG_PATH = "Config/input_config.json"
