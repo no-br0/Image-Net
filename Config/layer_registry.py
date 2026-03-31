@@ -71,7 +71,7 @@ def build_input_stack(H: int, W: int, layers_cfg: List[Dict]) -> Tuple[cp.ndarra
         pool.free_all_blocks()
 
     # ---- Pass 2: allocate output buffer ----
-    chan_buf = cp.empty((total_C, H, W), dtype=cp.float32)
+    chan_buf = cp.zeros((total_C, H, W), dtype=cp.float32)
     names: List[str] = []
     idx = 0
 
