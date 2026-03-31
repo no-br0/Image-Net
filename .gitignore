@@ -18,3 +18,7 @@ training/*
 Config/image_registry.json
 Config/input_config.json
 Config/settings.json
+
+
+_docs/
+_research/
