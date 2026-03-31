@@ -4,7 +4,7 @@ WORKER_CHUNK_SIZE = 20
 
 # --- Generalisation Settings ---
 ENABLE_ROTATE_TARGET_IMAGE 		= True
-ROTATE_TARGET_FREQ         		= 5
+ROTATE_TARGET_FREQ         		= 10
 ENABLE_TARGET_ROTATION_SHUFFLE 	= False
 
 # --- Viewer toggle ---
@@ -56,7 +56,7 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 
 OPTIMISER                     = {
     "name": "rmsprop",
-	"lr": 0.0001,
+	"lr": 0.00001,
 	#"lr": 0.000001,
 	#"lr": 0.00001,
 }
