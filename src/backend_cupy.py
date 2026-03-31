@@ -11,7 +11,7 @@ _SCRATCH = {}
 def get_scratch(shape, dtype=cp.float32, fill=None):
 	key = (shape, dtype)
 	if key not in _SCRATCH:
-		_SCRATCH[key] = cp.empty(shape, dtype=dtype)
+		_SCRATCH[key] = cp.zeros(shape, dtype=dtype)
 	buf = _SCRATCH[key]
 	if fill is not None:
 		buf.fill(fill)

@@ -130,9 +130,9 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7,
 					extra_feats += pixels_per_patch
 
 			self.N_features = self.base_feats + extra_feats
-			self.nb_scratch = cp.empty((self.batch_size, self.N_features), dtype=cp.float32)
+			self.nb_scratch = cp.zeros((self.batch_size, self.N_features), dtype=cp.float32)
 
-			self.yb_scratch = cp.empty((self.batch_size, self.output_dim), dtype=cp.float32)
+			self.yb_scratch = cp.zeros((self.batch_size, self.output_dim), dtype=cp.float32)
 			self.perm = cp.arange(self.N, dtype=cp.int32)
 
 			del Y_flat, X_pad, xx, yy
