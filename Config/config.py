@@ -4,17 +4,19 @@ WORKER_CHUNK_SIZE = 20
 
 # --- Generalisation Settings ---
 ENABLE_ROTATE_TARGET_IMAGE 		= True
-ROTATE_TARGET_FREQ         		= 10
+ROTATE_TARGET_FREQ         		= 2
 ENABLE_TARGET_ROTATION_SHUFFLE 	= False
 
+HELDOUT_SEED = 0
+
 # --- Viewer toggle ---
-ENABLE_END_VIEWER       = False
+ENABLE_END_VIEWER       = True
 ENABLE_LIVE_VIEWER      = True
 LIVE_UPDATE_INTERVAL    = 1  # Epochs per update
 ENABLE_TELEMETRY_VIEWER = False
 
 # --- Settings ---
-TRAIN               = True
+TRAIN               = False
 FORCE_NEW_MODEL     = False
 MODEL_SEED          = 42       	# Set to None for random seed
 ENABLE_SET_LR       = False
@@ -127,6 +129,6 @@ DEFAULT_MODEL_NAME          = "nn_model"
 LOSS_NAME       = "wrapped_combined"
 
 # --- Image ---
-TARGET_IMAGE_ID     = 2 # 4, 6, 5, 2, 1
+TARGET_IMAGE_ID     = 1 # 4, 6, 5, 2, 1
 
 INPUT_CONFIG_PATH = "Config/input_config.json"

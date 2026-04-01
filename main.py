@@ -5,7 +5,7 @@ import cupy as cp
 import numpy as np
 #from backend_cupy import get_vram_usage
 from Config.config import (
-	EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, TARGET_IMAGE_ID,
+	EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, HELDOUT_SEED, TARGET_IMAGE_ID,
 	PATCH_SIZE, OUTPUT_ACT, HIDDEN_ACT, LEARNING_RATE, INPUT_CONFIG_PATH,
 	GRAD_CLIP, MODEL_SEED, FORCE_NEW_MODEL, DEFAULT_MODEL_NAME, SAVE_FOLDER, 
 	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL, CONFIG_FILE, SAVE_INTERVAL,
@@ -95,7 +95,7 @@ def main():
 	
 	
 	layers_cfg = sync_input_config(MODEL_SAVE_PATH)
-	input_config = inject_input_seeds(layers_cfg, 0)
+	input_config = inject_input_seeds(layers_cfg, HELDOUT_SEED)
 	
 	
 	X_u8, channel_names = build_input_stack(H, W, input_config)
