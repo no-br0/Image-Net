@@ -443,9 +443,9 @@ def train_streaming(model, *, epochs, batch_size, shuffle=True,
 		save_time = save_end - save_start
 		
 		# --- Telemetry & thermal safety ---
-		log_vram_usage(model.GLOBAL_EPOCH)
+		#log_vram_usage(model.GLOBAL_EPOCH)
 
-		sleep_time += post_epoch_cooling(model, local_epoch)
+		#sleep_time += post_epoch_cooling(model, local_epoch)
 		
 
 		# --- Timing stats ---
