@@ -28,12 +28,13 @@ from src.neural_net import NeuralNet
 from src.data_utils import make_neighbor_stream, load_rgb_image
 from Config.image_registry import get_image_path
 from helpers.sync_input_config import sync_input_config
-from src.backend_cupy import to_cpu
+from src.backend_cupy import log_vram_usage, to_cpu
 from Telemetry.telemetry import TelemetryLogger, make_model_signature
 from src.final_viewer import final_viewer
 from src.display_utils import predict_full_from_stream, publish_frame
 from src.worker_train import worker_main
 import multiprocessing as mp
+from src.cooling import post_epoch_cooling
 
 # -------- Utilities --------
 def flush_pool():
@@ -230,8 +231,13 @@ def main():
 						cb_end = time.perf_counter()
 						callback_time = (cb_end - cb_start) - sleep_time
 
+						log_vram_usage(model.GLOBAL_EPOCH)
+						
+						pe_sleep_time = post_epoch_cooling(model, model.GLOBAL_EPOCH)
+
 						timing["epoch_breakdown"]["callback_time"] = callback_time
 						timing["epoch_breakdown"]["sleep_time"] += sleep_time
+						timing["epoch_breakdown"]["sleep_time"] += pe_sleep_time
 						timing["epoch_time"] += callback_time + sleep_time
 
 						with open(TIME_LOG_PATH, "a") as f:

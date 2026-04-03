@@ -19,8 +19,10 @@ Config/image_registry.json
 Config/input_config.json
 Config/settings.json
 
-_docs/
+_docs/*
 _research/
 
 _docs/full/
 _research/full/
+
+!_docs/procedural_inputs/

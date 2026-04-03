@@ -4,19 +4,19 @@ WORKER_CHUNK_SIZE = 20
 
 # --- Generalisation Settings ---
 ENABLE_ROTATE_TARGET_IMAGE 		= True
-ROTATE_TARGET_FREQ         		= 2
+ROTATE_TARGET_FREQ         		= 20
 ENABLE_TARGET_ROTATION_SHUFFLE 	= False
 
 HELDOUT_SEED = 0
 
 # --- Viewer toggle ---
-ENABLE_END_VIEWER       = True
+ENABLE_END_VIEWER       = False
 ENABLE_LIVE_VIEWER      = True
 LIVE_UPDATE_INTERVAL    = 1  # Epochs per update
 ENABLE_TELEMETRY_VIEWER = False
 
 # --- Settings ---
-TRAIN               = False
+TRAIN               = True
 FORCE_NEW_MODEL     = False
 MODEL_SEED          = 42       	# Set to None for random seed
 ENABLE_SET_LR       = False
