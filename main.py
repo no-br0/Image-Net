@@ -238,7 +238,7 @@ def main():
 						timing["epoch_breakdown"]["callback_time"] = callback_time
 						timing["epoch_breakdown"]["sleep_time"] += sleep_time
 						timing["epoch_breakdown"]["sleep_time"] += pe_sleep_time
-						timing["epoch_time"] += callback_time + sleep_time
+						timing["epoch_time"] += callback_time + sleep_time + pe_sleep_time
 
 						with open(TIME_LOG_PATH, "a") as f:
 							f.write(json.dumps(timing) + "\n")
