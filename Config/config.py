@@ -15,6 +15,9 @@ ENABLE_LIVE_VIEWER      = True
 LIVE_UPDATE_INTERVAL    = 1  # Epochs per update
 ENABLE_TELEMETRY_VIEWER = False
 
+HEIGHT = 720
+WIDTH = 1280
+
 # --- Settings ---
 TRAIN               = True
 FORCE_NEW_MODEL     = False

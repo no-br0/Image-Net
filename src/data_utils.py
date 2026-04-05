@@ -29,6 +29,10 @@ def load_rgb_image(path, resize_to=None):
 	arr = _np.asarray(img, dtype=_np.uint8)
 	return to_device(arr)
 
+def generate_display_dimensions(width, height):
+	arr = cp.zeros((height, width, 3), dtype=cp.uint8)
+	return arr
+
 def make_neighbor_stream(X_img, Y_img, *, patch_size=7, 
 						output_dim=3, batch_size=65536):
 	"""
