@@ -53,10 +53,13 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7,
 			if self.Y_img.ndim == 2:
 				self.Y_img = self.Y_img[..., None]
 
-			self.H, self.W, self.Cx = self.X_img.shape
+			self.H_full, self.W_full, self.Cx = self.X_img.shape
+			self.pad = patch_size // 2
+			self.H = self.H_full - 2 * self.pad
+			self.W = self.W_full - 2 * self.pad
+
 			_, _, Cy = self.Y_img.shape
 			self.patch = int(patch_size)
-			self.pad = self.patch // 2
 			self.N = self.H * self.W
 			self.batch_size = int(batch_size)
 
@@ -67,11 +70,11 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7,
 			self.Y_flat = Y_flat
 
 			# Sliding window view over reflect-padded X
-			X_pad = cp.pad(self.X_img,
-						((self.pad, self.pad), (self.pad, self.pad), (0, 0)),
-						mode="reflect")
+			#X_pad = cp.pad(self.X_img,
+			#			((self.pad, self.pad), (self.pad, self.pad), (0, 0)),
+			#			mode="reflect")
 			swv = cp.lib.stride_tricks.sliding_window_view
-			self.X_win = swv(X_pad,
+			self.X_win = swv(self.X_img,
 							window_shape=(self.patch, self.patch),
 							axis=(0, 1))  # view, not copy
 
@@ -139,7 +142,7 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7,
 			self.yb_scratch = cp.zeros((self.batch_size, self.output_dim), dtype=cp.float32)
 			self.perm = cp.arange(self.N, dtype=cp.int32)
 
-			del Y_flat, X_pad, xx, yy
+			del Y_flat, xx, yy
 			del grid_y, grid_x, swv
 			
 			
