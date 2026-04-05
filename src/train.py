@@ -25,7 +25,12 @@ def build_stream(input_config, model, batch_size):
 	input_config = inject_input_seeds(input_config, get_seed(model.TARGET_IMAGE))
 	Y_rgb = load_rgb_image(get_image_path(model.TARGET_IMAGE))
 	H, W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
-	X_u8, channel_names = build_input_stack(H, W, input_config)
+
+	pad = PATCH_SIZE // 2
+	H_proc = H  + (2*pad)
+	W_proc = W  + (2*pad)
+
+	X_u8, channel_names = build_input_stack(H_proc, W_proc, input_config)
 	stream = make_neighbor_stream(X_u8, Y_rgb, patch_size=PATCH_SIZE, 
 								output_dim=3,
 								batch_size=batch_size)

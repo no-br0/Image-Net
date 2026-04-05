@@ -99,8 +99,11 @@ def main():
 	layers_cfg = sync_input_config(MODEL_SAVE_PATH)
 	input_config = inject_input_seeds(layers_cfg, HELDOUT_SEED)
 	
+	pad = PATCH_SIZE // 2
+	H_proc = H  + (2*pad)
+	W_proc = W  + (2*pad)
 	
-	X_u8, channel_names = build_input_stack(H, W, input_config)
+	X_u8, channel_names = build_input_stack(H_proc, W_proc, input_config)
 	print(f"[config] H={H}, W={W}, epochs={EPOCHS}, batch_size={BATCH_SIZE}")
 	
 	
