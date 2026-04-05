@@ -5,11 +5,11 @@ import cupy as cp
 import numpy as np
 #from backend_cupy import get_vram_usage
 from Config.config import (
-	EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, HELDOUT_SEED, TARGET_IMAGE_ID,
+	EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, HEIGHT, HELDOUT_SEED, TARGET_IMAGE_ID,
 	PATCH_SIZE, OUTPUT_ACT, HIDDEN_ACT, LEARNING_RATE, INPUT_CONFIG_PATH,
 	GRAD_CLIP, MODEL_SEED, FORCE_NEW_MODEL, DEFAULT_MODEL_NAME, SAVE_FOLDER, 
 	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL, CONFIG_FILE, SAVE_INTERVAL,
-	ENABLE_CUSTOM_MODEL_NAME, ENABLE_INPUT_CACHING, ENABLE_END_VIEWER, WORKER_CHUNK_SIZE
+	ENABLE_CUSTOM_MODEL_NAME, ENABLE_INPUT_CACHING, ENABLE_END_VIEWER, WIDTH, WORKER_CHUNK_SIZE
 )
 #from Config.Inputs.layers_config import layers_cfg
 import Config.log_dir as log_dir
@@ -25,7 +25,7 @@ from Config.log_dir import (
 from Config.layer_registry import build_input_stack, inject_input_seeds  # optional, not used here
 from src.train import train_streaming
 from src.neural_net import NeuralNet
-from src.data_utils import make_neighbor_stream, load_rgb_image
+from src.data_utils import generate_display_dimensions, make_neighbor_stream, load_rgb_image
 from Config.image_registry import get_image_path
 from helpers.sync_input_config import sync_input_config
 from src.backend_cupy import log_vram_usage, to_cpu
@@ -81,7 +81,8 @@ def main():
 	TRAIN_IMAGE_PATH = get_image_path(TARGET_IMAGE_ID)
 
 	# Load RGB target; keep native size (or enforce H,W if you prefer)
-	Y_rgb = load_rgb_image(TRAIN_IMAGE_PATH)
+	Y_rgb = generate_display_dimensions(WIDTH, HEIGHT)
+	#Y_rgb = load_rgb_image(TRAIN_IMAGE_PATH)
 	H, W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
 	
 	
