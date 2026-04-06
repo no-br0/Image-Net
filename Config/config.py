@@ -16,7 +16,7 @@ TRAIN               = True
 FORCE_NEW_MODEL     = True
 MODEL_SEED          = 42       	# Set to None for random seed
 ENABLE_SET_LR       = False
-LEARNING_RATE       = 0.0005	#0.00020 # 2e-6
+LEARNING_RATE       = 0.00001	#0.00020 # 2e-6
 MAX_LEARNING_RATE   = 1e-4
 MIN_LEARNING_RATE   = 1e-8
 ENABLE_ADAPTIVE_LR              = True
@@ -53,7 +53,6 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 
 OPTIMISER                     = {
     "name": "rmsprop",
-	"lr": 0.00001,
 }
 
 
