@@ -59,7 +59,7 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7,
 
 			# Sliding window view over padded input
 			swv = cp.lib.stride_tricks.sliding_window_view
-			self.X_win = swv(self.X_img,
+			self.X_win = swv(X_img,
 							 window_shape=(self.patch, self.patch),
 							 axis=(0, 1))  # view, not copy
 
