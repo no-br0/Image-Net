@@ -132,24 +132,6 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7,
 
 
 
-
-		def cache_full_features(self, batch_size=None):
-			"""
-			Precompute the full feature matrix (including patch/collective stats)
-			for the current X_img/Y_img and store it on the stream.
-			"""
-			feats = []
-			targs = []
-			for xb, yb in self.iter_minibatches(batch_size=batch_size or self.batch_size, sync=False):
-				feats.append(xb.copy())   # copy to avoid overwrite from scratch buffer
-				targs.append(yb.copy())
-			import cupy as cp
-			self.cached_features = cp.concatenate(feats, axis=0)
-			self.cached_targets = cp.concatenate(targs, axis=0)
-			#print("Feature Shape: ",self.cached_features.shape)
-			#print("Target Shape: ",self.cached_targets.shape)
-
-
 		def delete_data(self):
 			del self.H, self.W, self.Cx
 			del self.Y_flat, self.X_win
