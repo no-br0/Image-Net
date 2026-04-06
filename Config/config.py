@@ -1,10 +1,5 @@
 # config.py
 
-# --- Generalisation Settings ---
-ENABLE_ROTATE_TARGET_IMAGE 		= True
-ROTATE_TARGET_FREQ         		= 50
-ENABLE_TARGET_ROTATION_SHUFFLE 	= False
-
 # --- Viewer toggle ---
 ENABLE_END_VIEWER       = False
 ENABLE_LIVE_VIEWER      = True
