@@ -60,9 +60,6 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 
 OPTIMISER                     = {
     "name": "rmsprop",
-	"lr": 0.00001,
-	#"lr": 0.000001,
-	#"lr": 0.00001,
 }
 
 
