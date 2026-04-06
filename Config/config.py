@@ -79,33 +79,6 @@ PATCH_SIZE                      = 7
 
 
 
-
-ENABLE_PATCH_STATS          = False
-ENABLE_PATCH_MEAN           = True
-ENABLE_PATCH_SUM            = False
-ENABLE_PATCH_MIDPOINT       = True
-ENABLE_PATCH_RANGE          = True
-ENABLE_PATCH_MIN            = True
-ENABLE_PATCH_MAX            = True
-
-ENABLE_COLLECTIVE_STATS     = False
-ENABLE_COLLECTIVE_MEAN      = True
-ENABLE_COLLECTIVE_SUM       = False
-ENABLE_COLLECTIVE_MIDPOINT  = True
-ENABLE_COLLECTIVE_RANGE     = True
-ENABLE_COLLECTIVE_MIN       = True
-ENABLE_COLLECTIVE_MAX       = True
-
-
-ENABLE_CROSS_PATCH_PIXELWISE_STATS    = False      # used to calculate stats across the input patches for each pixel location
-ENABLE_CROSS_PATCH_PIXELWISE_MEAN     = True
-ENABLE_CROSS_PATCH_PIXELWISE_SUM      = False
-ENABLE_CROSS_PATCH_PIXELWISE_MIDPOINT = True
-ENABLE_CROSS_PATCH_PIXELWISE_RANGE    = True
-ENABLE_CROSS_PATCH_PIXELWISE_MIN      = True
-ENABLE_CROSS_PATCH_PIXELWISE_MAX      = True
-
-
 # --- Model ---
 HIDDEN_ACT                      = "sin"         # "relu", "linear", "tanh", "sin", "cos", "sigmoid_255", "tanh_255"
 OUTPUT_ACT                      = "sigmoid_255" # "sigmoid_255", "tanh_255", "cos_255", "sin_255"
