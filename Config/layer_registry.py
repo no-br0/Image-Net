@@ -41,6 +41,7 @@ LAYER_REGISTRY = {
     "checkerboard_radial": gen_checkerboard_radial,
 }
 
+
 def build_input_stack(H: int, W: int, layers_cfg: List[Dict]) -> Tuple[cp.ndarray, List[str]]:
     """
     Build a stacked (H, W, C) uint8 tensor on GPU from a list of layer configs.
