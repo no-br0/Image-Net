@@ -94,6 +94,6 @@ DEFAULT_MODEL_NAME          = "nn_model"
 LOSS_NAME       = "wrapped_combined"
 
 # --- Image ---
-TARGET_IMAGE_ID     = 27 # 4, 6, 5, 2, 1
+TARGET_IMAGE_ID     = 1 # 4, 6, 5, 2, 1
 
 INPUT_CONFIG_PATH = "Config/input_config.json"
