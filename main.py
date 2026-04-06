@@ -9,7 +9,7 @@ from Config.config import (
 	PATCH_SIZE, OUTPUT_ACT, HIDDEN_ACT, LEARNING_RATE, INPUT_CONFIG_PATH,
 	GRAD_CLIP, MODEL_SEED, FORCE_NEW_MODEL, DEFAULT_MODEL_NAME, SAVE_FOLDER, 
 	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL, CONFIG_FILE, SAVE_INTERVAL,
-	ENABLE_CUSTOM_MODEL_NAME, ENABLE_INPUT_CACHING, ENABLE_END_VIEWER, WIDTH, WORKER_CHUNK_SIZE
+	ENABLE_CUSTOM_MODEL_NAME, ENABLE_END_VIEWER, WIDTH, WORKER_CHUNK_SIZE
 )
 #from Config.Inputs.layers_config import layers_cfg
 import Config.log_dir as log_dir
@@ -112,9 +112,6 @@ def main():
 	stream = make_neighbor_stream(X_u8, Y_rgb, patch_size=PATCH_SIZE, 
 								output_dim=3,
 								batch_size=BATCH_SIZE)
-	if ENABLE_INPUT_CACHING:
-		stream.set_epoch(shuffle=False)
-		stream.cache_full_features()
 	
 	flush_pool()
 
@@ -144,11 +141,7 @@ def main():
 			#import traceback
 			#traceback.print_exc()
 			print(f"[stage] Failed to load model: {e}")
-			#if os.path.exists(TELEMETRY_LOG_PATH):
-			#    os.remove(TELEMETRY_LOG_PATH)
-	#else:
-		#if os.path.exists(TELEMETRY_LOG_PATH):
-		#    os.remove(TELEMETRY_LOG_PATH)
+
 	
 	TIME_LOG_PATH = log_dir.TIME_LOG
 
@@ -159,8 +152,6 @@ def main():
 	prune_telemetry(GPU_LOG_PATH, model.GLOBAL_EPOCH)
 	
 
-	# Build model signature from topology + input config
-	#model_signature = make_model_signature(model.topology, model.input_config)
 
 	# Create telemetry logger (toggle from config)
 	telemetry_logger = TelemetryLogger(
@@ -186,18 +177,6 @@ def main():
 
 	# Train — for per-pixel RGB, use plain MSE (avoid perceptual which expects 2D fields)
 	try:
-		#if TRAIN:
-		#	bs = BATCH_SIZE
-		#	print(f"[train] Using batch size: {bs}")
-		#	train_streaming(
-		#		model,
-		#		epochs=EPOCHS,
-		#		batch_size=bs,
-		#		shuffle=ENABLE_SHUFFLE,
-		#		error_func=LOSS_REGISTRY[LOSS_NAME],
-		#		on_epoch_end=on_epoch_end,
-		#		telemetry_logger=telemetry_logger
-		#	)
 		if TRAIN:
 			bs = BATCH_SIZE
 			chunk_size=WORKER_CHUNK_SIZE
