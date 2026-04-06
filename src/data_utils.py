@@ -1,13 +1,5 @@
 # data_utils.py
 from src.backend_cupy import to_device
-from Config.config import (ENABLE_PATCH_STATS, ENABLE_PATCH_MEAN, ENABLE_PATCH_SUM, ENABLE_PATCH_MIDPOINT,
-						ENABLE_PATCH_RANGE, ENABLE_COLLECTIVE_STATS, ENABLE_COLLECTIVE_MEAN,
-						ENABLE_COLLECTIVE_SUM, ENABLE_COLLECTIVE_MIDPOINT, ENABLE_COLLECTIVE_RANGE,
-						ENABLE_PATCH_MIN, ENABLE_PATCH_MAX, ENABLE_COLLECTIVE_MIN, ENABLE_COLLECTIVE_MAX,
-						ENABLE_CROSS_PATCH_PIXELWISE_STATS, ENABLE_CROSS_PATCH_PIXELWISE_MEAN,
-						ENABLE_CROSS_PATCH_PIXELWISE_SUM, ENABLE_CROSS_PATCH_PIXELWISE_MIDPOINT,
-						ENABLE_CROSS_PATCH_PIXELWISE_RANGE, ENABLE_CROSS_PATCH_PIXELWISE_MIN, 
-						ENABLE_CROSS_PATCH_PIXELWISE_MAX)
 from PIL import Image
 import cupy as cp
 
@@ -89,54 +81,9 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7,
 			P = self.patch
 			self.neighbor_idx = cp.arange(P * P, dtype=cp.int32)
 				
-			
 			self.base_feats = len(self.neighbor_idx) * self.Cx
-			
-			extra_feats = 0
-			if ENABLE_PATCH_STATS:
-				if ENABLE_PATCH_MEAN:
-					extra_feats += self.Cx
-				if ENABLE_PATCH_SUM:
-					extra_feats += self.Cx
-				if ENABLE_PATCH_MIDPOINT:
-					extra_feats += self.Cx
-				if ENABLE_PATCH_RANGE:
-					extra_feats += self.Cx
-				if ENABLE_PATCH_MIN:
-					extra_feats += self.Cx
-				if ENABLE_PATCH_MAX:
-					extra_feats += self.Cx
-			
-			if ENABLE_COLLECTIVE_STATS:
-				if ENABLE_COLLECTIVE_MEAN:
-					extra_feats += 1
-				if ENABLE_COLLECTIVE_SUM:
-					extra_feats += 1
-				if ENABLE_COLLECTIVE_MIDPOINT:
-					extra_feats += 1
-				if ENABLE_COLLECTIVE_RANGE:
-					extra_feats += 1
-				if ENABLE_COLLECTIVE_MIN:
-					extra_feats += 1
-				if ENABLE_COLLECTIVE_MAX:
-					extra_feats += 1
-			
-			if ENABLE_CROSS_PATCH_PIXELWISE_STATS:
-				pixels_per_patch = self.patch * self.patch
-				if ENABLE_CROSS_PATCH_PIXELWISE_MEAN:
-					extra_feats += pixels_per_patch
-				if ENABLE_CROSS_PATCH_PIXELWISE_SUM:
-					extra_feats += pixels_per_patch
-				if ENABLE_CROSS_PATCH_PIXELWISE_MIDPOINT:
-					extra_feats += pixels_per_patch
-				if ENABLE_CROSS_PATCH_PIXELWISE_RANGE:
-					extra_feats += pixels_per_patch
-				if ENABLE_CROSS_PATCH_PIXELWISE_MIN:
-					extra_feats += pixels_per_patch
-				if ENABLE_CROSS_PATCH_PIXELWISE_MAX:
-					extra_feats += pixels_per_patch
 
-			self.N_features = self.base_feats + extra_feats
+			self.N_features = self.base_feats
 			self.nb_scratch = cp.zeros((self.batch_size, self.N_features), dtype=cp.float32)
 
 			self.yb_scratch = cp.zeros((self.batch_size, self.output_dim), dtype=cp.float32)
@@ -176,117 +123,6 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7,
 
 				# Normalize ONLY the base features
 				self.nb_scratch[:bs, :self.base_feats] = nb.astype(cp.float32, copy=False)
-
-				# Append extras after base_feats
-				offset = self.base_feats
-				
-				# Work out the actual number of channels in this patch tensor
-				patch_channels = wb.shape[-1]  # dynamic, matches patch_sum.shape[1]
-
-				if ENABLE_PATCH_STATS:
-					
-					if ENABLE_PATCH_MEAN:
-						patch_mean   = wb.mean(axis=(1, 2))
-						self.nb_scratch[:bs, offset:offset + patch_channels] = patch_mean
-						offset += patch_channels
-						
-					if ENABLE_PATCH_SUM:
-						patch_sum    = wb.sum(axis=(1, 2))
-						self.nb_scratch[:bs, offset:offset + patch_channels] = patch_sum
-						offset += patch_channels
-						
-					if ENABLE_PATCH_MIDPOINT:
-						patch_max = wb.max(axis=(1, 2))
-						patch_min = wb.min(axis=(1, 2))
-						patch_mid = (patch_max + patch_min) / 2
-						self.nb_scratch[:bs, offset:offset + patch_channels] = patch_mid
-						offset += patch_channels
-						
-					if ENABLE_PATCH_RANGE:
-						patch_max = wb.max(axis=(1, 2))
-						patch_min = wb.min(axis=(1, 2))
-						patch_range = patch_max - patch_min
-						self.nb_scratch[:bs, offset:offset + patch_channels] = patch_range
-						offset += patch_channels
-						
-					if ENABLE_PATCH_MIN:
-						patch_min = wb.min(axis=(1, 2))
-						self.nb_scratch[:bs, offset:offset + patch_channels] = patch_min
-						offset += patch_channels
-						
-					if ENABLE_PATCH_MAX:
-						patch_max = wb.max(axis=(1, 2))
-						self.nb_scratch[:bs, offset:offset + patch_channels] = patch_max
-						offset += patch_channels
-
-
-				if ENABLE_COLLECTIVE_STATS:
-					flat_vals = wb.reshape(bs, -1)
-					
-					if ENABLE_COLLECTIVE_MEAN:
-						f_mean = flat_vals.mean(axis=1, keepdims=True)
-						self.nb_scratch[:bs, offset:offset + 1] = f_mean
-						offset += 1
-						
-					if ENABLE_COLLECTIVE_SUM:
-						f_sum = flat_vals.sum(axis=1, keepdims=True)
-						self.nb_scratch[:bs, offset:offset + 1] = f_sum
-						offset += 1
-					
-					if ENABLE_COLLECTIVE_MIDPOINT:
-						f_max = flat_vals.max(axis=1, keepdims=True)
-						f_min = flat_vals.min(axis=1, keepdims=True)
-						f_mid = (f_max + f_min) / 2
-						self.nb_scratch[:bs, offset:offset + 1] = f_mid
-						offset += 1
-						
-					if ENABLE_COLLECTIVE_RANGE:
-						f_max = flat_vals.max(axis=1, keepdims=True)
-						f_min = flat_vals.min(axis=1, keepdims=True)
-						f_range = f_max - f_min
-						self.nb_scratch[:bs, offset:offset + 1] = f_range
-						offset += 1
-						
-					if ENABLE_COLLECTIVE_MIN:
-						f_min = flat_vals.min(axis=1, keepdims=True)
-						self.nb_scratch[:bs, offset:offset + 1] = f_min
-						offset += 1
-						
-					if ENABLE_COLLECTIVE_MAX:
-						f_max = flat_vals.max(axis=1, keepdims=True)
-						self.nb_scratch[:bs, offset:offset + 1] = f_max
-						offset += 1
-
-
-				if ENABLE_CROSS_PATCH_PIXELWISE_STATS:
-					
-					pix_min  = wb.min(axis=(0,1))
-					pix_max  = wb.max(axis=(0,1))
-					pix_mean = wb.mean(axis=(0,1))
-					pix_mid   = (pix_min + pix_max) * 0.5
-					pix_range = pix_max - pix_min
-					
-					if ENABLE_CROSS_PATCH_PIXELWISE_MEAN:
-						self.nb_scratch[:bs, offset:offset + pix_mean.size] = pix_mean.reshape(1, -1)
-						offset += pix_mean.size
-					if ENABLE_CROSS_PATCH_PIXELWISE_MIDPOINT:
-						self.nb_scratch[:bs, offset:offset + pix_mid.size] = pix_mid.reshape(1, -1)
-						offset += pix_mid.size
-					if ENABLE_CROSS_PATCH_PIXELWISE_RANGE:
-						self.nb_scratch[:bs, offset:offset + pix_range.size] = pix_range.reshape(1, -1)
-						offset += pix_range.size
-					if ENABLE_CROSS_PATCH_PIXELWISE_MIN:
-						self.nb_scratch[:bs, offset:offset + pix_min.size] = pix_min.reshape(1, -1)
-						offset += pix_min.size
-					if ENABLE_CROSS_PATCH_PIXELWISE_MAX:
-						self.nb_scratch[:bs, offset:offset + pix_max.size] = pix_max.reshape(1, -1)
-						offset += pix_max.size
-					if ENABLE_CROSS_PATCH_PIXELWISE_SUM:
-						pix_sum  = wb.sum(axis=0)
-						self.nb_scratch[:bs, offset:offset + pix_sum.size] = pix_sum.reshape(1, -1)
-						offset += pix_sum.size
-
-
 				self.yb_scratch[:bs] = self.Y_flat[sel]
 
 				if sync:
