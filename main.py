@@ -4,11 +4,11 @@ import cupy as cp
 import numpy as np
 #from backend_cupy import get_vram_usage
 from Config.config import (
-	EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, TARGET_IMAGE_ID,
+	ENABLE_LIVE_VIEWER, EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, TARGET_IMAGE_ID,
 	PATCH_SIZE, OUTPUT_ACT, HIDDEN_ACT, LEARNING_RATE, INPUT_CONFIG_PATH,
 	GRAD_CLIP, MODEL_SEED, FORCE_NEW_MODEL, DEFAULT_MODEL_NAME, SAVE_FOLDER, 
 	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL, CONFIG_FILE, 
-	ENABLE_CUSTOM_MODEL_NAME, ENABLE_INPUT_CACHING, ENABLE_END_VIEWER
+	ENABLE_CUSTOM_MODEL_NAME, ENABLE_END_VIEWER
 )
 #from Config.Inputs.layers_config import layers_cfg
 import Config.log_dir as log_dir
@@ -164,12 +164,14 @@ def main():
 	# Per-epoch callback: publish prediction
 	def on_epoch_end(epoch, nn):
 		nonlocal stream
-		if ((epoch % LIVE_UPDATE_INTERVAL == 0) or epoch == 1):
+		if ((epoch % LIVE_UPDATE_INTERVAL == 0) or epoch == 0) and ENABLE_LIVE_VIEWER:
 			try:
 				pred, sleep_time = predict_full_from_stream(nn, stream, batch_size=BATCH_SIZE)
 				publish_frame(pred)
 			except Exception as e:
 				print(f"[viewer] on_epoch_end failed: {e}")
+		else:
+			sleep_time = 0
 		return sleep_time
 
 	# Train — for per-pixel RGB, use plain MSE (avoid perceptual which expects 2D fields)
