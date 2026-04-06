@@ -75,7 +75,7 @@ class NeuralNet:
 		self.LOWEST_LOSS = None
 		self.LOWEST_RAW_LOSS = None
 		self.NORM_LOWEST_RAW_LOSS = None
-		self.GLOBAL_EPOCH = 0
+		self.GLOBAL_EPOCH = -1
 		
 		self.PREVIOUS_LOSS = None
 		self.PREVIOUS_RAW_LOSS = None
