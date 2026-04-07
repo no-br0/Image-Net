@@ -114,6 +114,11 @@ def worker_main(conn, model_state, epochs, batch_size, loss_name, shuffle):
 				cp.get_default_memory_pool().free_all_blocks()
 				stream = build_stream(model.input_config, model, batch_size)
 
+		if is_last_iteration:
+			stream.delete_data()
+			del stream
+			cp.get_default_memory_pool().free_all_blocks()
+
 
 	# final state for this chunk
 	conn.send(("done", model.to_state()))
