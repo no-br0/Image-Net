@@ -169,15 +169,6 @@ def main():
 	prune_telemetry(TELEMETRY_OPTIMISER_PATH, model.GLOBAL_EPOCH)
 	prune_telemetry(TIME_LOG_PATH, model.GLOBAL_EPOCH)
 	prune_telemetry(GPU_LOG_PATH, model.GLOBAL_EPOCH)
-	
-
-
-	# Create telemetry logger (toggle from config)
-	telemetry_logger = TelemetryLogger(
-		log_dir=TELEMETRY_LOG_FOLDER,
-		model_signature=model_name,
-		enabled=True  # or read from config["telemetry"]["enabled"]
-	)
 
 
 	# Train — for per-pixel RGB, use plain MSE (avoid perceptual which expects 2D fields)
