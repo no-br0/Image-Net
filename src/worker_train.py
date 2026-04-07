@@ -15,7 +15,6 @@ def worker_main(conn, model_state, epochs, batch_size, loss_name, shuffle):
             batch_size=batch_size,
             shuffle=shuffle,
             error_func=LOSS_REGISTRY[loss_name],
-            on_epoch_end=None,
             telemetry_logger=None,
         )
 

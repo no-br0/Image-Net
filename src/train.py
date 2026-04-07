@@ -3,7 +3,7 @@ from Config.log_dir import (GPU_LOG_PATH, TIME_LOG,
 							LOSS_LOG_PATH, GPU_TEMP_LOG_PATH,
 							RAW_LOSS_LOG_PATH, TELEMETRY_LOG_FOLDER,
 							LOWEST_RAW_LOSS_LOG_PATH, LOWEST_LOSS_LOG_PATH,)
-from Config.config import (SAVE_INTERVAL, CONFIG_FILE, LOWEST_LOSS_THRESHOLD,
+from Config.config import (MULTI_IMAGE_COUNT, SAVE_INTERVAL, CONFIG_FILE, LOWEST_LOSS_THRESHOLD,
 						LR_DECREASE_MULTIPLIER, LR_INCREASE_MULTIPLIER,
 						MAX_LEARNING_RATE, MIN_LEARNING_RATE, ENABLE_ADAPTIVE_LR, 
 						ADAPTIVE_LR_INVERTED, ROTATE_TARGET_FREQ, ENABLE_ROTATE_TARGET_IMAGE,
@@ -19,26 +19,71 @@ from Config.layer_registry import inject_input_seeds, build_input_stack
 from Config.image_registry import get_registry_size, get_seed, get_image_path
 from src.data_utils import load_rgb_image, make_neighbor_stream
 from Telemetry.telemetry import TelemetryLogger
-
+from cupy.lib.stride_tricks import sliding_window_view as swv
 
 def build_stream(input_config, model, batch_size):
-	input_config = inject_input_seeds(input_config, get_seed(model.TARGET_IMAGE))
-	Y_rgb = load_rgb_image(get_image_path(model.TARGET_IMAGE))
-	H, W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
+    # Use MULTI_IMAGE_COUNT images, not TARGET_IMAGE
+    P_all, T_all = build_multi_image_dataset(model, input_config, PATCH_SIZE)
 
-	pad = PATCH_SIZE // 2
+    # Stream now expects precomputed (P_all, T_all)
+    stream = make_neighbor_stream(P_all, T_all, batch_size=batch_size)
+    return stream
+
+
+
+def get_active_images(global_epoch, reg_size, count):
+	seed = int(max(0, global_epoch))
+
+	rng = cp.random.RandomState(seed)
+	perm = rng.permutation(reg_size)
+	perm = perm + 1
+	return (perm[:count]).tolist()
+
+
+def build_image_dataset(image_id:int, input_config, patch_size):
+	cfg = inject_input_seeds(input_config, get_seed(image_id))
+
+	Y_rgb = load_rgb_image(get_image_path(image_id))
+	H, W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
+	pad = patch_size // 2
 	H_proc = H  + (2*pad)
 	W_proc = W  + (2*pad)
 
-	X_u8, channel_names = build_input_stack(H_proc, W_proc, input_config)
-	stream = make_neighbor_stream(X_u8, Y_rgb, patch_size=PATCH_SIZE, 
-								output_dim=3,
-								batch_size=batch_size)
-	return stream
+	X_u8, _ = build_input_stack(H_proc, W_proc, cfg)
 
+	H_full, W_full, Cx = X_u8.shape
+	assert H_full - 2 * pad == H and W_full - 2 * pad == W
+
+	X_win = swv(X_u8, window_shape=(patch_size, patch_size), axis=(0,1))
+	P = X_win.reshape(H * W, patch_size * patch_size * Cx).astype(cp.float32)
+
+	T = Y_rgb.reshape(-1, 3).astype(cp.float32)
+
+	return P, T
+
+def build_multi_image_dataset(model, input_config, patch_size:int):
+	reg_size = get_registry_size()
+
+	if not ENABLE_ROTATE_TARGET_IMAGE:
+		active_ids = get_active_images(0, reg_size, MULTI_IMAGE_COUNT)
+	else:
+		active_ids = get_active_images(model.GLOBAL_EPOCH//ROTATE_TARGET_FREQ, reg_size, MULTI_IMAGE_COUNT)
+
+	P_list = []
+	T_list = []
+
+	for img_id in active_ids:
+		P, T = build_image_dataset(img_id, input_config, patch_size)
+		P_list.append(P)
+		T_list.append(T)
+
+	P_all = cp.concatenate(P_list, axis=0)
+	T_all = cp.concatenate(T_list, axis=0)
+
+	return P_all, T_all
 
 def train_streaming(model, *, epochs, batch_size, shuffle=True,
-					error_func=None, on_epoch_end=None, telemetry_logger=None):
+					error_func=None, telemetry_logger=None):
 	LOWEST_LOSS          = model.LOWEST_LOSS
 	LOWEST_RAW_LOSS      = model.LOWEST_RAW_LOSS
 	NORM_LOWEST_RAW_LOSS = model.NORM_LOWEST_RAW_LOSS

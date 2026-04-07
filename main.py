@@ -23,7 +23,6 @@ from Config.log_dir import (
 							CURRENT_MODEL_NAME_PATH
 							)
 from Config.layer_registry import build_input_stack, inject_input_seeds  # optional, not used here
-from src.train import train_streaming
 from src.neural_net import NeuralNet
 from src.data_utils import generate_display_dimensions, make_neighbor_stream, load_rgb_image
 from Config.image_registry import get_image_path
@@ -35,6 +34,7 @@ from src.display_utils import predict_full_from_stream, publish_frame
 from src.worker_train import worker_main
 import multiprocessing as mp
 from src.cooling import post_epoch_cooling
+from cupy.lib.stride_tricks import sliding_window_view as swv
 
 # -------- Utilities --------
 def flush_pool():
@@ -51,7 +51,20 @@ def prune_telemetry(telemetry_path, last_epoch):
 					cleaned.append(line)
 		with open(telemetry_path, "w") as f:
 			f.writelines(cleaned)
-					
+
+
+def extract_patches_for_display(X_u8, Y_rgb, patch_size):
+	pad = patch_size // 2
+	H_full, W_full, Cx = X_u8.shape
+	H = H_full - 2*pad
+	W = W_full - 2*pad
+
+	X_win = swv(X_u8, window_shape=(patch_size, patch_size), axis=(0,1))
+	P = X_win.reshape(H * W, patch_size*patch_size*Cx).astype(cp.float32)
+
+	T = Y_rgb.reshape(-1, 3).astype(cp.float32)
+
+	return P, T
 
 
 def save_model_name(model_name):
@@ -106,12 +119,18 @@ def main():
 	X_u8, channel_names = build_input_stack(H_proc, W_proc, input_config)
 	print(f"[config] H={H}, W={W}, epochs={EPOCHS}, batch_size={BATCH_SIZE}")
 	
-	
+
+	P_display, T_display = extract_patches_for_display(X_u8, Y_rgb, PATCH_SIZE)	
+	stream = make_neighbor_stream(P_display, T_display, 
+								batch_size=BATCH_SIZE)
+	stream.H = H
+	stream.W = W
+	stream.set_epoch(shuffle=False)
 
 	# Stream: neighbors (+coords) -> center RGB
-	stream = make_neighbor_stream(X_u8, Y_rgb, patch_size=PATCH_SIZE, 
-								output_dim=3,
-								batch_size=BATCH_SIZE)
+	#stream = make_neighbor_stream(X_u8, Y_rgb, patch_size=PATCH_SIZE, 
+	#							output_dim=3,
+	#							batch_size=BATCH_SIZE)
 	
 	flush_pool()
 
@@ -159,21 +178,7 @@ def main():
 		model_signature=model_name,
 		enabled=True  # or read from config["telemetry"]["enabled"]
 	)
-			
-			
 
-	# Per-epoch callback: publish prediction
-	def on_epoch_end(epoch, nn):
-		nonlocal stream
-		if ((epoch % LIVE_UPDATE_INTERVAL == 0) or epoch == 1):
-			try:
-				pred, sleep_time = predict_full_from_stream(nn, stream, batch_size=BATCH_SIZE)
-				publish_frame(pred)
-			except Exception as e:
-				print(f"[viewer] on_epoch_end failed: {e}")
-		else:
-			sleep_time = 0
-		return sleep_time
 
 	# Train — for per-pixel RGB, use plain MSE (avoid perceptual which expects 2D fields)
 	try:
@@ -211,6 +216,7 @@ def main():
 								publish_frame(pred)
 							except Exception as e:
 								print(f"[viewer] live update failed: {e}")
+								sleep_time = 0
 						else:
 							sleep_time = 0
 						cb_end = time.perf_counter()

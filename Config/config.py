@@ -9,6 +9,8 @@ ENABLE_TARGET_ROTATION_SHUFFLE 	= False
 
 HELDOUT_SEED = 0
 
+MULTI_IMAGE_COUNT = 1 # number of images trained on simultaneously in a single epoch
+
 # --- Viewer toggle ---
 ENABLE_END_VIEWER       = False
 ENABLE_LIVE_VIEWER      = True

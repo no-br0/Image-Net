@@ -75,7 +75,7 @@ class NeuralNet:
 		self.LOWEST_LOSS = None
 		self.LOWEST_RAW_LOSS = None
 		self.NORM_LOWEST_RAW_LOSS = None
-		self.GLOBAL_EPOCH = -1
+		self.GLOBAL_EPOCH:int = -1
 		
 		self.PREVIOUS_LOSS = None
 		self.PREVIOUS_RAW_LOSS = None
@@ -198,7 +198,7 @@ class NeuralNet:
 	def save(self, path):
 		
 		data = {
-			"GLOBAL_EPOCH": float(self.GLOBAL_EPOCH),
+			"GLOBAL_EPOCH": int(self.GLOBAL_EPOCH),
 			"input_config": np.array(self.input_config, dtype=object),
 			"LOWEST_LOSS": float(self.LOWEST_LOSS),
 			"LOWEST_RAW_LOSS": float(self.LOWEST_RAW_LOSS),
@@ -284,9 +284,9 @@ class NeuralNet:
 		nn.PREVIOUS_ABS_RAW_LOSS_DELTA = npz["PREVIOUS_ABS_RAW_LOSS_DELTA"].item()
 
 		if "GLOBAL_EPOCH" in npz:
-			nn.GLOBAL_EPOCH = float(npz["GLOBAL_EPOCH"])
+			nn.GLOBAL_EPOCH = int(npz["GLOBAL_EPOCH"])
 		else:
-			nn.GLOBAL_EPOCH = 0
+			nn.GLOBAL_EPOCH = int(0)
 			
 		if "seed" in npz:
 			nn.seed = int(npz["seed"])
@@ -315,7 +315,7 @@ class NeuralNet:
 	def to_state(self):
 
 		return {
-			"GLOBAL_EPOCH": float(self.GLOBAL_EPOCH),
+			"GLOBAL_EPOCH": int(self.GLOBAL_EPOCH),
 			"input_config": self.input_config,
 			"LOWEST_LOSS": float(self.LOWEST_LOSS) if self.LOWEST_LOSS is not None else None,
 			"LOWEST_RAW_LOSS": float(self.LOWEST_RAW_LOSS) if self.LOWEST_RAW_LOSS is not None else None,
@@ -365,7 +365,7 @@ class NeuralNet:
 		nn.PREVIOUS_RAW_BREAKDOWN_DELTA = state["PREVIOUS_RAW_BREAKDOWN_DELTA"]
 		nn.PREVIOUS_ABS_RAW_LOSS_DELTA = state["PREVIOUS_ABS_RAW_LOSS_DELTA"]
 
-		nn.GLOBAL_EPOCH = state["GLOBAL_EPOCH"]
+		nn.GLOBAL_EPOCH = int(state["GLOBAL_EPOCH"])
 		nn.seed = state["seed"]
 		nn.TARGET_IMAGE = None if state["TARGET_IMAGE"] == -1 else state["TARGET_IMAGE"]
 
