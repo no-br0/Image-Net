@@ -30,8 +30,6 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	previous_raw_breakdown_delta = model.PREVIOUS_RAW_BREAKDOWN_DELTA
 	previous_abs_raw_loss_delta = model.PREVIOUS_ABS_RAW_LOSS_DELTA
 	
-	if model.TARGET_IMAGE == None:
-		model.TARGET_IMAGE = 1
 
 	telemetry_logger = TelemetryLogger(
 		log_dir=TELEMETRY_LOG_FOLDER,
@@ -273,7 +271,6 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	epoch_time = time.perf_counter() - t0
 	active_time = epoch_time - sleep_time
 	total_time += epoch_time
-	avg_epoch_time = total_time / model.GLOBAL_EPOCH
 	
 	telemetry_start = time.perf_counter()
 	
@@ -314,7 +311,6 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	timing_log = {
 		"global_epoch": model.GLOBAL_EPOCH,
 		"epoch_time": epoch_time,
-		"avg_epoch_time": avg_epoch_time,
 		"epoch_breakdown": {
 			"prep_time": prep_time,
 			"shuffle_time": shuffle_time,
