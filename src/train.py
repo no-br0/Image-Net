@@ -1,27 +1,20 @@
 # train.py
-from Config.log_dir import (GPU_LOG_PATH, TIME_LOG,
-							LOSS_LOG_PATH, GPU_TEMP_LOG_PATH,
-							RAW_LOSS_LOG_PATH, TELEMETRY_LOG_FOLDER,
-							LOWEST_RAW_LOSS_LOG_PATH, LOWEST_LOSS_LOG_PATH,)
-from Config.config import (MULTI_IMAGE_COUNT, SAVE_INTERVAL, CONFIG_FILE, LOWEST_LOSS_THRESHOLD,
+from Config.log_dir import TELEMETRY_LOG_FOLDER
+from Config.config import (SAVE_INTERVAL, CONFIG_FILE, LOWEST_LOSS_THRESHOLD,
 						LR_DECREASE_MULTIPLIER, LR_INCREASE_MULTIPLIER,
 						MAX_LEARNING_RATE, MIN_LEARNING_RATE, ENABLE_ADAPTIVE_LR, 
-						ADAPTIVE_LR_INVERTED, ROTATE_TARGET_FREQ, ENABLE_ROTATE_TARGET_IMAGE,
-						PATCH_SIZE, )
-from src.backend_cupy import get_vram_usage, log_vram_usage
+						ADAPTIVE_LR_INVERTED)
 from src.loss_registry import combined_loss, wrapped_combined_loss
 import cupy as cp, numpy as np
-import os, json, sys, time, subprocess
+import os, json, time
 from collections import defaultdict
-from src.cooling import (post_epoch_cooling, post_batch_cooling, pre_display_cooling)
+from src.cooling import post_batch_cooling
 from src.display_utils import compute_accuracy_metrics
-from Config.layer_registry import inject_input_seeds, build_input_stack
-from Config.image_registry import get_registry_size, get_seed, get_image_path
-from src.data_utils import load_rgb_image, make_neighbor_stream
+
 from Telemetry.telemetry import TelemetryLogger
 
 
-def train_streaming(model, stream, batch_size, epochs=1, shuffle=True,
+def train_streaming(model, stream, batch_size, shuffle=True,
 					error_func=None, telemetry_logger=None):
 	LOWEST_LOSS          = model.LOWEST_LOSS
 	LOWEST_RAW_LOSS      = model.LOWEST_RAW_LOSS
@@ -36,7 +29,6 @@ def train_streaming(model, stream, batch_size, epochs=1, shuffle=True,
 	previous_raw_breakdown = model.PREVIOUS_RAW_BREAKDOWN
 	previous_raw_breakdown_delta = model.PREVIOUS_RAW_BREAKDOWN_DELTA
 	previous_abs_raw_loss_delta = model.PREVIOUS_ABS_RAW_LOSS_DELTA
-	input_config = model.input_config
 	
 	if model.TARGET_IMAGE == None:
 		model.TARGET_IMAGE = 1
@@ -128,18 +120,11 @@ def train_streaming(model, stream, batch_size, epochs=1, shuffle=True,
 			raw_totals[k] += float(v)
 
 		
-		
-		#free = cp.cuda.runtime.memGetInfo()[0] / 1024**2
-		#print(f"[batch] GPU free memory during: {free:.1f} MiB")
-		#cp.get_default_memory_pool().free_all_blocks()
-		
-		# for logging the per batch gpu utilisation and VRAM allocations
-		#log_vram_usage()
 		cp.cuda.Device().synchronize()
 		compute_end = time.perf_counter()
 		compute_time += (compute_end - compute_start)
 
-		sleep_time += post_batch_cooling(model, local_epoch)
+		sleep_time += post_batch_cooling(model, model.GLOBAL_EPOCH)
 
 		cp.cuda.Device().synchronize()
 		prep_start = time.perf_counter()
@@ -175,22 +160,6 @@ def train_streaming(model, stream, batch_size, epochs=1, shuffle=True,
 		
 	curvature = loss_delta - previous_loss_delta
 	
-	
-	
-	# --- Loss logging ---
-	msg = f"epoch {local_epoch:4d} (batch_size={batch_size}, streaming=True)\n"
-	msg += f"learning rate: {model.learning_rate:.7f}\n"
-	msg += f"learning rate (%): {lr_prct:.5f}\n"
-	msg += f"total loss: {total_loss:.4f}\n"
-	msg += f"loss change (Δ): {'↑' if loss_delta > 0 else '↓'} {abs(loss_delta):.4f}\n"
-	msg += f"curvature (Δ²): {'↑' if curvature > 0 else '↓'} {abs(curvature):.4f}\n"
-	for k, v in avg_breakdown.items():
-		msg += f"{k}: {avg_breakdown.get(k, 0.0):.2f}\n"
-	try:
-		with open(LOSS_LOG_PATH, "a", encoding="utf-8") as logf:
-			print(msg, file=logf)
-	except Exception as ex:
-		print(f"[warn] could not write loss log: {ex}")
 
 	# --- Raw loss log ---
 	
@@ -221,84 +190,6 @@ def train_streaming(model, stream, batch_size, epochs=1, shuffle=True,
 	abs_delta_abs_delta_raw = abs(abs_raw_loss_delta - previous_abs_raw_loss_delta)
 	raw_loss_rel_delta = (raw_loss_delta / (previous_raw_loss + 1e-8)) * 100
 	
-	
-	# ANSI color codes
-	RED   = "\033[91m"
-	GREEN = "\033[92m"
-	RESET = "\033[0m"
-	NEUTRAL = "\033[0m"
-	
-
-	def color_arrow(value):
-		"""Return a colored arrow based on sign (down=good=green, up=bad=red)."""
-		if value < 0:
-			return f"{GREEN}↓{RESET}"
-		elif value > 0:
-			return f"{RED}↑{RESET}"
-		else:
-			return "→"
-
-	def color_number(value, width):
-		"""Return a colored number based on sign (down=good=green, up=bad=red)."""
-		if value < 0:
-			return f"{GREEN}{abs(value):>{width},.2f}{RESET}"
-		elif value > 0:
-			return f"{RED}{abs(value):>{width},.2f}{RESET}"
-		else:
-			return f"{abs(value):>{width},.2f}"
-	
-	term_w = 24
-	value_w = 14
-	arrow_w = 2
-	num_w = 10
-	pct_w = 6
-	
-
-	header = (
-		f"{'Term':<{term_w}}"
-		f"{'Value':>{value_w}}   "
-		f"{f'{NEUTRAL}Δ{RESET}':>{arrow_w}} {f'Δ val':>{num_w}}   "
-		f"{f'{NEUTRAL}Δ²{RESET}':>{arrow_w}} {f'Δ² val':>{num_w}}   "
-		f"{f'{NEUTRAL}Δ%{RESET}':>{arrow_w}} {f'Δ% val':>{pct_w}}"
-	)
-	sep_len = term_w + value_w + arrow_w + num_w + arrow_w + num_w + arrow_w + pct_w \
-			+ (3 * 3)  # spaces and padding between columns
-	sep = "-" * sep_len
-
-	raw_loss_msg = header + "\n" + sep + "\n"
-			
-	
-	raw_loss_msg += (
-		f"{'Total':<{term_w}}"
-		f"{total_raw_loss:>{value_w},.2f}   "
-		f"{color_arrow(raw_loss_delta):>{arrow_w}} {color_number(raw_loss_delta, num_w)}   "
-		f"{color_arrow(raw_loss_curvature):>{arrow_w}} {color_number(raw_loss_curvature, num_w)}   "
-		f"{color_arrow(raw_loss_rel_delta):>{arrow_w}} {color_number(raw_loss_rel_delta, pct_w)}"
-		"\n"
-	)
-			
-			
-	for k, v in avg_raw_breakdown.items():
-		delta = raw_breakdown_delta[k]
-		curvature = raw_breakdown_curvature[k]
-		rel_change = (delta / (previous_raw_breakdown[k] + 1e-8)) * 100
-
-
-		raw_loss_msg += (
-			f"{k:<{term_w}}"
-			f"{v:>{value_w},.2f}   "
-			f"{color_arrow(delta):>{arrow_w}} {color_number(delta, num_w)}   "
-			f"{color_arrow(curvature):>{arrow_w}} {color_number(curvature, num_w)}   "
-			f"{color_arrow(rel_change):>{arrow_w}} {color_number(rel_change, pct_w)}"
-			"\n"
-		)
-
-	
-	try:
-		with open(RAW_LOSS_LOG_PATH, 'a', encoding="utf-8") as logf:
-			print(raw_loss_msg, file=logf)
-	except Exception as ex:
-		print(f"[warn] could not write raw loss log: {ex}")
 
 	# --- Adaptive Learning Rate ---
 	if ENABLE_ADAPTIVE_LR:
@@ -331,16 +222,9 @@ def train_streaming(model, stream, batch_size, epochs=1, shuffle=True,
 		
 	# --- Lowest-loss milestone ---
 	if LOWEST_RAW_LOSS is None or total_raw_loss < LOWEST_RAW_LOSS:
-		LOWEST_LOSS_EPOCH = local_epoch
+		LOWEST_LOSS_EPOCH = model.GLOBAL_EPOCH
 		if LOWEST_RAW_LOSS is None:
 			LOWEST_RAW_LOSS = total_raw_loss
-		if previous_raw_loss is not None:
-			with open(LOWEST_RAW_LOSS_LOG_PATH, "a") as logf:
-				print(f"[epoch {local_epoch}/{epochs}]\n",
-					f"lowest raw loss: {total_raw_loss:.6f}\n", 
-					f"lowest raw loss change: {total_raw_loss - LOWEST_RAW_LOSS:.6f}\n",
-					file=logf
-					)        
 		LOWEST_RAW_LOSS = total_raw_loss
 		model.LOWEST_RAW_LOSS = LOWEST_RAW_LOSS
 			
@@ -348,18 +232,8 @@ def train_streaming(model, stream, batch_size, epochs=1, shuffle=True,
 	if LOWEST_LOSS is None or total_loss < LOWEST_LOSS:
 		if LOWEST_LOSS is None:
 			LOWEST_LOSS = total_loss
-		if previous_loss is not None:
-			with open(LOWEST_LOSS_LOG_PATH, "a") as logf:
-				print(f"[epoch {local_epoch}/{epochs}]\n",
-					f"lowest loss: {total_loss:.6f}\n", 
-					f"lowest loss change: {total_loss - LOWEST_LOSS:.6f}\n",
-					file=logf
-					)
 		LOWEST_LOSS = total_loss
 		model.LOWEST_LOSS = LOWEST_LOSS
-
-
-
 
 
 
@@ -371,29 +245,12 @@ def train_streaming(model, stream, batch_size, epochs=1, shuffle=True,
 	model.PREVIOUS_RAW_BREAKDOWN = avg_raw_breakdown.copy()
 	model.PREVIOUS_RAW_BREAKDOWN_DELTA = raw_breakdown_delta.copy()
 
-
 	
-	
-	
-	# --- Optional callback ---
-	sleep_time += pre_display_cooling(model, local_epoch)
 
-	cb_start = time.perf_counter()
-	#if on_epoch_end is not None:
-	#	try:
-	#		cb_sleep_time = on_epoch_end(local_epoch, model)
-	#	except Exception as e:
-	#		print(f"[train] on_epoch_end failed: {e}")
-	#cp.cuda.Device().synchronize()
-	cb_sleep_time = 0
-
-	cb_end = time.perf_counter()
-	callback_time = (cb_end - cb_start) - cb_sleep_time
-	sleep_time += cb_sleep_time
 	# --- Periodic save ---
 	
 	save_start = time.perf_counter()
-	if local_epoch % SAVE_INTERVAL == 0:
+	if model.GLOBAL_EPOCH % SAVE_INTERVAL == 0:
 		try:
 			if os.path.exists(CONFIG_FILE):
 				with open(CONFIG_FILE) as f:
@@ -411,17 +268,12 @@ def train_streaming(model, stream, batch_size, epochs=1, shuffle=True,
 	save_end = time.perf_counter()
 	save_time = save_end - save_start
 	
-	# --- Telemetry & thermal safety ---
-	#log_vram_usage(model.GLOBAL_EPOCH)
-
-	#sleep_time += post_epoch_cooling(model, local_epoch)
-	
 
 	# --- Timing stats ---
 	epoch_time = time.perf_counter() - t0
 	active_time = epoch_time - sleep_time
 	total_time += epoch_time
-	avg_epoch_time = total_time / local_epoch
+	avg_epoch_time = total_time / model.GLOBAL_EPOCH
 	
 	telemetry_start = time.perf_counter()
 	
@@ -467,18 +319,13 @@ def train_streaming(model, stream, batch_size, epochs=1, shuffle=True,
 			"prep_time": prep_time,
 			"shuffle_time": shuffle_time,
 			"compute_time": compute_time,
-			"callback_time": callback_time,
+			"callback_time": 0,
 			"telemetry_time": telemetry_time,
 			"save_time": save_time,
 			"active_time": active_time,
 			"sleep_time": sleep_time
 		}
 	}
-
-	#with open(TIME_LOG, "a") as f:
-	#	f.write(json.dumps(timing_log) + "\n")
-
-
 	
 	previous_raw_breakdown_delta = raw_breakdown_delta.copy()
 	previous_raw_breakdown = avg_raw_breakdown.copy()
