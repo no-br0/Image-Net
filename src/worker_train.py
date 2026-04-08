@@ -60,7 +60,7 @@ def worker_main(conn, model_state, epochs, batch_size, loss_name, shuffle):
 			if model.GLOBAL_EPOCH % ROTATE_TARGET_FREQ == 0:
 				stream.delete_data()
 				del stream
-				cp.get_default_memory_pool.free_all_blocks()
+				cp.get_default_memory_pool().free_all_blocks()
 				stream = build_stream(model.input_config, model, batch_size)
 
 		if is_last_iteration:
