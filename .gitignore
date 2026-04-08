@@ -36,3 +36,4 @@ Config/__pycache__/
 Config/Inputs/__pycache__/
 helpers/__pycache__/
 .vscode/
+__pycache__/
