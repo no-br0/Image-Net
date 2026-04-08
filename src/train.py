@@ -3,17 +3,14 @@ from Config.log_dir import TELEMETRY_LOG_FOLDER
 from Config.config import (SAVE_INTERVAL, CONFIG_FILE, LOWEST_LOSS_THRESHOLD,
 						LR_DECREASE_MULTIPLIER, LR_INCREASE_MULTIPLIER,
 						MAX_LEARNING_RATE, MIN_LEARNING_RATE, ENABLE_ADAPTIVE_LR, 
-						ADAPTIVE_LR_INVERTED, ROTATE_TARGET_FREQ, ENABLE_ROTATE_TARGET_IMAGE)
+						ADAPTIVE_LR_INVERTED)
 from src.loss_registry import combined_loss, wrapped_combined_loss
 import cupy as cp, numpy as np
 import os, json, time
 from collections import defaultdict
 from src.cooling import post_batch_cooling
 from src.display_utils import compute_accuracy_metrics
-from Config.image_registry import get_registry_size
 from Telemetry.telemetry import TelemetryLogger
-
-
 
 
 
