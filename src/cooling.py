@@ -73,6 +73,13 @@ def in_docker():
 def set_gpu_fan_speed(speed, gpu_id=0):
 	"""Set GPU fan speed to given % (requires Coolbits or driver control)."""
 	speed = max(0, min(MAX_SAFE_FAN, int(speed)))
+	
+	if sys.platform.startswith("win"):
+		# this is done because the actual fan speed control below doesnt work on windows
+		# it only works on linux but i havent tested it so i dont want it to be running
+		# until tested for safety
+		return
+	
 	# Enable manual control and set new target speed
 	if sys.platform.startswith("win"):
 		cmd = [

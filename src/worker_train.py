@@ -1,6 +1,6 @@
 # worker_train.py
 import cupy as cp
-from Config.config import ENABLE_ROTATE_TARGET_IMAGE, PATCH_SIZE, ROTATE_TARGET_FREQ
+from Config.config import ENABLE_ROTATE_TARGET_IMAGE, PATCH_SIZE, ROTATE_TARGET_FREQ, TARGET_IMAGE_ID
 from Config.image_registry import get_image_path, get_seed
 from Config.layer_registry import build_input_stack, inject_input_seeds
 from src.data_utils import load_rgb_image, make_neighbor_stream
@@ -27,6 +27,8 @@ def build_stream(input_config, model, batch_size):
 
 def worker_main(conn, model_state, epochs, batch_size, loss_name, shuffle):
 	model = NeuralNet.from_state(model_state)
+	if model.TARGET_IMAGE == None:
+		model.TARGET_IMAGE = TARGET_IMAGE_ID
 
 	stream = build_stream(model.input_config, model, batch_size)
 
