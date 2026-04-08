@@ -7,8 +7,6 @@ from src.backend_cupy import get_vram_usage
 
 from Config.config import (	 CONFIG_FILE, )
 
-from Config.log_dir import GPU_TEMP_LOG_PATH
-
 
 PROFILE_VRAM    = False     # Set True to log VRAM each epoch
 VRAM_HEADROOM   = 0.80      # Reduce batch size if CuPy pool > 80% total
@@ -75,11 +73,13 @@ def in_docker():
 def set_gpu_fan_speed(speed, gpu_id=0):
 	"""Set GPU fan speed to given % (requires Coolbits or driver control)."""
 	speed = max(0, min(MAX_SAFE_FAN, int(speed)))
+	
 	if sys.platform.startswith("win"):
-		# No direct fan control on Windows – just log the intent
-		with open(GPU_TEMP_LOG_PATH, "a") as gpu_log:
-			gpu_log.write(f"[fan-set] Target {speed}% (Windows – no direct control)\n")
+		# this is done because the actual fan speed control below doesnt work on windows
+		# it only works on linux but i havent tested it so i dont want it to be running
+		# until tested for safety
 		return
+	
 	# Enable manual control and set new target speed
 	if sys.platform.startswith("win"):
 		cmd = [
@@ -98,7 +98,6 @@ def check_gpu_temp_and_exit(nn, epoch, warn_temp, poll_interval=0.20, gpu_id=0):
 	stats = get_vram_usage()
 	temp = stats.get("gpu_temp", -1)
 	total_sleep = 0.0
-	log_lines = []
 	last_speed = None
 	sleep_start_time = time.perf_counter()
 	
@@ -108,12 +107,10 @@ def check_gpu_temp_and_exit(nn, epoch, warn_temp, poll_interval=0.20, gpu_id=0):
 		target_speed = min(MAX_SAFE_FAN, current_speed + FAN_BUMP)
 		if target_speed > current_speed:
 			set_gpu_fan_speed(target_speed, gpu_id)
-			log_lines.append(f"[fan-ramp] {temp}°C — fan {current_speed}% -> {target_speed}%\n")
 			last_speed = target_speed
 
 	# Critical: save & exit immediately
 	if temp >= MAX_TEMP:
-		log_lines.append(f"[CRITICAL] GPU temp {temp}°C at epoch {epoch}. Saving + exiting.\n")
 		if os.path.exists(CONFIG_FILE):
 			with open(CONFIG_FILE) as f:
 				settings = json.load(f)
@@ -123,8 +120,6 @@ def check_gpu_temp_and_exit(nn, epoch, warn_temp, poll_interval=0.20, gpu_id=0):
 		
 		if MODEL_SAVE_PATH is not None:
 			nn.save(MODEL_SAVE_PATH)
-		with open(GPU_TEMP_LOG_PATH, "a") as gpu_log:
-			gpu_log.writelines(log_lines)
 		exit(0)
 
 
@@ -133,27 +128,17 @@ def check_gpu_temp_and_exit(nn, epoch, warn_temp, poll_interval=0.20, gpu_id=0):
 	while temp > warn_temp:
 		current_speed = get_gpu_fan_speed(gpu_id)
 		target_speed = min(MAX_SAFE_FAN, current_speed + FAN_BUMP)
-		#if target_speed > current_speed and target_speed != last_speed:
-		#	set_gpu_fan_speed(target_speed, gpu_id)
-		#	log_lines.append(f"[fan-hot] {temp}°C — fan {current_speed}% -> {target_speed}%\n")
-		#	last_speed = target_speed
+
 		if target_speed > current_speed and target_speed != last_speed:
 			set_gpu_fan_speed(target_speed, gpu_id)
 			last_speed = target_speed
 
 		sleep_time = 0.10 if temp - warn_temp <= 3 else poll_interval
-		#log_lines.append(f"[cooldown] GPU {temp}°C — sleeping {sleep_time:.2f}s\n")
 		time.sleep(sleep_time)
-		#total_sleep += sleep_time
 
 		stats = get_vram_usage()
 		temp = stats.get("gpu_temp", -1)
 
-
-	# Final log flush
-	#if log_lines:
-	#	with open(GPU_TEMP_LOG_PATH, "a") as gpu_log:
-	#		gpu_log.writelines(log_lines)
 			
 	sleep_end_time = time.perf_counter()
 	total_sleep = (sleep_end_time - sleep_start_time)

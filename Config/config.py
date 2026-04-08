@@ -5,7 +5,6 @@ WORKER_CHUNK_SIZE = 20
 # --- Generalisation Settings ---
 ENABLE_ROTATE_TARGET_IMAGE 		= True
 ROTATE_TARGET_FREQ         		= 20
-ENABLE_TARGET_ROTATION_SHUFFLE 	= False
 
 HELDOUT_SEED = 0
 
@@ -60,9 +59,6 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 
 OPTIMISER                     = {
     "name": "rmsprop",
-	"lr": 0.00001,
-	#"lr": 0.000001,
-	#"lr": 0.00001,
 }
 
 

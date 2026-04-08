@@ -61,10 +61,6 @@ def make_neighbor_stream(X_img, Y_img, *, patch_size=7,
 			Y_flat = Y_flat[:, :self.output_dim]
 			self.Y_flat = Y_flat
 
-			# Sliding window view over reflect-padded X
-			#X_pad = cp.pad(self.X_img,
-			#			((self.pad, self.pad), (self.pad, self.pad), (0, 0)),
-			#			mode="reflect")
 			swv = cp.lib.stride_tricks.sliding_window_view
 			self.X_win = swv(self.X_img,
 							window_shape=(self.patch, self.patch),
