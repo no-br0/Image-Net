@@ -10,8 +10,8 @@ import os, json, time
 from collections import defaultdict
 from src.cooling import post_batch_cooling
 from src.display_utils import compute_accuracy_metrics
-from Telemetry.telemetry import TelemetryLogger
 
+from Telemetry.telemetry import TelemetryLogger
 
 
 def train_streaming(model, stream, batch_size, shuffle=True,
@@ -30,9 +30,6 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	previous_raw_breakdown_delta = model.PREVIOUS_RAW_BREAKDOWN_DELTA
 	previous_abs_raw_loss_delta = model.PREVIOUS_ABS_RAW_LOSS_DELTA
 	
-	if model.TARGET_IMAGE == None:
-		model.TARGET_IMAGE = 1
-
 
 	telemetry_logger = TelemetryLogger(
 		log_dir=TELEMETRY_LOG_FOLDER,
@@ -40,10 +37,9 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 		enabled=True,
 	)
 
-
 	t0 = time.perf_counter()
 	model.GLOBAL_EPOCH += 1
-	sleep_time 		 	 = 0.0	
+	sleep_time 		 	 = 0.0
 	
 	totals = defaultdict(float)
 	raw_totals = defaultdict(float)
@@ -158,7 +154,7 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 		
 	curvature = loss_delta - previous_loss_delta
 	
-	
+
 	# --- Raw loss log ---
 	
 	if previous_raw_breakdown is None:
@@ -170,6 +166,8 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	raw_breakdown_curvature = {k: raw_breakdown_delta[k] - previous_raw_breakdown_delta[k] for k in raw_breakdown_delta}
 	
 	total_raw_loss = sum(avg_raw_breakdown.values())
+	
+	
 	
 	if previous_raw_loss is None:
 		previous_raw_loss = total_raw_loss
@@ -232,6 +230,7 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 		model.LOWEST_LOSS = LOWEST_LOSS
 
 
+
 	model.PREVIOUS_LOSS = total_loss
 	model.PREVIOUS_RAW_LOSS = total_raw_loss
 	model.PREVIOUS_LOSS_DELTA = loss_delta
@@ -241,6 +240,7 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	model.PREVIOUS_RAW_BREAKDOWN_DELTA = raw_breakdown_delta.copy()
 
 	
+
 	# --- Periodic save ---
 	
 	save_start = time.perf_counter()
@@ -270,7 +270,9 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	
 	telemetry_start = time.perf_counter()
 	
+	
 	model.optimiser.log_epoch_telemetry(model.GLOBAL_EPOCH)
+	
 	
 	if telemetry_logger is not None and telemetry_logger.enabled:
 		epoch_metrics = {
@@ -300,6 +302,8 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	telemetry_end = time.perf_counter()
 	telemetry_time = telemetry_end - telemetry_start
 
+
+
 	timing_log = {
 		"global_epoch": model.GLOBAL_EPOCH,
 		"epoch_time": epoch_time,
@@ -322,6 +326,7 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	previous_loss_delta = loss_delta
 	previous_raw_loss_delta = raw_loss_delta
 	previous_abs_raw_loss_delta = abs_raw_loss_delta
+		
 		
 	cp.get_default_memory_pool().free_all_blocks()
 	# used to prevent kernel queuing   

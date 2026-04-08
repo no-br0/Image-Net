@@ -8,6 +8,8 @@ ROTATE_TARGET_FREQ         		= 20
 
 HELDOUT_SEED = 0
 
+MULTI_IMAGE_COUNT = 1 # number of images trained on simultaneously in a single epoch
+
 # --- Viewer toggle ---
 ENABLE_END_VIEWER       = False
 ENABLE_LIVE_VIEWER      = True
@@ -40,7 +42,8 @@ GRAD_CLIP                       = 1.0
 #(327680 | 262144 | 245760 | 196608 | 163840 | 143744 | 131072 | 122880 | 1048576 | 98304 
 # | 65536 | 49152 | 32768 | 24576 | 16384 | 8192 | 4096 | 2048 | 1024)
 #BATCH_SIZE      = 98304
-BATCH_SIZE      = 49152
+#BATCH_SIZE      = 49152
+BATCH_SIZE	  	 = 32768
 
 #BATCH_SIZE      = 24576
 #BATCH_SIZE      = 163840

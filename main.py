@@ -2,7 +2,6 @@
 import os, json
 import time
 import cupy as cp
-#from backend_cupy import get_vram_usage
 from Config.config import (
 	ENABLE_LIVE_VIEWER, EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, HEIGHT, HELDOUT_SEED, TARGET_IMAGE_ID,
 	PATCH_SIZE, OUTPUT_ACT, HIDDEN_ACT, LEARNING_RATE,
@@ -10,10 +9,9 @@ from Config.config import (
 	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL, CONFIG_FILE, SAVE_INTERVAL,
 	ENABLE_CUSTOM_MODEL_NAME, ENABLE_END_VIEWER, WIDTH, WORKER_CHUNK_SIZE
 )
-#from Config.Inputs.layers_config import layers_cfg
 import Config.log_dir as log_dir
 from Config.log_dir import ( 
-							GPU_LOG_PATH,
+							GPU_LOG_PATH, GPU_TEMP_LOG_PATH,
 							SAVE_ERROR_LOG_PATH,
 							TELEMETRY_LOG_FOLDER,
 							CURRENT_MODEL_NAME_PATH
@@ -29,6 +27,7 @@ from src.display_utils import predict_full_from_stream, publish_frame
 from src.worker_train import worker_main
 import multiprocessing as mp
 from src.cooling import post_epoch_cooling, pre_display_cooling
+from cupy.lib.stride_tricks import sliding_window_view as swv
 
 # -------- Utilities --------
 def flush_pool():
@@ -45,7 +44,20 @@ def prune_telemetry(telemetry_path, last_epoch):
 					cleaned.append(line)
 		with open(telemetry_path, "w") as f:
 			f.writelines(cleaned)
-					
+
+
+def extract_patches_for_display(X_u8, Y_rgb, patch_size):
+	pad = patch_size // 2
+	H_full, W_full, Cx = X_u8.shape
+	H = H_full - 2*pad
+	W = W_full - 2*pad
+
+	X_win = swv(X_u8, window_shape=(patch_size, patch_size), axis=(0,1))
+	P = X_win.reshape(H * W, patch_size*patch_size*Cx).astype(cp.float32)
+
+	T = Y_rgb.reshape(-1, 3).astype(cp.float32)
+
+	return P, T
 
 
 def save_model_name(model_name):
@@ -100,12 +112,28 @@ def main():
 	X_u8, channel_names = build_input_stack(H_proc, W_proc, input_config)
 	print(f"[config] H={H}, W={W}, epochs={EPOCHS}, batch_size={BATCH_SIZE}")
 	
-	
 
-	# Stream: neighbors (+coords) -> center RGB
-	stream = make_neighbor_stream(X_u8, Y_rgb, patch_size=PATCH_SIZE, 
-								output_dim=3,
-								batch_size=BATCH_SIZE)
+	rec = {
+		"X": X_u8.astype(cp.float32),
+		"T": Y_rgb.reshape(-1, 3).astype(cp.float32),
+		"H": H,
+		"W": W,
+		"pad": PATCH_SIZE // 2,
+	}
+
+	images = [rec]
+	pixel_offsets = cp.asarray([0], dtype=cp.int64)
+	global_indices = cp.arange(H * W, dtype=cp.int64)
+
+	stream = make_neighbor_stream(
+		images,
+		pixel_offsets,
+		global_indices,
+		patch_size=PATCH_SIZE,
+		batch_size=BATCH_SIZE,
+	)
+
+	stream.set_epoch(shuffle=False)
 	
 	flush_pool()
 
@@ -144,6 +172,7 @@ def main():
 	prune_telemetry(TELEMETRY_OPTIMISER_PATH, model.GLOBAL_EPOCH)
 	prune_telemetry(TIME_LOG_PATH, model.GLOBAL_EPOCH)
 	prune_telemetry(GPU_LOG_PATH, model.GLOBAL_EPOCH)
+
 
 	# Train — for per-pixel RGB, use plain MSE (avoid perceptual which expects 2D fields)
 	try:
@@ -186,6 +215,7 @@ def main():
 								publish_frame(pred)
 							except Exception as e:
 								print(f"[viewer] live update failed: {e}")
+								sleep_time = 0
 						else:
 							sleep_time = 0
 						cb_end = time.perf_counter()
@@ -199,7 +229,7 @@ def main():
 						timing["epoch_breakdown"]["sleep_time"] += sleep_time
 						timing["epoch_breakdown"]["sleep_time"] += pe_sleep_time
 						timing["epoch_breakdown"]["sleep_time"] += pd_sleep_time
-						timing["epoch_time"] += callback_time + sleep_time + pe_sleep_time
+						timing["epoch_time"] += callback_time + sleep_time + pe_sleep_time + pd_sleep_time
 
 						with open(TIME_LOG_PATH, "a") as f:
 							f.write(json.dumps(timing) + "\n")
@@ -239,7 +269,9 @@ def main():
 		print("[done] Training run complete")
 
 if __name__ == "__main__":
-
+	
+	open(GPU_TEMP_LOG_PATH, "w").close()
+	
 	if os.path.exists(SAVE_ERROR_LOG_PATH):
 		os.remove(SAVE_ERROR_LOG_PATH)
 	

@@ -2,7 +2,7 @@
 from src.backend_cupy import to_device
 from PIL import Image
 import cupy as cp
-
+from cupy.lib.stride_tricks import sliding_window_view as swv
 
 # Minimal CPU I/O for images, then immediately push to GPU
 def load_grayscale_image(path, resize_to=None):
@@ -25,129 +25,120 @@ def generate_display_dimensions(width, height):
 	arr = cp.zeros((height, width, 3), dtype=cp.uint8)
 	return arr
 
-def make_neighbor_stream(X_img, Y_img, *, patch_size=7, 
-						output_dim=3, batch_size=65536):
-	"""
-	GPU-native streaming dataset with fixed-size scratch buffers and epoch-level shuffling.
-
-	X_img: (H, W) or (H, W, Cx), uint8 (preferred) on GPU or CPU (will be moved).
-	Y_img: (H, W) or (H, W, Cy), uint8 on GPU or CPU (will be moved).
-	"""
+def make_neighbor_stream(images, pixel_offsets, global_indices, *, patch_size, batch_size=65536):
+	from cupy.lib.stride_tricks import sliding_window_view as swv
 
 	class Stream:
-		def __init__(self, X_img, Y_img, patch_size,
-					output_dim, batch_size):
-			self.X_img = to_device(X_img)
-			self.Y_img = to_device(Y_img)
-
-			if self.X_img.ndim == 2:
-				self.X_img = self.X_img[..., None]
-			if self.Y_img.ndim == 2:
-				self.Y_img = self.Y_img[..., None]
-
-			self.H_full, self.W_full, self.Cx = self.X_img.shape
-			self.pad = patch_size // 2
-			self.H = self.H_full - 2 * self.pad
-			self.W = self.W_full - 2 * self.pad
-
-			_, _, Cy = self.Y_img.shape
-			self.patch = int(patch_size)
-			self.N = self.H * self.W
+		def __init__(self, images, pixel_offsets, global_indices, patch_size, batch_size):
+			self.images = images
+			self.pixel_offsets = pixel_offsets.astype(cp.int64)
+			self.global_indices = global_indices.astype(cp.int64)
+			self.patch_size = patch_size
 			self.batch_size = int(batch_size)
 
-			# Targets as float32 (N, Cy) in [0,255]; trim to output_dim if needed
-			Y_flat = self.Y_img.reshape(-1, Cy).astype(cp.float32)
-			self.output_dim = int(output_dim)
-			Y_flat = Y_flat[:, :self.output_dim]
-			self.Y_flat = Y_flat
+			# Precompute sliding-window views (zero-copy)
+			self.windows = []
+			for rec in images:
+				X = rec["X"]  # (H_proc, W_proc, Cx)
+				win = swv(X, window_shape=(patch_size, patch_size), axis=(0, 1))
+				self.windows.append(win)
 
-			swv = cp.lib.stride_tricks.sliding_window_view
-			self.X_win = swv(self.X_img,
-							window_shape=(self.patch, self.patch),
-							axis=(0, 1))  # view, not copy
+			# Precompute per-image widths/heights
+			self.Ws = cp.asarray([rec["W"] for rec in images], dtype=cp.int32)
+			self.Hs = cp.asarray([rec["H"] for rec in images], dtype=cp.int32)
 
-			# Grid indices (flattened)
-			yy = cp.arange(self.H, dtype=cp.int32)
-			xx = cp.arange(self.W, dtype=cp.int32)
-			grid_y, grid_x = cp.meshgrid(yy, xx, indexing="ij")
-			self.lin_y = grid_y.reshape(-1)
-			self.lin_x = grid_x.reshape(-1)
+			# Precompute image index for every pixel (vectorised)
+			total_pixels = int(global_indices.size)
+			self.img_index = cp.searchsorted(
+				pixel_offsets, cp.arange(total_pixels), side="right"
+			) - 1
 
-			# Precompute neighbor indices
-			P = self.patch
-			self.neighbor_idx = cp.arange(P * P, dtype=cp.int32)
-				
-			self.base_feats = len(self.neighbor_idx) * self.Cx
+			# Scratch buffers
+			Cx = images[0]["X"].shape[2]
+			self.scratch_x = cp.empty(
+				(self.batch_size, patch_size * patch_size * Cx),
+				dtype=cp.float32,
+			)
+			self.scratch_y = cp.empty((self.batch_size, 3), dtype=cp.float32)
 
-			self.N_features = self.base_feats
-			self.nb_scratch = cp.zeros((self.batch_size, self.N_features), dtype=cp.float32)
+			# Required by main.py
+			self.N_features = patch_size * patch_size * Cx
+			self.H = images[0]["H"]
+			self.W = images[0]["W"]
+			self.N = total_pixels
 
-			self.yb_scratch = cp.zeros((self.batch_size, self.output_dim), dtype=cp.float32)
-			self.perm = cp.arange(self.N, dtype=cp.int32)
-
-			del Y_flat, xx, yy
-			del grid_y, grid_x, swv
-			
-			
-			
 		def set_epoch(self, shuffle=True, seed=None):
 			if shuffle:
-				if seed is not None:
-					rng = cp.random.RandomState(int(seed))
-					self.perm = rng.permutation(self.N)
-				else:
-					rng = cp.random.RandomState(0)
-					self.perm = rng.permutation(self.N)
+				rng = cp.random.RandomState(int(seed) if seed is not None else 0)
+				self.global_indices = rng.permutation(self.global_indices)
 			else:
-				self.perm = cp.arange(self.N, dtype=cp.int32)
+				self.global_indices = cp.arange(self.N, dtype=cp.int64)
 
 		def iter_minibatches(self, batch_size=None, sync=False):
-			P = self.patch
-			perm = self.perm
-			batch_size = self.batch_size if batch_size is None else batch_size
+			bs = self.batch_size if batch_size is None else batch_size
+			idxs = self.global_indices
 
-			for i in range(0, self.N, batch_size):
-				sel = perm[i:i + batch_size]
-				bs = sel.shape[0]
+			for start in range(0, self.N, bs):
+				end = min(start + bs, self.N)
+				batch = idxs[start:end]
+				bsz = end - start
 
-				iy = self.lin_y[sel]
-				ix = self.lin_x[sel]
+				# Vectorised: which image each pixel belongs to
+				img_idx_batch = self.img_index[batch]
 
-				wb = self.X_win[iy, ix, :, :, :]  # (bs, P, P, self.Cx)
-				nb = wb.reshape(bs, P * P, self.Cx)[:, self.neighbor_idx, :]  # (bs, P*P-1, self.Cx)
-				nb = nb.reshape(bs, -1)  # (bs, self.base_feats)
+				# Vectorised: local pixel index inside each image
+				base = self.pixel_offsets[img_idx_batch]
+				local = batch - base
 
-				# Normalize ONLY the base features
-				self.nb_scratch[:bs, :self.base_feats] = nb.astype(cp.float32, copy=False)
-				self.yb_scratch[:bs] = self.Y_flat[sel]
+				# Vectorised: compute y/x for each pixel
+				W_batch = self.Ws[img_idx_batch]
+				y = local // W_batch
+				x = local %  W_batch
+
+				# Group by image (1–10 iterations, not 65k)
+				unique_imgs = cp.unique(img_idx_batch)
+
+				for img_id_cp in unique_imgs:
+					img_id = int(img_id_cp)  # Python int for list indexing
+
+					# mask is relative to the current batch (0..bsz-1)
+					mask = (img_idx_batch == img_id_cp)
+
+					# convert mask → integer indices within the batch
+					idx = cp.nonzero(mask)[0]      # shape (n,)
+					n = int(idx.size)
+
+					if n == 0:
+						continue
+
+					ys = y[mask]
+					xs = x[mask]
+
+					# Extract patches for this image in one go
+					patches = self.windows[img_id][ys, xs]  # (n, p, p, Cx)
+
+					# Flatten into scratch buffer using integer indices
+					self.scratch_x[idx] = patches.reshape(n, -1)
+
+					# Targets
+					self.scratch_y[idx] = self.images[img_id]["T"][local[mask]]
+
+				xb = self.scratch_x[:bsz]
+				yb = self.scratch_y[:bsz]
 
 				if sync:
 					cp.cuda.Device().synchronize()
 
-				yield self.nb_scratch[:bs], self.yb_scratch[:bs]
-
+				yield xb, yb
 
 
 		def delete_data(self):
-			del self.H, self.W, self.Cx
-			del self.Y_flat, self.X_win
-			del self.lin_x, self.lin_y
-			del self.neighbor_idx, self.X_img, self.Y_img
-			del self.base_feats, self.perm
-			del self.nb_scratch, self.yb_scratch
-
+			self.images = None
+			self.windows = None
+			self.global_indices = None
+			cp.get_default_memory_pool().free_all_blocks()
 
 		def __len__(self):
 			return self.N
 
-		def __getitem__(self, idx):
-			iy = self.lin_y[idx]
-			ix = self.lin_x[idx]
-			wb = self.X_win[iy, ix, :, :, :].reshape(1, self.patch * self.patch, self.Cx)
-			nb = wb[:, self.neighbor_idx, :].reshape(1, -1)
-
-			nb = nb.astype(cp.float32)
-			yb = self.Y_flat[idx:idx+1]
-			return nb, yb
-
-	return Stream(X_img, Y_img, patch_size, output_dim, batch_size)
+	return Stream(images, pixel_offsets, global_indices, patch_size, batch_size)
