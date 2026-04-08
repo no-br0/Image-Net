@@ -7,8 +7,6 @@ from src.backend_cupy import get_vram_usage
 
 from Config.config import (	 CONFIG_FILE, )
 
-from Config.log_dir import GPU_TEMP_LOG_PATH
-
 
 PROFILE_VRAM    = False     # Set True to log VRAM each epoch
 VRAM_HEADROOM   = 0.80      # Reduce batch size if CuPy pool > 80% total
@@ -133,27 +131,17 @@ def check_gpu_temp_and_exit(nn, epoch, warn_temp, poll_interval=0.20, gpu_id=0):
 	while temp > warn_temp:
 		current_speed = get_gpu_fan_speed(gpu_id)
 		target_speed = min(MAX_SAFE_FAN, current_speed + FAN_BUMP)
-		#if target_speed > current_speed and target_speed != last_speed:
-		#	set_gpu_fan_speed(target_speed, gpu_id)
-		#	log_lines.append(f"[fan-hot] {temp}°C — fan {current_speed}% -> {target_speed}%\n")
-		#	last_speed = target_speed
+
 		if target_speed > current_speed and target_speed != last_speed:
 			set_gpu_fan_speed(target_speed, gpu_id)
 			last_speed = target_speed
 
 		sleep_time = 0.10 if temp - warn_temp <= 3 else poll_interval
-		#log_lines.append(f"[cooldown] GPU {temp}°C — sleeping {sleep_time:.2f}s\n")
 		time.sleep(sleep_time)
-		#total_sleep += sleep_time
 
 		stats = get_vram_usage()
 		temp = stats.get("gpu_temp", -1)
 
-
-	# Final log flush
-	#if log_lines:
-	#	with open(GPU_TEMP_LOG_PATH, "a") as gpu_log:
-	#		gpu_log.writelines(log_lines)
 			
 	sleep_end_time = time.perf_counter()
 	total_sleep = (sleep_end_time - sleep_start_time)
