@@ -8,7 +8,7 @@ ROTATE_TARGET_FREQ         		= 20
 
 HELDOUT_SEED = 0
 
-MULTI_IMAGE_COUNT = 1 # number of images trained on simultaneously in a single epoch
+MULTI_IMAGE_COUNT = 2 # number of images trained on simultaneously in a single epoch
 
 # --- Viewer toggle ---
 ENABLE_END_VIEWER       = False
@@ -21,7 +21,7 @@ WIDTH = 1280
 
 # --- Settings ---
 TRAIN               = True
-FORCE_NEW_MODEL     = False
+FORCE_NEW_MODEL     = True
 MODEL_SEED          = 42       	# Set to None for random seed
 ENABLE_SET_LR       = False
 LEARNING_RATE       = 0.00001	#0.00020 # 2e-6
