@@ -3,7 +3,7 @@ import cupy as cp
 from Config.config import ENABLE_ROTATE_TARGET_IMAGE, PATCH_SIZE, ROTATE_TARGET_FREQ
 from Config.image_registry import get_image_path, get_seed
 from Config.layer_registry import build_input_stack, inject_input_seeds
-from data_utils import load_rgb_image, make_neighbor_stream
+from src.data_utils import load_rgb_image, make_neighbor_stream
 from src.train import train_streaming
 from src.neural_net import NeuralNet
 from src.loss_registry import LOSS_REGISTRY
