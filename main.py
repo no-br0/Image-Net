@@ -18,7 +18,7 @@ from Config.log_dir import (
 							)
 from Config.layer_registry import build_input_stack, inject_input_seeds  # optional, not used here
 from src.neural_net import NeuralNet
-from src.data_utils import generate_display_dimensions, make_neighbor_stream, load_rgb_image
+from src.data_utils import generate_display_dimensions, make_neighbor_stream
 from Config.image_registry import get_image_path
 from helpers.sync_input_config import sync_input_config
 from src.backend_cupy import log_vram_usage
@@ -113,17 +113,27 @@ def main():
 	print(f"[config] H={H}, W={W}, epochs={EPOCHS}, batch_size={BATCH_SIZE}")
 	
 
-	P_display, T_display = extract_patches_for_display(X_u8, Y_rgb, PATCH_SIZE)	
-	stream = make_neighbor_stream(P_display, T_display, 
-								batch_size=BATCH_SIZE)
-	stream.H = H
-	stream.W = W
-	stream.set_epoch(shuffle=False)
+	rec = {
+		"X": X_u8.astype(cp.float32),
+		"T": Y_rgb.reshape(-1, 3).astype(cp.float32),
+		"H": H,
+		"W": W,
+		"pad": PATCH_SIZE // 2,
+	}
 
-	# Stream: neighbors (+coords) -> center RGB
-	#stream = make_neighbor_stream(X_u8, Y_rgb, patch_size=PATCH_SIZE, 
-	#							output_dim=3,
-	#							batch_size=BATCH_SIZE)
+	images = [rec]
+	pixel_offsets = cp.asarray([0], dtype=cp.int64)
+	global_indices = cp.arange(H * W, dtype=cp.int64)
+
+	stream = make_neighbor_stream(
+		images,
+		pixel_offsets,
+		global_indices,
+		patch_size=PATCH_SIZE,
+		batch_size=BATCH_SIZE,
+	)
+
+	stream.set_epoch(shuffle=False)
 	
 	flush_pool()
 

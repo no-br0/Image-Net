@@ -11,12 +11,19 @@ from cupy.lib.stride_tricks import sliding_window_view as swv
 
 
 def build_stream(input_config, model, batch_size):
-	# Use MULTI_IMAGE_COUNT images, not TARGET_IMAGE
-	P_all, T_all = build_multi_image_dataset(model, input_config, PATCH_SIZE)
+	images, pixel_offsets, global_indices = build_multi_image_dataset(
+		model, input_config, PATCH_SIZE
+	)
 
-	# Stream now expects precomputed (P_all, T_all)
-	stream = make_neighbor_stream(P_all, T_all, batch_size=batch_size)
+	stream = make_neighbor_stream(
+		images,
+		pixel_offsets,
+		global_indices,
+		patch_size=PATCH_SIZE,
+		batch_size=batch_size,
+	)
 	return stream
+
 
 
 
@@ -29,53 +36,60 @@ def get_active_images(global_epoch, reg_size, count):
 	return (perm[:count]).tolist()
 
 
-def build_image_dataset(image_id:int, input_config, patch_size):
+def build_image_dataset(image_id: int, input_config, patch_size):
 	cfg = inject_input_seeds(input_config, get_seed(image_id))
 
 	Y_rgb = load_rgb_image(get_image_path(image_id))
 	H, W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
 	pad = patch_size // 2
-	H_proc = H  + (2*pad)
-	W_proc = W  + (2*pad)
+	H_proc = H + (2 * pad)
+	W_proc = W + (2 * pad)
 
 	X_u8, _ = build_input_stack(H_proc, W_proc, cfg)
 
-	H_full, W_full, Cx = X_u8.shape
-	assert H_full - 2 * pad == H and W_full - 2 * pad == W
+	return {
+		"X": X_u8.astype(cp.float32),               # (H_proc, W_proc, Cx)
+		"T": Y_rgb.reshape(-1, 3).astype(cp.float32),  # (H*W, 3)
+		"H": H,
+		"W": W,
+		"pad": pad,
+	}
 
-	X_win = swv(X_u8, window_shape=(patch_size, patch_size), axis=(0,1))
-	P = X_win.reshape(H * W, patch_size * patch_size * Cx).astype(cp.float32)
+	
 
-	T = Y_rgb.reshape(-1, 3).astype(cp.float32)
-
-	return P, T
-
-def build_multi_image_dataset(model, input_config, patch_size:int):
+def build_multi_image_dataset(model, input_config, patch_size: int):
 	reg_size = get_registry_size()
 
 	if not ENABLE_ROTATE_TARGET_IMAGE:
-		
 		if MULTI_IMAGE_COUNT == 1:
 			active_ids = [model.TARGET_IMAGE]
 		else:
 			active_ids = get_active_images(0, reg_size, MULTI_IMAGE_COUNT)
 			print(f" Active Image IDs: {active_ids}")
-
 	else:
-		active_ids = get_active_images(model.GLOBAL_EPOCH//ROTATE_TARGET_FREQ, reg_size, MULTI_IMAGE_COUNT)
+		active_ids = get_active_images(
+			model.GLOBAL_EPOCH // ROTATE_TARGET_FREQ,
+			reg_size,
+			MULTI_IMAGE_COUNT,
+		)
 
-	P_list = []
-	T_list = []
+	images = []
+	pixel_offsets = []
+	total_pixels = 0
 
 	for img_id in active_ids:
-		P, T = build_image_dataset(img_id, input_config, patch_size)
-		P_list.append(P)
-		T_list.append(T)
+		rec = build_image_dataset(img_id, input_config, patch_size)
+		n_pix = rec["H"] * rec["W"]
+		pixel_offsets.append(total_pixels)
+		total_pixels += n_pix
+		images.append(rec)
 
-	P_all = cp.concatenate(P_list, axis=0)
-	T_all = cp.concatenate(T_list, axis=0)
+	pixel_offsets = cp.asarray(pixel_offsets, dtype=cp.int64)
+	global_indices = cp.arange(total_pixels, dtype=cp.int64)
 
-	return P_all, T_all
+	return images, pixel_offsets, global_indices
+
+
 
 
 
