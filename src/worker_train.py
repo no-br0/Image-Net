@@ -54,10 +54,13 @@ def build_multi_image_dataset(model, input_config, patch_size:int):
 	reg_size = get_registry_size()
 
 	if not ENABLE_ROTATE_TARGET_IMAGE:
-		active_ids = get_active_images(0, reg_size, MULTI_IMAGE_COUNT)
-		print(f"Active image IDs (no rotation): {active_ids}")
+		
 		if MULTI_IMAGE_COUNT == 1:
 			active_ids = [model.TARGET_IMAGE]
+		else:
+			active_ids = get_active_images(0, reg_size, MULTI_IMAGE_COUNT)
+			print(f" Active Image IDs: {active_ids}")
+
 	else:
 		active_ids = get_active_images(model.GLOBAL_EPOCH//ROTATE_TARGET_FREQ, reg_size, MULTI_IMAGE_COUNT)
 
