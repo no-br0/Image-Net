@@ -253,9 +253,7 @@ def main():
 			p.join()
 		except Exception as e:
 			print("[ctrl-c] Failed to join worker process: ", e)
-		#print("[ctrl-c] Interrupted — saving model…")
-		#if MODEL_SAVE_PATH is not None:
-		#	model.save(MODEL_SAVE_PATH)
+
 	finally:
 		if ENABLE_END_VIEWER:
 			img_list = []

@@ -94,6 +94,23 @@ def build_multi_image_dataset(model, input_config, patch_size: int):
 
 
 
+
+def build_stream(input_config, model, batch_size):
+	input_config = inject_input_seeds(input_config, get_seed(model.TARGET_IMAGE))
+	Y_rgb = load_rgb_image(get_image_path(model.TARGET_IMAGE))
+	H, W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
+
+	pad = PATCH_SIZE // 2
+	H_proc = H  + (2*pad)
+	W_proc = W  + (2*pad)
+
+	X_u8, _ = build_input_stack(H_proc, W_proc, input_config)
+	stream = make_neighbor_stream(X_u8, Y_rgb, patch_size=PATCH_SIZE, 
+								output_dim=3,
+								batch_size=batch_size)
+	return stream
+
+
 def worker_main(conn, model_state, epochs, batch_size, loss_name, shuffle):
 	model = NeuralNet.from_state(model_state)
 	if model.TARGET_IMAGE is None:
@@ -126,7 +143,7 @@ def worker_main(conn, model_state, epochs, batch_size, loss_name, shuffle):
 		is_last_iteration = (i == epochs - 1)
 
 		if ENABLE_ROTATE_TARGET_IMAGE and not is_last_iteration:
-			if model.GLOBAL_EPOCH %  ROTATE_TARGET_FREQ == 0:
+			if model.GLOBAL_EPOCH % ROTATE_TARGET_FREQ == 0:
 				stream.delete_data()
 				del stream
 				cp.get_default_memory_pool().free_all_blocks()

@@ -60,11 +60,7 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	compute_time = 0.0
 	
 	prep_time = 0.0
-	prep_start = time.perf_counter()
-	
-	#free = cp.cuda.runtime.memGetInfo()[0] / 1024**2
-	#print(f"[batch] GPU free memory before: {free:.1f} MiB")
-	
+	prep_start = time.perf_counter()		
 	
 	total_elements = 0
 	total_samples = 0
