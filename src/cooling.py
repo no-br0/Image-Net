@@ -73,11 +73,6 @@ def in_docker():
 def set_gpu_fan_speed(speed, gpu_id=0):
 	"""Set GPU fan speed to given % (requires Coolbits or driver control)."""
 	speed = max(0, min(MAX_SAFE_FAN, int(speed)))
-	if sys.platform.startswith("win"):
-		# No direct fan control on Windows – just log the intent
-		with open(GPU_TEMP_LOG_PATH, "a") as gpu_log:
-			gpu_log.write(f"[fan-set] Target {speed}% (Windows – no direct control)\n")
-		return
 	# Enable manual control and set new target speed
 	if sys.platform.startswith("win"):
 		cmd = [
@@ -96,7 +91,6 @@ def check_gpu_temp_and_exit(nn, epoch, warn_temp, poll_interval=0.20, gpu_id=0):
 	stats = get_vram_usage()
 	temp = stats.get("gpu_temp", -1)
 	total_sleep = 0.0
-	log_lines = []
 	last_speed = None
 	sleep_start_time = time.perf_counter()
 	
@@ -106,12 +100,10 @@ def check_gpu_temp_and_exit(nn, epoch, warn_temp, poll_interval=0.20, gpu_id=0):
 		target_speed = min(MAX_SAFE_FAN, current_speed + FAN_BUMP)
 		if target_speed > current_speed:
 			set_gpu_fan_speed(target_speed, gpu_id)
-			log_lines.append(f"[fan-ramp] {temp}°C — fan {current_speed}% -> {target_speed}%\n")
 			last_speed = target_speed
 
 	# Critical: save & exit immediately
 	if temp >= MAX_TEMP:
-		log_lines.append(f"[CRITICAL] GPU temp {temp}°C at epoch {epoch}. Saving + exiting.\n")
 		if os.path.exists(CONFIG_FILE):
 			with open(CONFIG_FILE) as f:
 				settings = json.load(f)
@@ -121,8 +113,6 @@ def check_gpu_temp_and_exit(nn, epoch, warn_temp, poll_interval=0.20, gpu_id=0):
 		
 		if MODEL_SAVE_PATH is not None:
 			nn.save(MODEL_SAVE_PATH)
-		with open(GPU_TEMP_LOG_PATH, "a") as gpu_log:
-			gpu_log.writelines(log_lines)
 		exit(0)
 
 
