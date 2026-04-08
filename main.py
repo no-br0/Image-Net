@@ -1,36 +1,34 @@
 # main.py
 import os, json
+import time
 import cupy as cp
-import numpy as np
 #from backend_cupy import get_vram_usage
 from Config.config import (
-	EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, TARGET_IMAGE_ID,
-	PATCH_SIZE, OUTPUT_ACT, HIDDEN_ACT, LEARNING_RATE, INPUT_CONFIG_PATH,
+	ENABLE_LIVE_VIEWER, EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, HEIGHT, HELDOUT_SEED, TARGET_IMAGE_ID,
+	PATCH_SIZE, OUTPUT_ACT, HIDDEN_ACT, LEARNING_RATE,
 	GRAD_CLIP, MODEL_SEED, FORCE_NEW_MODEL, DEFAULT_MODEL_NAME, SAVE_FOLDER, 
-	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL, CONFIG_FILE, 
-	ENABLE_CUSTOM_MODEL_NAME, ENABLE_INPUT_CACHING, ENABLE_END_VIEWER
+	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL, CONFIG_FILE, SAVE_INTERVAL,
+	ENABLE_CUSTOM_MODEL_NAME, ENABLE_END_VIEWER, WIDTH, WORKER_CHUNK_SIZE
 )
 #from Config.Inputs.layers_config import layers_cfg
 import Config.log_dir as log_dir
-from src.loss_registry import LOSS_REGISTRY
 from Config.log_dir import ( 
-							GPU_LOG_PATH, GPU_TEMP_LOG_PATH,
-							LOSS_LOG_PATH,
+							GPU_LOG_PATH,
 							SAVE_ERROR_LOG_PATH,
-							RAW_LOSS_LOG_PATH, LOWEST_RAW_LOSS_LOG_PATH,
-							LOWEST_LOSS_LOG_PATH, TELEMETRY_LOG_FOLDER,
+							TELEMETRY_LOG_FOLDER,
 							CURRENT_MODEL_NAME_PATH
 							)
-from Config.layer_registry import build_input_stack  # optional, not used here
-from src.train import train_streaming
+from Config.layer_registry import build_input_stack, inject_input_seeds  # optional, not used here
 from src.neural_net import NeuralNet
-from src.data_utils import make_neighbor_stream, load_rgb_image
+from src.data_utils import generate_display_dimensions, make_neighbor_stream
 from Config.image_registry import get_image_path
 from helpers.sync_input_config import sync_input_config
-from src.backend_cupy import to_cpu
-from Telemetry.telemetry import TelemetryLogger, make_model_signature
+from src.backend_cupy import log_vram_usage
 from src.final_viewer import final_viewer
 from src.display_utils import predict_full_from_stream, publish_frame
+from src.worker_train import worker_main
+import multiprocessing as mp
+from src.cooling import post_epoch_cooling, pre_display_cooling
 
 # -------- Utilities --------
 def flush_pool():
@@ -77,7 +75,8 @@ def main():
 	TRAIN_IMAGE_PATH = get_image_path(TARGET_IMAGE_ID)
 
 	# Load RGB target; keep native size (or enforce H,W if you prefer)
-	Y_rgb = load_rgb_image(TRAIN_IMAGE_PATH)
+	Y_rgb = generate_display_dimensions(WIDTH, HEIGHT)
+	#Y_rgb = load_rgb_image(TRAIN_IMAGE_PATH)
 	H, W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
 	
 	
@@ -92,11 +91,14 @@ def main():
 	
 	
 	layers_cfg = sync_input_config(MODEL_SAVE_PATH)
+	input_config = inject_input_seeds(layers_cfg, HELDOUT_SEED)
 	
+	pad = PATCH_SIZE // 2
+	H_proc = H  + (2*pad)
+	W_proc = W  + (2*pad)
 	
-	X_u8, channel_names = build_input_stack(H, W, layers_cfg)
-	h0, w0 = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
-	print(f"[config] H={h0}, W={w0}, epochs={EPOCHS}, batch_size={BATCH_SIZE}")
+	X_u8, channel_names = build_input_stack(H_proc, W_proc, input_config)
+	print(f"[config] H={H}, W={W}, epochs={EPOCHS}, batch_size={BATCH_SIZE}")
 	
 	
 
@@ -104,12 +106,9 @@ def main():
 	stream = make_neighbor_stream(X_u8, Y_rgb, patch_size=PATCH_SIZE, 
 								output_dim=3,
 								batch_size=BATCH_SIZE)
-	if ENABLE_INPUT_CACHING:
-		stream.set_epoch(shuffle=False)
-		stream.cache_full_features()
 	
 	flush_pool()
-	
+
 	
 	
 	# Model: input features -> 3 outputs (RGB)
@@ -121,10 +120,11 @@ def main():
 	#topology = [stream.N_features, 1280, 960, 768, 512, 3]
 
 
-	model = NeuralNet(topology, LEARNING_RATE, 
+	model = NeuralNet(topology, model_name,LEARNING_RATE, 
 					HIDDEN_ACT, 
 					OUTPUT_ACT, GRAD_CLIP,
-					MODEL_SEED)
+					MODEL_SEED,
+					input_config=layers_cfg)
 	print("[stage] Model initialised with topology:", topology)
 	
 	if FORCE_NEW_MODEL is False:
@@ -132,14 +132,10 @@ def main():
 			if MODEL_SAVE_PATH is not None:
 				model = model.load(MODEL_SAVE_PATH)
 		except Exception as e:
-			import traceback
-			traceback.print_exc()
+			#import traceback
+			#traceback.print_exc()
 			print(f"[stage] Failed to load model: {e}")
-			#if os.path.exists(TELEMETRY_LOG_PATH):
-			#    os.remove(TELEMETRY_LOG_PATH)
-	#else:
-		#if os.path.exists(TELEMETRY_LOG_PATH):
-		#    os.remove(TELEMETRY_LOG_PATH)
+
 	
 	TIME_LOG_PATH = log_dir.TIME_LOG
 
@@ -148,49 +144,86 @@ def main():
 	prune_telemetry(TELEMETRY_OPTIMISER_PATH, model.GLOBAL_EPOCH)
 	prune_telemetry(TIME_LOG_PATH, model.GLOBAL_EPOCH)
 	prune_telemetry(GPU_LOG_PATH, model.GLOBAL_EPOCH)
-	
-
-	# Build model signature from topology + input config
-	#model_signature = make_model_signature(model.topology, model.input_config)
-
-	# Create telemetry logger (toggle from config)
-	telemetry_logger = TelemetryLogger(
-		log_dir=TELEMETRY_LOG_FOLDER,
-		model_signature=model_name,
-		enabled=True  # or read from config["telemetry"]["enabled"]
-	)
-			
-			
-
-	# Per-epoch callback: publish prediction
-	def on_epoch_end(epoch, nn):
-		nonlocal stream
-		if ((epoch % LIVE_UPDATE_INTERVAL == 0) or epoch == 1):
-			try:
-				pred, sleep_time = predict_full_from_stream(nn, stream, batch_size=BATCH_SIZE)
-				publish_frame(pred)
-			except Exception as e:
-				print(f"[viewer] on_epoch_end failed: {e}")
-		return sleep_time
 
 	# Train — for per-pixel RGB, use plain MSE (avoid perceptual which expects 2D fields)
 	try:
 		if TRAIN:
 			bs = BATCH_SIZE
+			chunk_size=WORKER_CHUNK_SIZE
+			remaining = EPOCHS
+
 			print(f"[train] Using batch size: {bs}")
-			train_streaming(
-				model, stream,
-				epochs=EPOCHS,
-				batch_size=bs,
-				shuffle=ENABLE_SHUFFLE,
-				error_func=LOSS_REGISTRY[LOSS_NAME],
-				on_epoch_end=on_epoch_end,
-				telemetry_logger=telemetry_logger
-			)
+			print(f"[train] Using worker chunks of {chunk_size} epochs")
+
+			while remaining > 0:
+				this_chunk = min(chunk_size, remaining)
+
+				parent_conn, child_conn = mp.Pipe()
+				p = mp.Process(
+					target=worker_main,
+					args=(child_conn, model.to_state(), this_chunk, bs, LOSS_NAME, ENABLE_SHUFFLE),
+				)
+				p.start()
+
+				while True:
+					msg, payload = parent_conn.recv()
+
+					if msg == "epoch":
+						state = payload["state"]
+						timing = payload["timing"]
+
+						model = NeuralNet.from_state(state)
+
+						if ENABLE_LIVE_VIEWER:
+							pd_sleep_time = pre_display_cooling(model, model.GLOBAL_EPOCH)
+						else:
+							pd_sleep_time = 0
+
+						cb_start = time.perf_counter()
+						if ((model.GLOBAL_EPOCH % LIVE_UPDATE_INTERVAL == 0) or model.GLOBAL_EPOCH == 1) and ENABLE_LIVE_VIEWER:
+							try:
+								pred, sleep_time = predict_full_from_stream(model, stream, batch_size=BATCH_SIZE)
+								publish_frame(pred)
+							except Exception as e:
+								print(f"[viewer] live update failed: {e}")
+						else:
+							sleep_time = 0
+						cb_end = time.perf_counter()
+						callback_time = (cb_end - cb_start) - sleep_time
+
+						log_vram_usage(model.GLOBAL_EPOCH)
+						
+						pe_sleep_time = post_epoch_cooling(model, model.GLOBAL_EPOCH)
+
+						timing["epoch_breakdown"]["callback_time"] = callback_time
+						timing["epoch_breakdown"]["sleep_time"] += sleep_time
+						timing["epoch_breakdown"]["sleep_time"] += pe_sleep_time
+						timing["epoch_breakdown"]["sleep_time"] += pd_sleep_time
+						timing["epoch_time"] += callback_time + sleep_time + pe_sleep_time
+
+						with open(TIME_LOG_PATH, "a") as f:
+							f.write(json.dumps(timing) + "\n")
+
+						parent_conn.send("continue")
+
+					elif msg == "done":
+						model = NeuralNet.from_state(payload)
+						break
+					
+					if model.GLOBAL_EPOCH % SAVE_INTERVAL == 0:
+						model.save(MODEL_SAVE_PATH)
+
+				p.join()
+				remaining -= this_chunk
+			pass
+
 	except KeyboardInterrupt:
-		print("[ctrl-c] Interrupted — saving model…")
-		if MODEL_SAVE_PATH is not None:
-			model.save(MODEL_SAVE_PATH)
+		print("[ctrl-c] Interrupted — ending training…")
+		try:
+			p.join()
+		except Exception as e:
+			print("[ctrl-c] Failed to join worker process: ", e)
+
 	finally:
 		if ENABLE_END_VIEWER:
 			img_list = []
@@ -206,13 +239,7 @@ def main():
 		print("[done] Training run complete")
 
 if __name__ == "__main__":
-	
-	open(LOSS_LOG_PATH, "w").close()
-	open(GPU_TEMP_LOG_PATH, "w").close()
-	open(RAW_LOSS_LOG_PATH, "w").close()
-	open(LOWEST_LOSS_LOG_PATH, "w").close()
-	open(LOWEST_RAW_LOSS_LOG_PATH, "w").close()
-	
+
 	if os.path.exists(SAVE_ERROR_LOG_PATH):
 		os.remove(SAVE_ERROR_LOG_PATH)
 	

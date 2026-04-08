@@ -13,21 +13,13 @@ def predict_full_from_stream(model, stream, *, batch_size=BATCH_SIZE):
 	stream.set_epoch(shuffle=False)
 	sleep_time = 0
 
-	pred_flat = cp.empty((N, out_c), dtype=cp.float32)
+	pred_flat = cp.zeros((N, out_c), dtype=cp.float32)
 
-
-	if hasattr(stream, "cached_features") and stream.cached_features is not None:
-		xb_all = stream.cached_features
-		for i in range(0, N, batch_size):
-			j = min(i + batch_size, N)
-			pred_flat[i:j] = model.feedforward(xb_all[i:j])
-			sleep_time += display_batch_cooling(model, model.GLOBAL_EPOCH)
-	else:
-		idx = 0
-		for xb, _ in stream.iter_minibatches(batch_size=batch_size, sync=False):
-			pred_flat[idx:idx+xb.shape[0]] = model.feedforward(xb)
-			sleep_time += display_batch_cooling(model, model.GLOBAL_EPOCH)
-			idx += xb.shape[0]
+	idx = 0
+	for xb, _ in stream.iter_minibatches(batch_size=batch_size, sync=False):
+		pred_flat[idx:idx+xb.shape[0]] = model.feedforward(xb)
+		sleep_time += display_batch_cooling(model, model.GLOBAL_EPOCH)
+		idx += xb.shape[0]
 
 	pred_img = pred_flat.reshape(H, W, out_c)
 	cp.clip(pred_img, 0.0, 255.0, out=pred_img)

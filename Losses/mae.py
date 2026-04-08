@@ -1,23 +1,21 @@
-from src.backend_cupy import xp
-
-
+import cupy as cp
 
 def mae(target, pred, derivative=False):
     if derivative:
-        return xp.sign(pred - target) / pred.size
-    return xp.mean(xp.abs(pred - target))
+        return cp.sign(pred - target) / pred.size
+    return cp.mean(cp.abs(pred - target))
 
 def maxe(target, pred, derivative=False):
 	diff = pred - target
-	abs_diff = xp.abs(diff)
+	abs_diff = cp.abs(diff)
 
 	if derivative:
-		k = xp.argmax(abs_diff)
-		grad = xp.zeros_like(pred)
-		grad[k] = -xp.sign(diff[k])
+		k = cp.argmax(abs_diff)
+		grad = cp.zeros_like(pred)
+		grad[k] = -cp.sign(diff[k])
 		return grad
 		
-	return xp.max(abs_diff)
+	return cp.max(abs_diff)
 
 def mae_luma(target, pred, derivative=False):
     r_w, g_w, b_w = 0.2126, 0.7152, 0.0722
@@ -26,20 +24,20 @@ def mae_luma(target, pred, derivative=False):
     diff = pred_luma - target_luma
 
     if derivative:
-        grad = xp.zeros_like(pred)
-        sign = xp.sign(diff) / diff.size
+        grad = cp.zeros_like(pred)
+        sign = cp.sign(diff) / diff.size
         grad[..., 0] = r_w * sign
         grad[..., 1] = g_w * sign
         grad[..., 2] = b_w * sign
         return grad
 
     # Expand scalar error into per-channel contributions
-    err = xp.zeros_like(pred)
-    abs_diff = xp.abs(diff)
+    err = cp.zeros_like(pred)
+    abs_diff = cp.abs(diff)
     err[..., 0] = r_w * abs_diff
     err[..., 1] = g_w * abs_diff
     err[..., 2] = b_w * abs_diff
-    return xp.mean(err)  # shape: (N, 3)
+    return cp.mean(err)  # shape: (N, 3)
 
 
 
@@ -51,20 +49,20 @@ def mae_shadow(target, pred, derivative=False):
     diff = pred_luma - target_luma
 
     if derivative:
-        grad = xp.zeros_like(pred)
-        sign = xp.sign(diff) / diff.size
+        grad = cp.zeros_like(pred)
+        sign = cp.sign(diff) / diff.size
         grad[..., 0] = r_w * sign
         grad[..., 1] = g_w * sign
         grad[..., 2] = b_w * sign
         return grad
 
     # Expand scalar error into per-channel contributions
-    err = xp.zeros_like(pred)
-    abs_diff = xp.abs(diff)
+    err = cp.zeros_like(pred)
+    abs_diff = cp.abs(diff)
     err[..., 0] = r_w * abs_diff
     err[..., 1] = g_w * abs_diff
     err[..., 2] = b_w * abs_diff
-    return xp.mean(err)  # shape: (N, 3)
+    return cp.mean(err)  # shape: (N, 3)
 
 
 
@@ -77,16 +75,16 @@ def mae_dual_luma(target, pred, derivative=False):
     r_l, g_l, b_l = 0.2126, 0.7152, 0.0722
     pred_luma   = r_l * pred[..., 0] + g_l * pred[..., 1] + b_l * pred[..., 2]
     target_luma = r_l * target[..., 0] + g_l * target[..., 1] + b_l * target[..., 2]
-    diff_luma   = xp.sign(pred_luma - target_luma)[..., None]  # shape: (N, 1)
+    diff_luma   = cp.sign(pred_luma - target_luma)[..., None]  # shape: (N, 1)
 
     # --- Shadow weights ---
     r_s, g_s, b_s = 0.3937, 0.1424, 0.4639
     pred_shadow   = r_s * pred[..., 0] + g_s * pred[..., 1] + b_s * pred[..., 2]
     target_shadow = r_s * target[..., 0] + g_s * target[..., 1] + b_s * target[..., 2]
-    diff_shadow   = xp.sign(pred_shadow - target_shadow)[..., None]  # shape: (N, 1)
+    diff_shadow   = cp.sign(pred_shadow - target_shadow)[..., None]  # shape: (N, 1)
 
     if derivative:
-        grad = xp.zeros_like(pred)
+        grad = cp.zeros_like(pred)
         grad[..., 0] += 0.5 * r_l * diff_luma.squeeze() / diff_luma.size
         grad[..., 1] += 0.5 * g_l * diff_luma.squeeze() / diff_luma.size
         grad[..., 2] += 0.5 * b_l * diff_luma.squeeze() / diff_luma.size
@@ -96,49 +94,49 @@ def mae_dual_luma(target, pred, derivative=False):
         return grad
 
     # --- Channel-wise error contributions ---
-    err = xp.zeros_like(pred)
-    err[..., 0] += 0.5 * r_l * xp.abs(pred_luma - target_luma)
-    err[..., 1] += 0.5 * g_l * xp.abs(pred_luma - target_luma)
-    err[..., 2] += 0.5 * b_l * xp.abs(pred_luma - target_luma)
-    err[..., 0] += 0.5 * r_s * xp.abs(pred_shadow - target_shadow)
-    err[..., 1] += 0.5 * g_s * xp.abs(pred_shadow - target_shadow)
-    err[..., 2] += 0.5 * b_s * xp.abs(pred_shadow - target_shadow)
+    err = cp.zeros_like(pred)
+    err[..., 0] += 0.5 * r_l * cp.abs(pred_luma - target_luma)
+    err[..., 1] += 0.5 * g_l * cp.abs(pred_luma - target_luma)
+    err[..., 2] += 0.5 * b_l * cp.abs(pred_luma - target_luma)
+    err[..., 0] += 0.5 * r_s * cp.abs(pred_shadow - target_shadow)
+    err[..., 1] += 0.5 * g_s * cp.abs(pred_shadow - target_shadow)
+    err[..., 2] += 0.5 * b_s * cp.abs(pred_shadow - target_shadow)
 
-    return xp.mean(err)  # shape: (N, 3)
+    return cp.mean(err)  # shape: (N, 3)
 
 
 
 def mae_red(target, pred, derivative=False):
     diff = pred[..., 0] - target[..., 0]
     if derivative:
-        grad = xp.zeros_like(pred)
-        grad[..., 0] = xp.sign(diff) / diff.size
+        grad = cp.zeros_like(pred)
+        grad[..., 0] = cp.sign(diff) / diff.size
         return grad
-    err = xp.zeros_like(pred)
-    err[..., 0] = xp.abs(diff)
-    return xp.mean(err)  # shape: (N, 3)
+    err = cp.zeros_like(pred)
+    err[..., 0] = cp.abs(diff)
+    return cp.mean(err)  # shape: (N, 3)
 
 
 def mae_green(target, pred, derivative=False):
     diff = pred[..., 1] - target[..., 1]
     if derivative:
-        grad = xp.zeros_like(pred)
-        grad[..., 1] = xp.sign(diff) / diff.size
+        grad = cp.zeros_like(pred)
+        grad[..., 1] = cp.sign(diff) / diff.size
         return grad
-    err = xp.zeros_like(pred)
-    err[..., 1] = xp.abs(diff)
-    return xp.mean(err)  # shape: (N, 3)
+    err = cp.zeros_like(pred)
+    err[..., 1] = cp.abs(diff)
+    return cp.mean(err)  # shape: (N, 3)
 
 
 def mae_blue(target, pred, derivative=False):
     diff = pred[..., 2] - target[..., 2]
     if derivative:
-        grad = xp.zeros_like(pred)
-        grad[..., 2] = xp.sign(diff) / diff.size
+        grad = cp.zeros_like(pred)
+        grad[..., 2] = cp.sign(diff) / diff.size
         return grad
-    err = xp.zeros_like(pred)
-    err[..., 2] = xp.abs(diff)
-    return xp.mean(err)  # shape: (N, 3)
+    err = cp.zeros_like(pred)
+    err[..., 2] = cp.abs(diff)
+    return cp.mean(err)  # shape: (N, 3)
 
 
 
@@ -162,11 +160,11 @@ def mae_hue(target, pred, derivative=False):
 
     def rgb_to_hue_components(rgb):
         r, g, b = rgb[:, 0], rgb[:, 1], rgb[:, 2]
-        maxc = xp.maximum(xp.maximum(r, g), b)
-        minc = xp.minimum(xp.minimum(r, g), b)
+        maxc = cp.maximum(cp.maximum(r, g), b)
+        minc = cp.minimum(cp.minimum(r, g), b)
         delta = maxc - minc
 
-        hue6 = xp.zeros_like(maxc)
+        hue6 = cp.zeros_like(maxc)
         mask = delta > eps
 
         idx_r = (maxc == r) & mask
@@ -178,8 +176,8 @@ def mae_hue(target, pred, derivative=False):
         idx_b = (maxc == b) & mask
         hue6[idx_b] = ((r[idx_b] - g[idx_b]) / (delta[idx_b] + eps)) + 4
 
-        hue_rad = (hue6 / 6.0) * (2 * xp.pi)
-        return xp.cos(hue_rad), xp.sin(hue_rad), hue_rad, maxc, minc, delta, idx_r, idx_g, idx_b, mask, hue6
+        hue_rad = (hue6 / 6.0) * (2 * cp.pi)
+        return cp.cos(hue_rad), cp.sin(hue_rad), hue_rad, maxc, minc, delta, idx_r, idx_g, idx_b, mask, hue6
 
     # Target and prediction hue components
     ct, st, _, _, _, _, _, _, _, _, _ = rgb_to_hue_components(target)
@@ -188,10 +186,10 @@ def mae_hue(target, pred, derivative=False):
     # Absolute error in sin/cos space
     diff_c = cp - ct
     diff_s = sp - st
-    abs_err = xp.sqrt(diff_c ** 2 + diff_s ** 2 + eps)
+    abs_err = cp.sqrt(diff_c ** 2 + diff_s ** 2 + eps)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
@@ -203,12 +201,12 @@ def mae_hue(target, pred, derivative=False):
     grad_sp = (1.0 / batch_size) * diff_s * inv_mag
 
     # Backprop through cos/sin to hue_rad
-    grad_hue_rad = (-grad_cp * xp.sin(hue_rad_p) +
-                     grad_sp * xp.cos(hue_rad_p))
+    grad_hue_rad = (-grad_cp * cp.sin(hue_rad_p) +
+                     grad_sp * cp.cos(hue_rad_p))
 
     # Backprop hue_rad -> RGB via HSV chain rule
-    grad = xp.zeros_like(pred, dtype=xp.float32)
-    k = (2.0 * xp.pi) / 6.0  # d(hue_rad)/dh6
+    grad = cp.zeros_like(pred, dtype=cp.float32)
+    k = (2.0 * cp.pi) / 6.0  # d(hue_rad)/dh6
 
     # Case: max = R
     denom_r = (delta_p[idx_r_p] ** 2) + eps
@@ -237,7 +235,7 @@ def mae_hue(target, pred, derivative=False):
     # Mask out undefined hue (delta ~ 0)
     grad[~mask_p] = 0.0
 
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -260,10 +258,10 @@ def mae_saturation(target, pred, derivative=False):
 
     def rgb_to_saturation(rgb):
         r, g, b = rgb[:, 0], rgb[:, 1], rgb[:, 2]
-        maxc = xp.maximum(xp.maximum(r, g), b)
-        minc = xp.minimum(xp.minimum(r, g), b)
+        maxc = cp.maximum(cp.maximum(r, g), b)
+        minc = cp.minimum(cp.minimum(r, g), b)
         delta = maxc - minc
-        sat = xp.where(maxc > eps, delta / (maxc + eps), 0.0)
+        sat = cp.where(maxc > eps, delta / (maxc + eps), 0.0)
         return sat, maxc, minc, delta
 
     st, _, _, _ = rgb_to_saturation(target)
@@ -271,20 +269,20 @@ def mae_saturation(target, pred, derivative=False):
 
     # Absolute error in saturation space
     r = sp - st
-    abs_err = xp.abs(r)
+    abs_err = cp.abs(r)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err  # shape: (N, 3)
 
     # Gradient wrt saturation prediction for MAE mean
-    dL_dS = (1.0 / batch_size) * xp.sign(r)
+    dL_dS = (1.0 / batch_size) * cp.sign(r)
 
     # Backprop saturation -> RGB
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     mask_max_r = (pred[:, 0] == maxc_p)
     mask_max_g = (pred[:, 1] == maxc_p)
     mask_max_b = (pred[:, 2] == maxc_p)
@@ -299,7 +297,7 @@ def mae_saturation(target, pred, derivative=False):
     grad[:, 1] += dL_dS * (mask_max_g * dS_dmax + mask_min_g * dS_dmin)
     grad[:, 2] += dL_dS * (mask_max_b * dS_dmax + mask_min_b * dS_dmin)
 
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -325,40 +323,40 @@ def mae_colorfulness(target, pred, derivative=False):
         r, g, b = rgb[:, 0], rgb[:, 1], rgb[:, 2]
         rg = r - g
         yb = 0.5 * (r + g) - b
-        return xp.sqrt(rg**2 + yb**2 + eps)
+        return cp.sqrt(rg**2 + yb**2 + eps)
 
     ct = colorfulness_metric(target)
     cp = colorfulness_metric(pred)
 
     # Absolute error in colorfulness space
     r_cf = cp - ct
-    abs_err = xp.abs(r_cf)
+    abs_err = cp.abs(r_cf)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err  # shape: (N, 3)
 
     # dL/dC_pred for mean MAE
-    grad_c = (1.0 / batch_size) * xp.sign(r_cf)
+    grad_c = (1.0 / batch_size) * cp.sign(r_cf)
 
     # dC/dRGB
     r, g, b = pred[:, 0], pred[:, 1], pred[:, 2]
     rg = r - g
     yb = 0.5 * (r + g) - b
-    denom = xp.sqrt(rg**2 + yb**2 + eps)
+    denom = cp.sqrt(rg**2 + yb**2 + eps)
 
     dC_dR = (rg + 0.5 * yb) / denom
     dC_dG = (-rg + 0.5 * yb) / denom
     dC_dB = (-yb) / denom
 
-    grad = xp.stack([grad_c * dC_dR,
+    grad = cp.stack([grad_c * dC_dR,
                      grad_c * dC_dG,
                      grad_c * dC_dB], axis=1)
 
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -380,9 +378,9 @@ def mae_chromatic_entropy(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def entropy_metric(rgb):
-        total = xp.sum(rgb, axis=1, keepdims=True) + eps
+        total = cp.sum(rgb, axis=1, keepdims=True) + eps
         p = rgb / total
-        entropy = -xp.sum(p * xp.log(p + eps), axis=1)  # shape: (N,)
+        entropy = -cp.sum(p * cp.log(p + eps), axis=1)  # shape: (N,)
         return entropy
 
     et = entropy_metric(target)
@@ -390,25 +388,25 @@ def mae_chromatic_entropy(target, pred, derivative=False):
 
     # Absolute error in entropy space
     r = ep - et
-    abs_err = xp.abs(r)
+    abs_err = cp.abs(r)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err  # shape: (N, 3)
 
     # dL/dE_pred for mean MAE
-    grad_e = (1.0 / batch_size) * xp.sign(r)  # shape: (N,)
+    grad_e = (1.0 / batch_size) * cp.sign(r)  # shape: (N,)
 
     # dE/dRGB
-    total = xp.sum(pred, axis=1, keepdims=True) + eps
+    total = cp.sum(pred, axis=1, keepdims=True) + eps
     p = pred / total
-    dE_dRGB = - (xp.log(p + eps) + 1.0) / total  # shape: (N, 3)
+    dE_dRGB = - (cp.log(p + eps) + 1.0) / total  # shape: (N, 3)
 
     grad = grad_e[:, None] * dE_dRGB
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -429,38 +427,38 @@ def mae_rgb_angle(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     # Cosine of angle between RGB vectors
-    dot = xp.sum(target * pred, axis=1)
-    norm_t = xp.sqrt(xp.sum(target**2, axis=1) + eps)
-    norm_p = xp.sqrt(xp.sum(pred**2, axis=1) + eps)
+    dot = cp.sum(target * pred, axis=1)
+    norm_t = cp.sqrt(cp.sum(target**2, axis=1) + eps)
+    norm_p = cp.sqrt(cp.sum(pred**2, axis=1) + eps)
     cos_theta = dot / (norm_t * norm_p + eps)
-    cos_theta = xp.clip(cos_theta, -1.0, 1.0)
+    cos_theta = cp.clip(cos_theta, -1.0, 1.0)
 
     # Angle in radians
-    angle = xp.arccos(cos_theta)
+    angle = cp.arccos(cos_theta)
 
     # Absolute error in angle space
-    abs_err = xp.abs(angle)
+    abs_err = cp.abs(angle)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err  # shape: (N, 3)
 
     # dL/dθ for mean MAE
-    grad_theta = (1.0 / batch_size) * xp.sign(angle)
+    grad_theta = (1.0 / batch_size) * cp.sign(angle)
 
     # dθ/dRGB_pred
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     for i in range(3):
         d_dot = target[:, i]
         d_norm_p = pred[:, i] / norm_p
         d_cos = (d_dot * norm_p - dot * d_norm_p) / (norm_t * norm_p**2 + eps)
-        d_theta = -1.0 / xp.sqrt(1.0 - cos_theta**2 + eps) * d_cos
+        d_theta = -1.0 / cp.sqrt(1.0 - cos_theta**2 + eps) * d_cos
         grad[:, i] = grad_theta * d_theta
 
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -485,18 +483,18 @@ def mae_opponent_color(target, pred, derivative=False):
     def opponent_transform(rgb):
         rg = rgb[:, 0] - rgb[:, 1]
         by = 0.5 * (rgb[:, 0] + rgb[:, 1]) - rgb[:, 2]
-        ld = xp.mean(rgb, axis=1)
-        return xp.stack([rg, by, ld], axis=1)
+        ld = cp.mean(rgb, axis=1)
+        return cp.stack([rg, by, ld], axis=1)
 
     ot = opponent_transform(target)
     op = opponent_transform(pred)
 
     # Absolute error in opponent space
     r = op - ot
-    abs_err = xp.sqrt(xp.sum(r**2, axis=1) + eps)  # shape: (N,)
+    abs_err = cp.sqrt(cp.sum(r**2, axis=1) + eps)  # shape: (N,)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
@@ -507,12 +505,12 @@ def mae_opponent_color(target, pred, derivative=False):
     grad_o = (1.0 / batch_size) * (r * inv_mag[:, None])  # shape: (N, 3)
 
     # Backprop opponent -> RGB
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = grad_o[:, 0] + 0.5 * grad_o[:, 1] + (1.0 / 3.0) * grad_o[:, 2]
     grad[:, 1] = -grad_o[:, 0] + 0.5 * grad_o[:, 1] + (1.0 / 3.0) * grad_o[:, 2]
     grad[:, 2] = -grad_o[:, 1] + (1.0 / 3.0) * grad_o[:, 2]
 
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -527,19 +525,19 @@ def mae_pair_rg(target, pred, derivative=False):
     diff_t = target[:, 0] - target[:, 1]
     diff_p = pred[:, 0] - pred[:, 1]
     r = diff_p - diff_t
-    abs_err = xp.abs(r)
+    abs_err = cp.abs(r)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = abs_err
         err[:, 1] = abs_err
         return err  # shape: (N, 3)
 
-    g = (1.0 / batch_size) * xp.sign(r)
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    g = (1.0 / batch_size) * cp.sign(r)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[:, 0] = g
     grad[:, 1] = -g
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 def mae_pair_rb(target, pred, derivative=False):
@@ -551,19 +549,19 @@ def mae_pair_rb(target, pred, derivative=False):
     diff_t = target[:, 0] - target[:, 2]
     diff_p = pred[:, 0] - pred[:, 2]
     r = diff_p - diff_t
-    abs_err = xp.abs(r)
+    abs_err = cp.abs(r)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = abs_err
         err[:, 2] = abs_err
         return err  # shape: (N, 3)
 
-    g = (1.0 / batch_size) * xp.sign(r)
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    g = (1.0 / batch_size) * cp.sign(r)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[:, 0] = g
     grad[:, 2] = -g
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 def mae_pair_gb(target, pred, derivative=False):
@@ -575,19 +573,19 @@ def mae_pair_gb(target, pred, derivative=False):
     diff_t = target[:, 1] - target[:, 2]
     diff_p = pred[:, 1] - pred[:, 2]
     r = diff_p - diff_t
-    abs_err = xp.abs(r)
+    abs_err = cp.abs(r)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 1] = abs_err
         err[:, 2] = abs_err
         return err  # shape: (N, 3)
 
-    g = (1.0 / batch_size) * xp.sign(r)
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    g = (1.0 / batch_size) * cp.sign(r)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[:, 1] = g
     grad[:, 2] = -g
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -607,33 +605,33 @@ def mae_ycbcr_chroma(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     # RGB -> YCbCr conversion
-    M = xp.array([[ 0.299,     0.587,     0.114   ],
+    M = cp.array([[ 0.299,     0.587,     0.114   ],
                   [-0.168736, -0.331264,  0.5     ],
-                  [ 0.5,     -0.418688, -0.081312]], dtype=xp.float32)
-    offset = xp.array([0.0, 0.5, 0.5], dtype=xp.float32)
+                  [ 0.5,     -0.418688, -0.081312]], dtype=cp.float32)
+    offset = cp.array([0.0, 0.5, 0.5], dtype=cp.float32)
 
     ycbcr_t = target @ M.T + offset
     ycbcr_p = pred   @ M.T + offset
 
     # Difference in Cb, Cr channels
     diff = ycbcr_p[:, 1:] - ycbcr_t[:, 1:]
-    abs_err = xp.abs(diff)  # shape: (N, 2)
+    abs_err = cp.abs(diff)  # shape: (N, 2)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = abs_err[:, 0]  # Cb contribution
         err[:, 1] = abs_err[:, 0]  # Cb contribution
         err[:, 2] = abs_err[:, 1]  # Cr contribution
         return err  # shape: (N, 3)
 
     # Gradient in Cb/Cr space for mean MAE
-    grad_cbc = (1.0 / batch_size) * xp.sign(diff).astype(xp.float32)  # shape: (N, 2)
+    grad_cbc = (1.0 / batch_size) * cp.sign(diff).astype(cp.float32)  # shape: (N, 2)
 
     # Backprop to RGB: only rows 1 and 2 of M (Cb, Cr)
     M_cbcr = M[1:, :]  # shape: (2, 3)
     grad_rgb = grad_cbc @ M_cbcr  # shape: (N, 3)
 
-    return grad_rgb.astype(xp.float32, copy=False)
+    return grad_rgb.astype(cp.float32, copy=False)
 
 
 
@@ -655,8 +653,8 @@ def mae_cmyk_chroma(target, pred, derivative=False):
     cmy_p = 1.0 - pred
 
     # Extract K
-    k_t = xp.min(cmy_t, axis=1, keepdims=True)
-    k_p = xp.min(cmy_p, axis=1, keepdims=True)
+    k_t = cp.min(cmy_t, axis=1, keepdims=True)
+    k_p = cp.min(cmy_p, axis=1, keepdims=True)
 
     # Normalised CMY (subtract K, divide by 1-K)
     cmyk_t = (cmy_t - k_t) / (1.0 - k_t + eps)
@@ -664,15 +662,15 @@ def mae_cmyk_chroma(target, pred, derivative=False):
 
     # Only C, M, Y channels
     diff = cmyk_p[:, :3] - cmyk_t[:, :3]
-    abs_err = xp.abs(diff)  # shape: (N, 3)
+    abs_err = cp.abs(diff)  # shape: (N, 3)
 
     if not derivative:
         # Backproject CMY chroma error into RGB space
         err_rgb = -abs_err  # CMY is 1 - RGB, so error flips
-        return err_rgb.astype(xp.float32, copy=False)  # shape: (N, 3)
+        return err_rgb.astype(cp.float32, copy=False)  # shape: (N, 3)
 
     # --- Backward ---
-    grad_cmyk = (1.0 / batch_size) * xp.sign(diff).astype(xp.float32)  # dL/d(C',M',Y')
+    grad_cmyk = (1.0 / batch_size) * cp.sign(diff).astype(cp.float32)  # dL/d(C',M',Y')
 
     denom = (1.0 - k_p + eps)
     Cn = cmy_p[:, 0:1] - k_p
@@ -700,9 +698,9 @@ def mae_cmyk_chroma(target, pred, derivative=False):
     grad_M += min_mask[:, 1:2] * grad_K
     grad_Y += min_mask[:, 2:3] * grad_K
 
-    grad_cmy = xp.concatenate([grad_C, grad_M, grad_Y], axis=1)
+    grad_cmy = cp.concatenate([grad_C, grad_M, grad_Y], axis=1)
     grad_rgb = -grad_cmy
-    return grad_rgb.astype(xp.float32, copy=False)
+    return grad_rgb.astype(cp.float32, copy=False)
 
 
 
@@ -723,20 +721,20 @@ def mae_luma_heavy(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * 0.7
+        l = cp.mean(rgb, axis=1) * 0.7
         r = rgb[:, 0] * 0.1
         g = rgb[:, 1] * 0.1
         b = rgb[:, 2] * 0.1
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
 
     r = tp - tt
-    mag = xp.sqrt(xp.sum(r**2, axis=1) + eps)  # shape: (N,)
+    mag = cp.sqrt(cp.sum(r**2, axis=1) + eps)  # shape: (N,)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = mag
         err[:, 1] = mag
         err[:, 2] = mag
@@ -744,12 +742,12 @@ def mae_luma_heavy(target, pred, derivative=False):
 
     grad_t = (1.0 / batch_size) * (r / (mag[:, None] + eps))  # shape: (N, 4)
 
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (0.7 / 3.0) * grad_t[:, 0] + 0.1 * grad_t[:, 1]
     grad[:, 1] = (0.7 / 3.0) * grad_t[:, 0] + 0.1 * grad_t[:, 2]
     grad[:, 2] = (0.7 / 3.0) * grad_t[:, 0] + 0.1 * grad_t[:, 3]
 
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -769,30 +767,30 @@ def mae_red_bias(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * 0.2
+        l = cp.mean(rgb, axis=1) * 0.2
         r = rgb[:, 0] * 0.6
         g = rgb[:, 1] * 0.2
         b = rgb[:, 2] * 0.0
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
     r = tp - tt
-    mag = xp.sqrt(xp.sum(r**2, axis=1) + eps)
+    mag = cp.sqrt(cp.sum(r**2, axis=1) + eps)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = mag
         err[:, 1] = mag
         err[:, 2] = mag
         return err  # shape: (N, 3)
 
     grad_t = (1.0 / batch_size) * (r / (mag[:, None] + eps))
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (0.2 / 3.0) * grad_t[:, 0] + 0.6 * grad_t[:, 1]
     grad[:, 1] = (0.2 / 3.0) * grad_t[:, 0] + 0.2 * grad_t[:, 2]
     grad[:, 2] = (0.2 / 3.0) * grad_t[:, 0] + 0.0 * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -809,30 +807,30 @@ def mae_red_suppressed(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * 0.3
+        l = cp.mean(rgb, axis=1) * 0.3
         r = rgb[:, 0] * 0.05
         g = rgb[:, 1] * 0.35
         b = rgb[:, 2] * 0.3
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
     r = tp - tt
-    mag = xp.sqrt(xp.sum(r**2, axis=1) + eps)
+    mag = cp.sqrt(cp.sum(r**2, axis=1) + eps)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = mag
         err[:, 1] = mag
         err[:, 2] = mag
         return err  # shape: (N, 3)
 
     grad_t = (1.0 / batch_size) * (r / (mag[:, None] + eps))
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (0.3 / 3.0) * grad_t[:, 0] + 0.05 * grad_t[:, 1]
     grad[:, 1] = (0.3 / 3.0) * grad_t[:, 0] + 0.35 * grad_t[:, 2]
     grad[:, 2] = (0.3 / 3.0) * grad_t[:, 0] + 0.3 * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -850,30 +848,30 @@ def mae_green_bias(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * 0.2
+        l = cp.mean(rgb, axis=1) * 0.2
         r = rgb[:, 0] * 0.2
         g = rgb[:, 1] * 0.6
         b = rgb[:, 2] * 0.0
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
     r = tp - tt
-    mag = xp.sqrt(xp.sum(r**2, axis=1) + eps)
+    mag = cp.sqrt(cp.sum(r**2, axis=1) + eps)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = mag
         err[:, 1] = mag
         err[:, 2] = mag
         return err  # shape: (N, 3)
 
     grad_t = (1.0 / batch_size) * (r / (mag[:, None] + eps))
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (0.2 / 3.0) * grad_t[:, 0] + 0.2 * grad_t[:, 1]
     grad[:, 1] = (0.2 / 3.0) * grad_t[:, 0] + 0.6 * grad_t[:, 2]
     grad[:, 2] = (0.2 / 3.0) * grad_t[:, 0] + 0.0 * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -890,30 +888,30 @@ def mae_green_suppressed(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * 0.3
+        l = cp.mean(rgb, axis=1) * 0.3
         r = rgb[:, 0] * 0.35
         g = rgb[:, 1] * 0.05
         b = rgb[:, 2] * 0.3
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
     r = tp - tt
-    mag = xp.sqrt(xp.sum(r**2, axis=1) + eps)
+    mag = cp.sqrt(cp.sum(r**2, axis=1) + eps)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = mag
         err[:, 1] = mag
         err[:, 2] = mag
         return err  # shape: (N, 3)
 
     grad_t = (1.0 / batch_size) * (r / (mag[:, None] + eps))
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (0.3 / 3.0) * grad_t[:, 0] + 0.35 * grad_t[:, 1]
     grad[:, 1] = (0.3 / 3.0) * grad_t[:, 0] + 0.05 * grad_t[:, 2]
     grad[:, 2] = (0.3 / 3.0) * grad_t[:, 0] + 0.3 * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -930,30 +928,30 @@ def mae_blue_bias(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * 0.2
+        l = cp.mean(rgb, axis=1) * 0.2
         r = rgb[:, 0] * 0.2
         g = rgb[:, 1] * 0.0
         b = rgb[:, 2] * 0.6
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
     r = tp - tt
-    mag = xp.sqrt(xp.sum(r**2, axis=1) + eps)
+    mag = cp.sqrt(cp.sum(r**2, axis=1) + eps)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = mag
         err[:, 1] = mag
         err[:, 2] = mag
         return err  # shape: (N, 3)
 
     grad_t = (1.0 / batch_size) * (r / (mag[:, None] + eps))
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (0.2 / 3.0) * grad_t[:, 0] + 0.2 * grad_t[:, 1]
     grad[:, 1] = (0.2 / 3.0) * grad_t[:, 0] + 0.0 * grad_t[:, 2]
     grad[:, 2] = (0.2 / 3.0) * grad_t[:, 0] + 0.6 * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 def mae_blue_suppressed(target, pred, derivative=False):
     """
@@ -968,30 +966,30 @@ def mae_blue_suppressed(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * 0.3
+        l = cp.mean(rgb, axis=1) * 0.3
         r = rgb[:, 0] * 0.475
         g = rgb[:, 1] * 0.475
         b = rgb[:, 2] * 0.05
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
     r = tp - tt
-    mag = xp.sqrt(xp.sum(r**2, axis=1) + eps)
+    mag = cp.sqrt(cp.sum(r**2, axis=1) + eps)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = mag
         err[:, 1] = mag
         err[:, 2] = mag
         return err  # shape: (N, 3)
 
     grad_t = (1.0 / batch_size) * (r / (mag[:, None] + eps))
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (0.3 / 3.0) * grad_t[:, 0] + 0.475 * grad_t[:, 1]
     grad[:, 1] = (0.3 / 3.0) * grad_t[:, 0] + 0.475 * grad_t[:, 2]
     grad[:, 2] = (0.3 / 3.0) * grad_t[:, 0] + 0.05 * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -1011,30 +1009,30 @@ def mae_equalized(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * 0.25
+        l = cp.mean(rgb, axis=1) * 0.25
         r = rgb[:, 0] * 0.25
         g = rgb[:, 1] * 0.25
         b = rgb[:, 2] * 0.25
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
     r = tp - tt
-    mag = xp.sqrt(xp.sum(r**2, axis=1) + eps)
+    mag = cp.sqrt(cp.sum(r**2, axis=1) + eps)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = mag
         err[:, 1] = mag
         err[:, 2] = mag
         return err  # shape: (N, 3)
 
     grad_t = (1.0 / batch_size) * (r / (mag[:, None] + eps))
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (0.25 / 3.0) * grad_t[:, 0] + 0.25 * grad_t[:, 1]
     grad[:, 1] = (0.25 / 3.0) * grad_t[:, 0] + 0.25 * grad_t[:, 2]
     grad[:, 2] = (0.25 / 3.0) * grad_t[:, 0] + 0.25 * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -1061,47 +1059,47 @@ def mae_entropy_weighted(target, pred, derivative=False):
     batch_size = pred.shape[0]
 
     def channel_entropy(vec):
-        hist = xp.histogram(vec, bins=bins, range=(vmin, vmax))[0].astype(xp.float32, copy=False)
-        s = hist.sum(dtype=xp.float32)
-        p = xp.where(s > 0, hist / (s + eps), xp.zeros_like(hist))
+        hist = cp.histogram(vec, bins=bins, range=(vmin, vmax))[0].astype(cp.float32, copy=False)
+        s = hist.sum(dtype=cp.float32)
+        p = cp.where(s > 0, hist / (s + eps), cp.zeros_like(hist))
         mask = p > 0
-        return -(p[mask] * xp.log2(p[mask])).sum(dtype=xp.float32)
+        return -(p[mask] * cp.log2(p[mask])).sum(dtype=cp.float32)
 
-    luma_t = xp.mean(target, axis=1)
+    luma_t = cp.mean(target, axis=1)
     ent_l = channel_entropy(luma_t)
     ent_r = channel_entropy(target[:, 0])
     ent_g = channel_entropy(target[:, 1])
     ent_b = channel_entropy(target[:, 2])
 
-    ent = xp.stack([ent_l, ent_r, ent_g, ent_b]).astype(xp.float32, copy=False)
-    ent_sum = ent.sum(dtype=xp.float32)
-    w = xp.where(ent_sum > 0, ent / (ent_sum + eps), xp.zeros_like(ent))
+    ent = cp.stack([ent_l, ent_r, ent_g, ent_b]).astype(cp.float32, copy=False)
+    ent_sum = ent.sum(dtype=cp.float32)
+    w = cp.where(ent_sum > 0, ent / (ent_sum + eps), cp.zeros_like(ent))
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * w[0]
+        l = cp.mean(rgb, axis=1) * w[0]
         r = rgb[:, 0] * w[1]
         g = rgb[:, 1] * w[2]
         b = rgb[:, 2] * w[3]
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
     r = tp - tt
-    mag = xp.sqrt(xp.sum(r**2, axis=1) + eps)
+    mag = cp.sqrt(cp.sum(r**2, axis=1) + eps)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = mag
         err[:, 1] = mag
         err[:, 2] = mag
         return err  # shape: (N, 3)
 
     grad_t = (1.0 / batch_size) * (r / (mag[:, None] + eps))
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (w[0] / 3.0) * grad_t[:, 0] + w[1] * grad_t[:, 1]
     grad[:, 1] = (w[0] / 3.0) * grad_t[:, 0] + w[2] * grad_t[:, 2]
     grad[:, 2] = (w[0] / 3.0) * grad_t[:, 0] + w[3] * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -1119,16 +1117,16 @@ def mae_hue_bias(target, pred, derivative=False):
     target, pred = target[:N], pred[:N]
     batch = float(N)
 
-    sq6 = xp.sqrt(6.0)
-    sq2 = xp.sqrt(2.0)
+    sq6 = cp.sqrt(6.0)
+    sq2 = cp.sqrt(2.0)
     w_h, w_s, w_l = 0.6, 0.1333333, 0.1333333
 
     def uvsl(x):
         r, g, b = x[:, 0], x[:, 1], x[:, 2]
         u = (2.0*r - g - b) / sq6
         v = (g - b) / sq2
-        s = xp.sqrt(u*u + v*v + eps)
-        a = xp.arctan2(v, u)
+        s = cp.sqrt(u*u + v*v + eps)
+        a = cp.arctan2(v, u)
         l = (r + g + b) / 3.0
         return u, v, s, a, l
 
@@ -1136,7 +1134,7 @@ def mae_hue_bias(target, pred, derivative=False):
     up, vp, sp, ap, lp = uvsl(pred)
 
     def ang_diff(a1, a0):
-        return (a1 - a0 + xp.pi) % (2.0 * xp.pi) - xp.pi
+        return (a1 - a0 + cp.pi) % (2.0 * cp.pi) - cp.pi
 
     dh = ang_diff(ap, at)
     ds = sp - st
@@ -1145,10 +1143,10 @@ def mae_hue_bias(target, pred, derivative=False):
     r_h = w_h * dh
     r_s = w_s * ds
     r_l = w_l * dl
-    mag = xp.sqrt(r_h*r_h + r_s*r_s + r_l*r_l + eps)
+    mag = cp.sqrt(r_h*r_h + r_s*r_s + r_l*r_l + eps)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = mag
         err[:, 1] = mag
         err[:, 2] = mag
@@ -1167,8 +1165,8 @@ def mae_hue_bias(target, pred, derivative=False):
     denom = (up*up + vp*vp + eps)
     dh_du = -vp / denom
     dh_dv =  up / denom
-    ds_du =  xp.where(sp > 0, up / sp, 0.0)
-    ds_dv =  xp.where(sp > 0, vp / sp, 0.0)
+    ds_du =  cp.where(sp > 0, up / sp, 0.0)
+    ds_dv =  cp.where(sp > 0, vp / sp, 0.0)
 
     gu = gh * dh_du + gs * ds_du
     gv = gh * dh_dv + gs * ds_dv
@@ -1176,7 +1174,7 @@ def mae_hue_bias(target, pred, derivative=False):
     du_dr, du_dg, du_db =  2.0/sq6, -1.0/sq6, -1.0/sq6
     dv_dr, dv_dg, dv_db =  0.0,     1.0/sq2,  -1.0/sq2
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[:, 0] = (gu * du_dr + gv * dv_dr) + gl / 3.0
     grad[:, 1] = (gu * du_dg + gv * dv_dg) + gl / 3.0
     grad[:, 2] = (gu * du_db + gv * dv_db) + gl / 3.0
@@ -1196,16 +1194,16 @@ def mae_hue_suppressed(target, pred, derivative=False):
     target, pred = target[:N], pred[:N]
     batch = float(N)
 
-    sq6 = xp.sqrt(6.0)
-    sq2 = xp.sqrt(2.0)
+    sq6 = cp.sqrt(6.0)
+    sq2 = cp.sqrt(2.0)
     w_h, w_s, w_l = 0.05, 0.3166666, 0.3166666
 
     def uvsl(x):
         r, g, b = x[:, 0], x[:, 1], x[:, 2]
         u = (2.0*r - g - b) / sq6
         v = (g - b) / sq2
-        s = xp.sqrt(u*u + v*v + eps)
-        a = xp.arctan2(v, u)
+        s = cp.sqrt(u*u + v*v + eps)
+        a = cp.arctan2(v, u)
         l = (r + g + b) / 3.0
         return u, v, s, a, l
 
@@ -1213,7 +1211,7 @@ def mae_hue_suppressed(target, pred, derivative=False):
     up, vp, sp, ap, lp = uvsl(pred)
 
     def ang_diff(a1, a0):
-        return (a1 - a0 + xp.pi) % (2.0 * xp.pi) - xp.pi
+        return (a1 - a0 + cp.pi) % (2.0 * cp.pi) - cp.pi
 
     dh = ang_diff(ap, at)
     ds = sp - st
@@ -1222,10 +1220,10 @@ def mae_hue_suppressed(target, pred, derivative=False):
     r_h = w_h * dh
     r_s = w_s * ds
     r_l = w_l * dl
-    mag = xp.sqrt(r_h*r_h + r_s*r_s + r_l*r_l + eps)
+    mag = cp.sqrt(r_h*r_h + r_s*r_s + r_l*r_l + eps)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = mag
         err[:, 1] = mag
         err[:, 2] = mag
@@ -1242,8 +1240,8 @@ def mae_hue_suppressed(target, pred, derivative=False):
     denom = (up*up + vp*vp + eps)
     dh_du = -vp / denom
     dh_dv =  up / denom
-    ds_du =  xp.where(sp > 0, up / sp, 0.0)
-    ds_dv =  xp.where(sp > 0, vp / sp, 0.0)
+    ds_du =  cp.where(sp > 0, up / sp, 0.0)
+    ds_dv =  cp.where(sp > 0, vp / sp, 0.0)
 
     gu = gh * dh_du + gs * ds_du
     gv = gh * dh_dv + gs * ds_dv
@@ -1251,7 +1249,7 @@ def mae_hue_suppressed(target, pred, derivative=False):
     du_dr, du_dg, du_db =  2.0/sq6, -1.0/sq6, -1.0/sq6
     dv_dr, dv_dg, dv_db =  0.0,     1.0/sq2,  -1.0/sq2
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[:, 0] = (gu * du_dr + gv * dv_dr) + gl / 3.0
     grad[:, 1] = (gu * du_dg + gv * dv_dg) + gl / 3.0
     grad[:, 2] = (gu * du_db + gv * dv_db) + gl / 3.0
@@ -1274,16 +1272,16 @@ def mae_saturation_bias(target, pred, derivative=False):
     target, pred = target[:N], pred[:N]
     batch = float(N)
 
-    sq6 = xp.sqrt(6.0)
-    sq2 = xp.sqrt(2.0)
+    sq6 = cp.sqrt(6.0)
+    sq2 = cp.sqrt(2.0)
     w_h, w_s, w_l = 0.1333333, 0.6, 0.1333333
 
     def uvsl(x):
         r, g, b = x[:, 0], x[:, 1], x[:, 2]
         u = (2.0*r - g - b) / sq6
         v = (g - b) / sq2
-        s = xp.sqrt(u*u + v*v + eps)
-        a = xp.arctan2(v, u)
+        s = cp.sqrt(u*u + v*v + eps)
+        a = cp.arctan2(v, u)
         l = (r + g + b) / 3.0
         return u, v, s, a, l
 
@@ -1291,7 +1289,7 @@ def mae_saturation_bias(target, pred, derivative=False):
     up, vp, sp, ap, lp = uvsl(pred)
 
     def ang_diff(a1, a0):
-        return (a1 - a0 + xp.pi) % (2.0 * xp.pi) - xp.pi
+        return (a1 - a0 + cp.pi) % (2.0 * cp.pi) - cp.pi
 
     dh = ang_diff(ap, at)
     ds = sp - st
@@ -1300,10 +1298,10 @@ def mae_saturation_bias(target, pred, derivative=False):
     r_h = w_h * dh
     r_s = w_s * ds
     r_l = w_l * dl
-    mag = xp.sqrt(r_h*r_h + r_s*r_s + r_l*r_l + eps)
+    mag = cp.sqrt(r_h*r_h + r_s*r_s + r_l*r_l + eps)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = mag
         err[:, 1] = mag
         err[:, 2] = mag
@@ -1320,8 +1318,8 @@ def mae_saturation_bias(target, pred, derivative=False):
     denom = (up*up + vp*vp + eps)
     dh_du = -vp / denom
     dh_dv =  up / denom
-    ds_du =  xp.where(sp > 0, up / sp, 0.0)
-    ds_dv =  xp.where(sp > 0, vp / sp, 0.0)
+    ds_du =  cp.where(sp > 0, up / sp, 0.0)
+    ds_dv =  cp.where(sp > 0, vp / sp, 0.0)
 
     gu = gh * dh_du + gs * ds_du
     gv = gh * dh_dv + gs * ds_dv
@@ -1329,7 +1327,7 @@ def mae_saturation_bias(target, pred, derivative=False):
     du_dr, du_dg, du_db =  2.0/sq6, -1.0/sq6, -1.0/sq6
     dv_dr, dv_dg, dv_db =  0.0,     1.0/sq2,  -1.0/sq2
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[:, 0] = (gu * du_dr + gv * dv_dr) + gl / 3.0
     grad[:, 1] = (gu * du_dg + gv * dv_dg) + gl / 3.0
     grad[:, 2] = (gu * du_db + gv * dv_db) + gl / 3.0
@@ -1351,16 +1349,16 @@ def mae_saturation_suppressed(target, pred, derivative=False):
     target, pred = target[:N], pred[:N]
     batch = float(N)
 
-    sq6 = xp.sqrt(6.0)
-    sq2 = xp.sqrt(2.0)
+    sq6 = cp.sqrt(6.0)
+    sq2 = cp.sqrt(2.0)
     w_h, w_s, w_l = 0.3166666, 0.05, 0.3166666
 
     def uvsl(x):
         r, g, b = x[:, 0], x[:, 1], x[:, 2]
         u = (2.0*r - g - b) / sq6
         v = (g - b) / sq2
-        s = xp.sqrt(u*u + v*v + eps)
-        a = xp.arctan2(v, u)
+        s = cp.sqrt(u*u + v*v + eps)
+        a = cp.arctan2(v, u)
         l = (r + g + b) / 3.0
         return u, v, s, a, l
 
@@ -1368,7 +1366,7 @@ def mae_saturation_suppressed(target, pred, derivative=False):
     up, vp, sp, ap, lp = uvsl(pred)
 
     def ang_diff(a1, a0):
-        return (a1 - a0 + xp.pi) % (2.0 * xp.pi) - xp.pi
+        return (a1 - a0 + cp.pi) % (2.0 * cp.pi) - cp.pi
 
     dh = ang_diff(ap, at)
     ds = sp - st
@@ -1377,10 +1375,10 @@ def mae_saturation_suppressed(target, pred, derivative=False):
     r_h = w_h * dh
     r_s = w_s * ds
     r_l = w_l * dl
-    mag = xp.sqrt(r_h*r_h + r_s*r_s + r_l*r_l + eps)
+    mag = cp.sqrt(r_h*r_h + r_s*r_s + r_l*r_l + eps)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = mag
         err[:, 1] = mag
         err[:, 2] = mag
@@ -1397,8 +1395,8 @@ def mae_saturation_suppressed(target, pred, derivative=False):
     denom = (up*up + vp*vp + eps)
     dh_du = -vp / denom
     dh_dv =  up / denom
-    ds_du =  xp.where(sp > 0, up / sp, 0.0)
-    ds_dv =  xp.where(sp > 0, vp / sp, 0.0)
+    ds_du =  cp.where(sp > 0, up / sp, 0.0)
+    ds_dv =  cp.where(sp > 0, vp / sp, 0.0)
 
     gu = gh * dh_du + gs * ds_du
     gv = gh * dh_dv + gs * ds_dv
@@ -1406,7 +1404,7 @@ def mae_saturation_suppressed(target, pred, derivative=False):
     du_dr, du_dg, du_db =  2.0/sq6, -1.0/sq6, -1.0/sq6
     dv_dr, dv_dg, dv_db =  0.0,     1.0/sq2,  -1.0/sq2
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[:, 0] = (gu * du_dr + gv * dv_dr) + gl / 3.0
     grad[:, 1] = (gu * du_dg + gv * dv_dg) + gl / 3.0
     grad[:, 2] = (gu * du_db + gv * dv_db) + gl / 3.0
@@ -1429,31 +1427,31 @@ def mae_luma_bias(target, pred, derivative=False):
     wL, wR, wG, wB = 0.6, 0.1333333, 0.1333333, 0.1333333
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * wL
+        l = cp.mean(rgb, axis=1) * wL
         r = rgb[:, 0] * wR
         g = rgb[:, 1] * wG
         b = rgb[:, 2] * wB
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
 
     r = tp - tt
-    mag = xp.sqrt(xp.sum(r**2, axis=1) + eps)
+    mag = cp.sqrt(cp.sum(r**2, axis=1) + eps)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = mag
         err[:, 1] = mag
         err[:, 2] = mag
         return err  # shape: (N, 3)
 
     grad_t = (1.0 / batch_size) * (r / (mag[:, None] + eps))
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (wL / 3.0) * grad_t[:, 0] + wR * grad_t[:, 1]
     grad[:, 1] = (wL / 3.0) * grad_t[:, 0] + wG * grad_t[:, 2]
     grad[:, 2] = (wL / 3.0) * grad_t[:, 0] + wB * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -1473,31 +1471,31 @@ def mae_luma_suppressed(target, pred, derivative=False):
     wL, wR, wG, wB = 0.05, 0.3166666, 0.3166666, 0.3166666
 
     def transform(rgb):
-        l = xp.mean(rgb, axis=1) * wL
+        l = cp.mean(rgb, axis=1) * wL
         r = rgb[:, 0] * wR
         g = rgb[:, 1] * wG
         b = rgb[:, 2] * wB
-        return xp.stack([l, r, g, b], axis=1)
+        return cp.stack([l, r, g, b], axis=1)
 
     tt = transform(target)
     tp = transform(pred)
 
     r = tp - tt
-    mag = xp.sqrt(xp.sum(r**2, axis=1) + eps)
+    mag = cp.sqrt(cp.sum(r**2, axis=1) + eps)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[:, 0] = mag
         err[:, 1] = mag
         err[:, 2] = mag
         return err  # shape: (N, 3)
 
     grad_t = (1.0 / batch_size) * (r / (mag[:, None] + eps))
-    grad = xp.zeros_like(pred)
+    grad = cp.zeros_like(pred)
     grad[:, 0] = (wL / 3.0) * grad_t[:, 0] + wR * grad_t[:, 1]
     grad[:, 1] = (wL / 3.0) * grad_t[:, 0] + wG * grad_t[:, 2]
     grad[:, 2] = (wL / 3.0) * grad_t[:, 0] + wB * grad_t[:, 3]
-    return grad.astype(xp.float32, copy=False)
+    return grad.astype(cp.float32, copy=False)
 
 
 
@@ -1524,19 +1522,19 @@ def mae_blue_yellow(target, pred, derivative=False):
     BY_p = B_p - (a * R_p + b * G_p)
 
     diff = BY_p - BY_t
-    abs_err = xp.abs(diff)
+    abs_err = cp.abs(diff)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err  # shape: (N, 3)
 
     scale = 1.0 / diff.size
-    s = xp.sign(diff) * scale
+    s = cp.sign(diff) * scale
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[..., 0] = -a * s
     grad[..., 1] = -b * s
     grad[..., 2] =  1.0 * s
@@ -1565,22 +1563,22 @@ def mae_yellow(target, pred, derivative=False):
     Y_p = a * R_p + b * G_p
 
     diff = Y_p - Y_t
-    abs_err = xp.abs(diff)
+    abs_err = cp.abs(diff)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err  # shape: (N, 3)
 
     scale = 1.0 / diff.size
-    s = xp.sign(diff) * scale
+    s = cp.sign(diff) * scale
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[..., 0] = a * s
     grad[..., 1] = b * s
-    return xp.mean(grad)
+    return cp.mean(grad)
 
 
 def mae_red_yellow(target, pred, derivative=False):
@@ -1607,19 +1605,19 @@ def mae_red_yellow(target, pred, derivative=False):
     RY_p = R_p - Y_p
 
     diff = RY_p - RY_t
-    abs_err = xp.abs(diff)
+    abs_err = cp.abs(diff)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err  # shape: (N, 3)
 
     scale = 1.0 / diff.size
-    s = xp.sign(diff) * scale
+    s = cp.sign(diff) * scale
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[..., 0] = (1.0 - a) * s
     grad[..., 1] = -b * s
     return grad
@@ -1649,19 +1647,19 @@ def mae_green_yellow(target, pred, derivative=False):
     GY_p = G_p - Y_p
 
     diff = GY_p - GY_t
-    abs_err = xp.abs(diff)
+    abs_err = cp.abs(diff)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err  # shape: (N, 3)
 
     scale = 1.0 / diff.size
-    s = xp.sign(diff) * scale
+    s = cp.sign(diff) * scale
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[..., 1] = (1.0 - b) * s
     grad[..., 0] = -a * s
     return grad
@@ -1689,22 +1687,22 @@ def mae_cyan(target, pred, derivative=False):
     C_p = a * G_p + b * B_p
 
     diff = C_p - C_t
-    abs_err = xp.abs(diff)
+    abs_err = cp.abs(diff)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err
 
     scale = 1.0 / diff.size
-    s = xp.sign(diff) * scale
+    s = cp.sign(diff) * scale
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[..., 1] = a * s
     grad[..., 2] = b * s
-    return xp.mean(grad)
+    return cp.mean(grad)
 
 
 def mae_red_cyan(target, pred, derivative=False):
@@ -1730,19 +1728,19 @@ def mae_red_cyan(target, pred, derivative=False):
     RC_p = R_p - C_p
 
     diff = RC_p - RC_t
-    abs_err = xp.abs(diff)
+    abs_err = cp.abs(diff)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err
 
     scale = 1.0 / diff.size
-    s = xp.sign(diff) * scale
+    s = cp.sign(diff) * scale
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[..., 0] = 1.0 * s
     grad[..., 1] = -a * s
     grad[..., 2] = -b * s
@@ -1773,19 +1771,19 @@ def mae_blue_cyan(target, pred, derivative=False):
     BC_p = B_p - C_p
 
     diff = BC_p - BC_t
-    abs_err = xp.abs(diff)
+    abs_err = cp.abs(diff)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err
 
     scale = 1.0 / diff.size
-    s = xp.sign(diff) * scale
+    s = cp.sign(diff) * scale
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[..., 2] = (1.0 - b) * s
     grad[..., 1] = -a * s
     return grad
@@ -1814,19 +1812,19 @@ def mae_green_cyan(target, pred, derivative=False):
     GC_p = G_p - C_p
 
     diff = GC_p - GC_t
-    abs_err = xp.abs(diff)
+    abs_err = cp.abs(diff)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err
 
     scale = 1.0 / diff.size
-    s = xp.sign(diff) * scale
+    s = cp.sign(diff) * scale
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[..., 1] = (1.0 - a) * s
     grad[..., 2] = -b * s
     return grad
@@ -1852,22 +1850,22 @@ def mae_magenta(target, pred, derivative=False):
     M_p = a * R_p + b * B_p
 
     diff = M_p - M_t
-    abs_err = xp.abs(diff)
+    abs_err = cp.abs(diff)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err
 
     scale = 1.0 / diff.size
-    s = xp.sign(diff) * scale
+    s = cp.sign(diff) * scale
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[..., 0] = a * s
     grad[..., 2] = b * s
-    return xp.mean(grad)
+    return cp.mean(grad)
 
 
 def mae_green_magenta(target, pred, derivative=False):
@@ -1893,19 +1891,19 @@ def mae_green_magenta(target, pred, derivative=False):
     GM_p = G_p - M_p
 
     diff = GM_p - GM_t
-    abs_err = xp.abs(diff)
+    abs_err = cp.abs(diff)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err
 
     scale = 1.0 / diff.size
-    s = xp.sign(diff) * scale
+    s = cp.sign(diff) * scale
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[..., 1] = 1.0 * s
     grad[..., 0] = -a * s
     grad[..., 2] = -b * s
@@ -1936,19 +1934,19 @@ def mae_red_magenta(target, pred, derivative=False):
     RM_p = R_p - M_p
 
     diff = RM_p - RM_t
-    abs_err = xp.abs(diff)
+    abs_err = cp.abs(diff)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err
 
     scale = 1.0 / diff.size
-    s = xp.sign(diff) * scale
+    s = cp.sign(diff) * scale
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[..., 0] = (1.0 - a) * s
     grad[..., 2] = -b * s
     return grad
@@ -1978,19 +1976,19 @@ def mae_blue_magenta(target, pred, derivative=False):
     BM_p = B_p - M_p
 
     diff = BM_p - BM_t
-    abs_err = xp.abs(diff)
+    abs_err = cp.abs(diff)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err
 
     scale = 1.0 / diff.size
-    s = xp.sign(diff) * scale
+    s = cp.sign(diff) * scale
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[..., 2] = (1.0 - b) * s
     grad[..., 0] = -a * s
     return grad
@@ -2027,19 +2025,19 @@ def mae_cyan_yellow(target, pred, derivative=False):
     CY_p = C_p - Y_p
 
     diff = CY_p - CY_t
-    abs_err = xp.abs(diff)
+    abs_err = cp.abs(diff)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err
 
     scale = 1.0 / diff.size
-    s = xp.sign(diff) * scale
+    s = cp.sign(diff) * scale
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[..., 0] = -a_y * s
     grad[..., 1] = a_c * s - b_y * s
     grad[..., 2] = b_c * s
@@ -2075,19 +2073,19 @@ def mae_magenta_yellow(target, pred, derivative=False):
     MY_p = M_p - Y_p
 
     diff = MY_p - MY_t
-    abs_err = xp.abs(diff)
+    abs_err = cp.abs(diff)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err
 
     scale = 1.0 / diff.size
-    s = xp.sign(diff) * scale
+    s = cp.sign(diff) * scale
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[..., 0] = (a_m - a_y) * s
     grad[..., 1] = -b_y * s
     grad[..., 2] = b_m * s
@@ -2123,19 +2121,19 @@ def mae_cyan_magenta(target, pred, derivative=False):
     CM_p = C_p - M_p
 
     diff = CM_p - CM_t
-    abs_err = xp.abs(diff)
+    abs_err = cp.abs(diff)
 
     if not derivative:
-        err = xp.zeros_like(pred)
+        err = cp.zeros_like(pred)
         err[..., 0] = abs_err
         err[..., 1] = abs_err
         err[..., 2] = abs_err
         return err
 
     scale = 1.0 / diff.size
-    s = xp.sign(diff) * scale
+    s = cp.sign(diff) * scale
 
-    grad = xp.zeros_like(pred, dtype=xp.float32)
+    grad = cp.zeros_like(pred, dtype=cp.float32)
     grad[..., 0] = -a_m * s
     grad[..., 1] = a_c * s
     grad[..., 2] = (b_c - b_m) * s

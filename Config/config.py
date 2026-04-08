@@ -1,9 +1,12 @@
 # config.py
 
+WORKER_CHUNK_SIZE = 20
+
 # --- Generalisation Settings ---
 ENABLE_ROTATE_TARGET_IMAGE 		= True
-ROTATE_TARGET_FREQ         		= 50
-ENABLE_TARGET_ROTATION_SHUFFLE 	= False
+ROTATE_TARGET_FREQ         		= 20
+
+HELDOUT_SEED = 0
 
 # --- Viewer toggle ---
 ENABLE_END_VIEWER       = False
@@ -11,15 +14,18 @@ ENABLE_LIVE_VIEWER      = True
 LIVE_UPDATE_INTERVAL    = 1  # Epochs per update
 ENABLE_TELEMETRY_VIEWER = False
 
+HEIGHT = 720
+WIDTH = 1280
+
 # --- Settings ---
 TRAIN               = True
 FORCE_NEW_MODEL     = False
 MODEL_SEED          = 42       	# Set to None for random seed
 ENABLE_SET_LR       = False
-LEARNING_RATE       = 0.0005	#0.00020 # 2e-6
+LEARNING_RATE       = 0.00001	#0.00020 # 2e-6
 MAX_LEARNING_RATE   = 1e-4
 MIN_LEARNING_RATE   = 1e-8
-ENABLE_ADAPTIVE_LR              = True
+ENABLE_ADAPTIVE_LR              = False
 LR_INCREASE_MULTIPLIER          = 0.002
 LR_DECREASE_MULTIPLIER          = 0.004979
 LOWEST_LOSS_THRESHOLD           = 0.01
@@ -33,7 +39,8 @@ GRAD_CLIP                       = 1.0
 
 #(327680 | 262144 | 245760 | 196608 | 163840 | 143744 | 131072 | 122880 | 1048576 | 98304 
 # | 65536 | 49152 | 32768 | 24576 | 16384 | 8192 | 4096 | 2048 | 1024)
-BATCH_SIZE      = 98304
+#BATCH_SIZE      = 98304
+BATCH_SIZE      = 49152
 
 #BATCH_SIZE      = 24576
 #BATCH_SIZE      = 163840
@@ -41,7 +48,6 @@ ENABLE_SHUFFLE         = True
 EPOCHS          = 20000
 
 ENABLE_CUSTOM_MODEL_NAME        = False
-ENABLE_INPUT_CACHING            = False
 ENABLE_ADAPTIVE_LOSS_WEIGHTING  = False
 LOSS_WEIGHTING_POWER_SCALE      = 4
 
@@ -53,19 +59,18 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 
 OPTIMISER                     = {
     "name": "rmsprop",
-	"lr": 0.00001,
 }
 
 
 SAVE_AFTER          = True
-SAVE_INTERVAL       = 10
+SAVE_INTERVAL       = 5
 
 
 LOSS_CONFIG = [
     
 	("mse", 1.0),    
 	("mae", 1.0),
-	("perceptual_patch", 1.0),
+	#("perceptual_patch", 1.0),
 
     ]
 
@@ -77,33 +82,6 @@ LOSS_CONFIG = [
 # should be an odd number with a minimum of 1
 PATCH_SIZE                      = 7
 
-
-
-
-ENABLE_PATCH_STATS          = False
-ENABLE_PATCH_MEAN           = True
-ENABLE_PATCH_SUM            = False
-ENABLE_PATCH_MIDPOINT       = True
-ENABLE_PATCH_RANGE          = True
-ENABLE_PATCH_MIN            = True
-ENABLE_PATCH_MAX            = True
-
-ENABLE_COLLECTIVE_STATS     = False
-ENABLE_COLLECTIVE_MEAN      = True
-ENABLE_COLLECTIVE_SUM       = False
-ENABLE_COLLECTIVE_MIDPOINT  = True
-ENABLE_COLLECTIVE_RANGE     = True
-ENABLE_COLLECTIVE_MIN       = True
-ENABLE_COLLECTIVE_MAX       = True
-
-
-ENABLE_CROSS_PATCH_PIXELWISE_STATS    = False      # used to calculate stats across the input patches for each pixel location
-ENABLE_CROSS_PATCH_PIXELWISE_MEAN     = True
-ENABLE_CROSS_PATCH_PIXELWISE_SUM      = False
-ENABLE_CROSS_PATCH_PIXELWISE_MIDPOINT = True
-ENABLE_CROSS_PATCH_PIXELWISE_RANGE    = True
-ENABLE_CROSS_PATCH_PIXELWISE_MIN      = True
-ENABLE_CROSS_PATCH_PIXELWISE_MAX      = True
 
 
 # --- Model ---
@@ -122,6 +100,6 @@ DEFAULT_MODEL_NAME          = "nn_model"
 LOSS_NAME       = "wrapped_combined"
 
 # --- Image ---
-TARGET_IMAGE_ID     = 5 # 4, 6, 5, 2, 1
+TARGET_IMAGE_ID     = 1 # 4, 6, 5, 2, 1
 
 INPUT_CONFIG_PATH = "Config/input_config.json"

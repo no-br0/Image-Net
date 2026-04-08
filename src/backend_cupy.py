@@ -4,7 +4,6 @@ import numpy as np
 import subprocess, json
 from Config.log_dir import GPU_LOG_PATH
 
-xp = cp
 rng = cp.random.default_rng
 
 # Optional scratch cache for common shapes
@@ -12,7 +11,7 @@ _SCRATCH = {}
 def get_scratch(shape, dtype=cp.float32, fill=None):
 	key = (shape, dtype)
 	if key not in _SCRATCH:
-		_SCRATCH[key] = cp.empty(shape, dtype=dtype)
+		_SCRATCH[key] = cp.zeros(shape, dtype=dtype)
 	buf = _SCRATCH[key]
 	if fill is not None:
 		buf.fill(fill)

@@ -36,6 +36,7 @@ Live output from the model during training.
 
 
 ## Running The Project
+
 This project can be run in two ways:
 - Local install with venv - (recommended) required for displays, viewers, and any GUI windows
 - Docker - usable for training

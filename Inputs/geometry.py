@@ -213,7 +213,7 @@ def gen_triangle_pattern(H: int, W: int, params: Dict) -> Tuple[cp.ndarray, List
     max_col = int(cp.max(col_off)) + 1
 
     # Build LUT for both orientations
-    lut = cp.empty((max_row, max_col, 2), dtype=cp.float32)
+    lut = cp.zeros((max_row, max_col, 2), dtype=cp.float32)
 
     if mode == "alt":
         # Different parity for up vs down triangles
@@ -299,7 +299,7 @@ def gen_hexagon_pattern(H: int, W: int, params: Dict) -> Tuple[cp.ndarray, List[
     # Build lookup table for all possible (rq, rr) pairs
     max_q = int(cp.max(rq_off)) + 1
     max_r = int(cp.max(rr_off)) + 1
-    lut = cp.empty((max_q, max_r), dtype=cp.float32)
+    lut = cp.zeros((max_q, max_r), dtype=cp.float32)
 
     if mode == "alt":
         # Alternating light/dark based on parity
