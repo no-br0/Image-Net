@@ -26,6 +26,7 @@ _docs/full/
 _research/full/
 
 !_docs/procedural_inputs/
+!_docs/model_config_guide/
 
 Telemetry/__pycache__/
 src/__pycache__/
