@@ -37,7 +37,7 @@ SHALLOW_DISPLAY_COOL_TIME = 0.05
 
 FAN_RAMP_START  = 70        # °C
 MAX_SAFE_FAN    = 80        # % this value should never exceed 85
-FAN_BUMP        = 10        # % to increase fan speed by when ramping up
+FAN_RAMP        = 10        # % to increase fan speed by when ramping up
 # % max fan speed
 
 
@@ -104,7 +104,7 @@ def check_gpu_temp_and_exit(nn, epoch, warn_temp, poll_interval=0.20, gpu_id=0):
 	# Step 0 – proactive fan bump if we're in the ramp zone
 	if FAN_RAMP_START <= temp < warn_temp:
 		current_speed = get_gpu_fan_speed(gpu_id)
-		target_speed = min(MAX_SAFE_FAN, current_speed + FAN_BUMP)
+		target_speed = min(MAX_SAFE_FAN, current_speed + FAN_RAMP)
 		if target_speed > current_speed:
 			set_gpu_fan_speed(target_speed, gpu_id)
 			last_speed = target_speed
@@ -128,7 +128,7 @@ def check_gpu_temp_and_exit(nn, epoch, warn_temp, poll_interval=0.20, gpu_id=0):
 	# Cooldown zone: over WARN_TEMP → keep bumping fans while sleeping
 	while temp > warn_temp:
 		current_speed = get_gpu_fan_speed(gpu_id)
-		target_speed = min(MAX_SAFE_FAN, current_speed + FAN_BUMP)
+		target_speed = min(MAX_SAFE_FAN, current_speed + FAN_RAMP)
 
 		if target_speed > current_speed and target_speed != last_speed:
 			set_gpu_fan_speed(target_speed, gpu_id)
@@ -151,7 +151,7 @@ def shallow_batch_cooling(cool_time=0.10, gpu_id = 0):
 	sleep_start_time = time.perf_counter()
 
 	current_speed = get_gpu_fan_speed(gpu_id)
-	target_speed = min(MAX_SAFE_FAN, current_speed + FAN_BUMP)
+	target_speed = min(MAX_SAFE_FAN, current_speed + FAN_RAMP)
 	if target_speed > current_speed:
 		set_gpu_fan_speed(target_speed, gpu_id)
 
