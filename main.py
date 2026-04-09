@@ -3,7 +3,7 @@ import os, json
 import time
 import cupy as cp
 from Config.config import (
-	ENABLE_LIVE_VIEWER, EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, HEIGHT, HELDOUT_SEED, TARGET_IMAGE_ID,
+	ENABLE_LIVE_VIEWER, EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, HEIGHT, HELDOUT_SEED, HIDDEN_LAYER_TOPOLOGY, TARGET_IMAGE_ID,
 	PATCH_SIZE, OUTPUT_ACT, HIDDEN_ACT, LEARNING_RATE,
 	GRAD_CLIP, MODEL_SEED, FORCE_NEW_MODEL, DEFAULT_MODEL_NAME, SAVE_FOLDER, 
 	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL, CONFIG_FILE, SAVE_INTERVAL,
@@ -140,12 +140,8 @@ def main():
 	
 	
 	# Model: input features -> 3 outputs (RGB)
-	#[1024, 768, 512, 384, 3]
-	# (2048, 1792, 1536, 1280, 1024, 960, 768, 512, 384, 256, 192, 128)
-	#topology = [stream.N_features, 512, 256, 128, 3]
-	topology = [stream.N_features, 1280, 768, 512, 384, 256, 3]
-	
-	#topology = [stream.N_features, 1280, 960, 768, 512, 3]
+	topology = [stream.N_features] + HIDDEN_LAYER_TOPOLOGY + [3]
+
 
 
 	model = NeuralNet(topology, model_name,LEARNING_RATE, 

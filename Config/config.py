@@ -20,6 +20,10 @@ HEIGHT = 720
 WIDTH = 1280
 
 # --- Settings ---
+# some useful values to use, but any value can be used.
+# (2048, 1792, 1536, 1280, 1024, 960, 768, 512, 384, 256, 192, 128)
+HIDDEN_LAYER_TOPOLOGY = [1280, 768, 512, 384, 256]
+
 TRAIN               = True
 FORCE_NEW_MODEL     = True
 MODEL_SEED          = 42       	# Set to None for random seed
