@@ -96,3 +96,37 @@ These results demonstrate that:
 - At epoch 1496, all four outputs show __consistent global structure__ and __recognisable content__, indicating that the model is learning them __simultaneously__, not sequentially.
 
 This behaviour represents the current, demonstrated capability of the architecture.
+
+## How to Inspect a Learned Image
+
+To visually verify how well the model is reproducing a specific target image, set the following configuration values in `Config/config.py`:
+
+`ENABLE_END_VIEWER = True`
+<br>
+`FORCE_NEW_MODEL = False`
+<br>
+`TRAIN = False`
+
+Then set the following parameters in `Config/config.py`:
+
+- __HELDOUT_SEED__
+<br>
+Set this to the seed associated with the target image you want to inspect.
+<br>
+This value is stored in:
+<br>
+`Config/image_registry.json`
+
+- __HEIGHT__ and __WIDTH__
+<br>
+Set these to the __exact pixel dimensions__ of the target image.
+
+### Procedure
+
+- Train the model normally on your chosen set of 4+ images.
+- When you want to inspect reconstruction, update the config values above.
+- Set `HELDOUT_SEED` to the seed for the image you want to inspect.
+- Set `HEIGHT` and `WIDTH` to that image's native resolution.
+- Run the program.
+
+Because training is disabled, the end viewer will open immediately and display the model's reconstruction of the selected image.
