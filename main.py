@@ -253,11 +253,14 @@ def main():
 	finally:
 		if ENABLE_END_VIEWER:
 			img_list = []
+			proc_inputs = []
 			for ch_idx, name in enumerate(channel_names):
-				img_list.append((f"Input: {name}", X_u8[..., [ch_idx]]))
+				proc_inputs.append((f"Input: {name}", X_u8[..., [ch_idx]]))
 			
 			pred_img, _ = predict_full_from_stream(model, stream, batch_size=BATCH_SIZE)
 			img_list.append(("Model Output", pred_img))
+
+			img_list.extend(proc_inputs)
 
 			final_viewer(img_list)
 
