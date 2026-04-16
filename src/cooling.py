@@ -118,8 +118,6 @@ def check_gpu_temp_and_exit(nn, epoch, warn_temp, poll_interval=0.20, gpu_id=0):
 		else:
 			MODEL_SAVE_PATH = None
 		
-		if MODEL_SAVE_PATH is not None:
-			nn.save(MODEL_SAVE_PATH)
 		print("GPU exceeded max temp threshold! Exiting to prevent damage.")
 		exit(0)
 

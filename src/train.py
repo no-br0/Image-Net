@@ -38,7 +38,6 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	)
 
 	t0 = time.perf_counter()
-	model.GLOBAL_EPOCH += 1
 	sleep_time 		 	 = 0.0
 	
 	totals = defaultdict(float)
