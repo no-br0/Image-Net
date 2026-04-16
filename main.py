@@ -79,10 +79,24 @@ def main():
 	TELEMETRY_LOSS_PATH = os.path.join(TELEMETRY_LOG_FOLDER, f"{model_name}.jsonl")
 	TELEMETRY_OPTIMISER_PATH = os.path.join(TELEMETRY_LOG_FOLDER, f"{model_name}_optimiser.jsonl")
 
-	
-	if FORCE_NEW_MODEL:
+	TIME_LOG_PATH = log_dir.TIME_LOG
+
+	def del_model_files():
 		if os.path.exists(MODEL_SAVE_PATH):
 			os.remove(MODEL_SAVE_PATH)
+		if os.path.exists(TELEMETRY_LOSS_PATH):
+			os.remove(TELEMETRY_LOSS_PATH)
+		if os.path.exists(TIME_LOG_PATH):
+			os.remove(TIME_LOG_PATH)
+		if os.path.exists(TELEMETRY_OPTIMISER_PATH):
+			os.remove(TELEMETRY_OPTIMISER_PATH)
+		if os.path.exists(GPU_LOG_PATH):
+			os.remove(GPU_LOG_PATH)
+		print("Model files deleted.")
+
+
+	if FORCE_NEW_MODEL:
+		del_model_files()
 		
 	TRAIN_IMAGE_PATH = get_image_path(TARGET_IMAGE_ID)
 
@@ -156,12 +170,12 @@ def main():
 			if MODEL_SAVE_PATH is not None:
 				model = model.load(MODEL_SAVE_PATH)
 		except Exception as e:
-			#import traceback
-			#traceback.print_exc()
+			del_model_files()
 			print(f"[stage] Failed to load model: {e}")
+			
 
 	
-	TIME_LOG_PATH = log_dir.TIME_LOG
+	
 
 	
 	prune_telemetry(TELEMETRY_LOSS_PATH, model.GLOBAL_EPOCH)
