@@ -37,11 +37,12 @@ def flush_pool():
 def prune_telemetry(telemetry_path, last_epoch):
 	if os.path.exists(telemetry_path):
 		cleaned = []
-		with open(telemetry_path, "r") as f:
-			for line in f:
-				entry = json.loads(line)
-				if entry['global_epoch'] <= last_epoch:
-					cleaned.append(line)
+		if last_epoch > 0:
+			with open(telemetry_path, "r") as f:
+				for line in f:
+					entry = json.loads(line)
+					if entry['global_epoch'] <= last_epoch:
+						cleaned.append(line)
 		with open(telemetry_path, "w") as f:
 			f.writelines(cleaned)
 
