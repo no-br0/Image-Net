@@ -119,7 +119,7 @@ def worker_main(conn, model_state, epochs, batch_size, loss_name, shuffle):
 		try:
 			cmd = conn.recv()
 			if cmd == "continue":
-				model.GLOABL_EPOCH += 1
+				model.GLOBAL_EPOCH += 1
 			else:
 				break
 		except EOFError:
