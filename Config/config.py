@@ -3,12 +3,14 @@
 WORKER_CHUNK_SIZE = 20
 
 # --- Generalisation Settings ---
-ENABLE_ROTATE_TARGET_IMAGE 		= True
+ENABLE_ROTATE_TARGET_IMAGE 		= False
 ROTATE_TARGET_FREQ         		= 20
 
 HELDOUT_SEED = 0
 
-MULTI_IMAGE_COUNT = 2 # number of images trained on simultaneously in a single epoch
+MULTI_IMAGE_COUNT = 1 # number of images trained on simultaneously in a single epoch
+
+USE_PAIR_COVERAGE_CYCLE = True
 
 # --- Viewer toggle ---
 ENABLE_END_VIEWER       = False
@@ -52,7 +54,7 @@ BATCH_SIZE	  	 = 32768
 #BATCH_SIZE      = 24576
 #BATCH_SIZE      = 163840
 ENABLE_SHUFFLE         = True
-EPOCHS          = 20000
+EPOCHS          = 20
 
 ENABLE_CUSTOM_MODEL_NAME        = False
 ENABLE_ADAPTIVE_LOSS_WEIGHTING  = False
@@ -77,7 +79,6 @@ LOSS_CONFIG = [
     
 	("mse", 1.0),    
 	("mae", 1.0),
-	#("perceptual_patch", 1.0),
 
     ]
 
@@ -92,9 +93,9 @@ PATCH_SIZE                      = 7
 
 
 # --- Model ---
-HIDDEN_ACT                      = "sin"         # "relu", "linear", "tanh", "sin", "cos", "sigmoid_255", "tanh_255"
-OUTPUT_ACT                      = "sigmoid_255" # "sigmoid_255", "tanh_255", "cos_255", "sin_255"
-
+HIDDEN_ACT                      = "sin"         # "relu", "linear", "tanh", "sin", "cos"
+# "sigmoid_255", "tanh_255", "cos_255", "sin_255"
+OUTPUT_ACT                      = "sin_255"
 
 # --- Model save/load ---
 

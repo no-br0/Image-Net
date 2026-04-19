@@ -1,6 +1,6 @@
 # worker_train.py
 import cupy as cp
-from Config.config import ENABLE_ROTATE_TARGET_IMAGE, MULTI_IMAGE_COUNT, PATCH_SIZE, ROTATE_TARGET_FREQ, TARGET_IMAGE_ID
+from Config.config import ENABLE_ROTATE_TARGET_IMAGE, MULTI_IMAGE_COUNT, PATCH_SIZE, ROTATE_TARGET_FREQ, TARGET_IMAGE_ID, USE_PAIR_COVERAGE_CYCLE
 from Config.image_registry import get_image_path, get_registry_size, get_seed
 from Config.layer_registry import build_input_stack, inject_input_seeds
 from src.data_utils import load_rgb_image, make_neighbor_stream
@@ -8,7 +8,7 @@ from src.train import train_streaming
 from src.neural_net import NeuralNet
 from src.loss_registry import LOSS_REGISTRY
 from cupy.lib.stride_tricks import sliding_window_view as swv
-
+import math, numpy as np
 
 def build_stream(input_config, model, batch_size):
 	images, pixel_offsets, global_indices = build_multi_image_dataset(
@@ -28,12 +28,41 @@ def build_stream(input_config, model, batch_size):
 
 
 def get_active_images(global_epoch, reg_size, count):
-	seed = int(max(0, global_epoch))
+    step_index = int(global_epoch // ROTATE_TARGET_FREQ)
 
-	rng = cp.random.RandomState(seed)
-	perm = rng.permutation(reg_size)
-	perm = perm + 1
-	return (perm[:count]).tolist()
+    if USE_PAIR_COVERAGE_CYCLE:
+
+        total = math.comb(reg_size, count)
+
+        lap = step_index // total
+        pos = step_index % total
+
+        # CPU RNG (faster, no GPU sync)
+        rng = np.random.default_rng(lap)
+        shuffled_index = int(rng.permutation(total)[pos])
+
+        # Combinatorial unranking (O(k))
+        r = shuffled_index
+        result = []
+        x = 0
+
+        for i in range(count):
+            for j in range(x, reg_size):
+                c = math.comb(reg_size - j - 1, count - i - 1)
+                if r < c:
+                    result.append(j + 1)
+                    x = j + 1
+                    break
+                r -= c
+
+        return result
+
+    else:
+        seed = int(max(0, global_epoch))
+        rng = np.random.default_rng(seed)
+        perm = rng.permutation(reg_size) + 1
+        return perm[:count].tolist()
+
 
 
 def build_image_dataset(image_id: int, input_config, patch_size):
@@ -68,10 +97,11 @@ def build_multi_image_dataset(model, input_config, patch_size: int):
 			print(f" Active Image IDs: {active_ids}")
 	else:
 		active_ids = get_active_images(
-			model.GLOBAL_EPOCH // ROTATE_TARGET_FREQ,
+			model.GLOBAL_EPOCH,
 			reg_size,
 			MULTI_IMAGE_COUNT,
 		)
+		print(f" Active Image IDs: {active_ids}")
 
 	images = []
 	pixel_offsets = []
