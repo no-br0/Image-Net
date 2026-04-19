@@ -1,6 +1,9 @@
 # worker_train.py
+import json
+import os
+
 import cupy as cp
-from Config.config import ENABLE_ROTATE_TARGET_IMAGE, MULTI_IMAGE_COUNT, PATCH_SIZE, ROTATE_TARGET_FREQ, TARGET_IMAGE_ID, USE_PAIR_COVERAGE_CYCLE
+from Config.config import CONFIG_FILE, ENABLE_ROTATE_TARGET_IMAGE, MULTI_IMAGE_COUNT, PATCH_SIZE, ROTATE_TARGET_FREQ, SAVE_INTERVAL, TARGET_IMAGE_ID, USE_PAIR_COVERAGE_CYCLE
 from Config.image_registry import get_image_path, get_registry_size, get_seed
 from Config.layer_registry import build_input_stack, inject_input_seeds
 from src.data_utils import load_rgb_image, make_neighbor_stream
@@ -154,6 +157,22 @@ def worker_main(conn, model_state, epochs, batch_size, loss_name, shuffle):
 				break
 		except EOFError:
 			return
+
+		if model.GLOBAL_EPOCH % SAVE_INTERVAL == 0:
+			try:
+				if os.path.exists(CONFIG_FILE):
+					with open(CONFIG_FILE) as f:
+						settings = json.load(f)
+					MODEL_SAVE_PATH = settings.get("MODEL_SAVE_PATH", None)
+				else:
+					MODEL_SAVE_PATH = None
+				
+				if MODEL_SAVE_PATH is not None:
+					model.save(MODEL_SAVE_PATH)
+			except Exception as e:
+				print("model: ", model)
+				print("MODEL_SAVE_PATH: ", MODEL_SAVE_PATH)
+				print(f"Failed to save model: {e}")
 
 		is_last_iteration = (i == epochs - 1)
 

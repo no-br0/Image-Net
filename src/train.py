@@ -237,29 +237,6 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	model.PREVIOUS_ABS_RAW_LOSS_DELTA = abs_raw_loss_delta
 	model.PREVIOUS_RAW_BREAKDOWN = avg_raw_breakdown.copy()
 	model.PREVIOUS_RAW_BREAKDOWN_DELTA = raw_breakdown_delta.copy()
-
-	
-
-	# --- Periodic save ---
-	
-	save_start = time.perf_counter()
-	if model.GLOBAL_EPOCH % SAVE_INTERVAL == 0:
-		try:
-			if os.path.exists(CONFIG_FILE):
-				with open(CONFIG_FILE) as f:
-					settings = json.load(f)
-				MODEL_SAVE_PATH = settings.get("MODEL_SAVE_PATH", None)
-			else:
-				MODEL_SAVE_PATH = None
-			
-			if MODEL_SAVE_PATH is not None:
-				model.save(MODEL_SAVE_PATH)
-		except Exception as e:
-			print("model: ", model)
-			print("MODEL_SAVE_PATH: ", MODEL_SAVE_PATH)
-			print(f"[train] save_model failed: {e}")
-	save_end = time.perf_counter()
-	save_time = save_end - save_start
 	
 
 	# --- Timing stats ---
@@ -312,7 +289,6 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 			"compute_time": compute_time,
 			"callback_time": 0,
 			"telemetry_time": telemetry_time,
-			"save_time": save_time,
 			"active_time": active_time,
 			"sleep_time": sleep_time
 		}

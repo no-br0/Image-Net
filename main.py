@@ -179,10 +179,10 @@ def main():
 	
 
 	
-	prune_telemetry(TELEMETRY_LOSS_PATH, model.GLOBAL_EPOCH)
-	prune_telemetry(TELEMETRY_OPTIMISER_PATH, model.GLOBAL_EPOCH)
-	prune_telemetry(TIME_LOG_PATH, model.GLOBAL_EPOCH)
-	prune_telemetry(GPU_LOG_PATH, model.GLOBAL_EPOCH)
+	prune_telemetry(TELEMETRY_LOSS_PATH, model.GLOBAL_EPOCH - 1)
+	prune_telemetry(TELEMETRY_OPTIMISER_PATH, model.GLOBAL_EPOCH - 1)
+	prune_telemetry(TIME_LOG_PATH, model.GLOBAL_EPOCH - 1)
+	prune_telemetry(GPU_LOG_PATH, model.GLOBAL_EPOCH - 1)
 
 
 	# Train — for per-pixel RGB, use plain MSE (avoid perceptual which expects 2D fields)
@@ -250,9 +250,6 @@ def main():
 					elif msg == "done":
 						model = NeuralNet.from_state(payload)
 						break
-					
-					if model.GLOBAL_EPOCH % SAVE_INTERVAL == 0:
-						model.save(MODEL_SAVE_PATH)
 
 				p.join()
 				remaining -= this_chunk
