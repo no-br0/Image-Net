@@ -303,7 +303,6 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	previous_abs_raw_loss_delta = abs_raw_loss_delta
 		
 		
-	cp.get_default_memory_pool().free_all_blocks()
 	# used to prevent kernel queuing   
 	cp.cuda.Device().synchronize()
 

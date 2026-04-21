@@ -1,3 +1,5 @@
+import time
+
 import cupy as cp
 from Config.config import BATCH_SIZE
 import os, json
@@ -16,11 +18,17 @@ def predict_full_from_stream(model, stream, *, batch_size=BATCH_SIZE):
 	pred_flat = cp.zeros((N, out_c), dtype=cp.float32)
 
 	idx = 0
+	prep_time = 0
+	prep_start = time.perf_counter()
 	for xb, _ in stream.iter_minibatches(batch_size=batch_size, sync=False):
+		prep_end = time.perf_counter()
+		prep_time += prep_end - prep_start
 		pred_flat[idx:idx+xb.shape[0]] = model.feedforward(xb)
 		sleep_time += display_batch_cooling(model, model.GLOBAL_EPOCH)
 		idx += xb.shape[0]
+		prep_start = time.perf_counter()
 
+	#print(f"Display Prep Time: {prep_time:.4f}")
 	pred_img = pred_flat.reshape(H, W, out_c)
 	cp.clip(pred_img, 0.0, 255.0, out=pred_img)
 	return pred_img.astype(cp.uint8, copy=False), sleep_time

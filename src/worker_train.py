@@ -193,5 +193,4 @@ def worker_main(conn, model_state, epochs, batch_size, loss_name, shuffle):
 	conn.send(("done", model.to_state()))
 	conn.close()
 
-	cp.get_default_memory_pool().free_all_blocks()
 	cp.cuda.Device().synchronize()
