@@ -136,7 +136,7 @@ def make_neighbor_stream(images, pixel_offsets, global_indices, *, patch_size, b
 			self.images = None
 			self.windows = None
 			self.global_indices = None
-			cp.get_default_memory_pool().free_all_blocks()
+			#cp.get_default_memory_pool().free_all_blocks()
 
 		def __len__(self):
 			return self.N

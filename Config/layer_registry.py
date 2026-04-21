@@ -56,7 +56,6 @@ def build_input_stack(H: int, W: int, layers_cfg: List[Dict]) -> Tuple[cp.ndarra
     Build a stacked (H, W, C) uint8 tensor on GPU from a list of layer configs.
     VRAM‑tight: preallocates entire channel buffer and writes in place.
     """
-    pool = cp.get_default_memory_pool()
 
     # ---- Pass 1: count total channels, collect names ----
     total_C = 0
@@ -68,7 +67,6 @@ def build_input_stack(H: int, W: int, layers_cfg: List[Dict]) -> Tuple[cp.ndarra
         total_C += arr.shape[0]
         name_template.extend(nm)
         del arr  # release ASAP
-        pool.free_all_blocks()
 
     # ---- Pass 2: allocate output buffer ----
     chan_buf = cp.zeros((total_C, H, W), dtype=cp.float32)
@@ -77,19 +75,17 @@ def build_input_stack(H: int, W: int, layers_cfg: List[Dict]) -> Tuple[cp.ndarra
 
     # ---- Pass 3: generate each layer into buffer ----
     for cfg in layers_cfg:
-        pool.free_all_blocks()
         gen_fn = LAYER_REGISTRY[cfg["type"]]
         arr, nm = gen_fn(H, W, cfg)  # arr shape: (C_i, H, W) float32 [0,1]
         cnum = arr.shape[0]
         chan_buf[idx:idx + cnum, :, :] = arr
         names.extend(nm)
         idx += cnum
-        pool.free_all_blocks()
 
     # ---- Final: scale to uint8 and reshape ----
     cp.clip(chan_buf, 0.0, 1.0, out=chan_buf)
     chan_buf *= cp.float32(255.0)
     X_u8 = cp.moveaxis(chan_buf.astype(cp.uint8, copy=False), 0, -1)  # (H, W, C)
 
-    pool.free_all_blocks()
+    cp.get_default_memory_pool().free_all_blocks()
     return X_u8, names
