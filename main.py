@@ -61,6 +61,37 @@ def extract_patches_for_display(X_u8, Y_rgb, patch_size):
 	return P, T
 
 
+def build_display_stream(Y_rgb, input_config, H, W):
+	pad = PATCH_SIZE // 2
+	H_proc = H  + (2*pad)
+	W_proc = W  + (2*pad)
+
+	X_u8, channel_names = build_input_stack(H_proc, W_proc, input_config)
+	rec = {
+		"X": X_u8.astype(cp.float32),
+		"T": Y_rgb.reshape(-1, 3).astype(cp.float32),
+		"H": H,
+		"W": W,
+		"pad": PATCH_SIZE // 2,
+	}
+
+	images = [rec]
+	pixel_offsets = cp.asarray([0], dtype=cp.int64)
+	global_indices = cp.arange(H * W, dtype=cp.int64)
+
+	stream = make_neighbor_stream(
+		images,
+		pixel_offsets,
+		global_indices,
+		patch_size=PATCH_SIZE,
+		batch_size=BATCH_SIZE,
+	)
+
+	stream.set_epoch(shuffle=False)
+	
+	return stream, channel_names, X_u8
+
+
 def save_model_name(model_name):
 	data = {"model_name": model_name}
 	with open(CURRENT_MODEL_NAME_PATH, "w") as f:
@@ -120,44 +151,14 @@ def main():
 	layers_cfg = sync_input_config(MODEL_SAVE_PATH)
 	input_config = inject_input_seeds(layers_cfg, HELDOUT_SEED)
 	
-	pad = PATCH_SIZE // 2
-	H_proc = H  + (2*pad)
-	W_proc = W  + (2*pad)
-	
-	X_u8, channel_names = build_input_stack(H_proc, W_proc, input_config)
-	print(f"[config] H={H}, W={W}, epochs={EPOCHS}, batch_size={BATCH_SIZE}")
-	
-
-	rec = {
-		"X": X_u8.astype(cp.float32),
-		"T": Y_rgb.reshape(-1, 3).astype(cp.float32),
-		"H": H,
-		"W": W,
-		"pad": PATCH_SIZE // 2,
-	}
-
-	images = [rec]
-	pixel_offsets = cp.asarray([0], dtype=cp.int64)
-	global_indices = cp.arange(H * W, dtype=cp.int64)
-
-	stream = make_neighbor_stream(
-		images,
-		pixel_offsets,
-		global_indices,
-		patch_size=PATCH_SIZE,
-		batch_size=BATCH_SIZE,
-	)
-
-	stream.set_epoch(shuffle=False)
-	
-	flush_pool()
-
-	
+	stream, channel_names, _ = build_display_stream(Y_rgb, input_config, H, W)
 	
 	# Model: input features -> 3 outputs (RGB)
 	topology = [stream.N_features] + HIDDEN_LAYER_TOPOLOGY + [3]
 
-
+	if ENABLE_LIVE_VIEWER is False:
+		del stream, channel_names, input_config
+		flush_pool()
 
 	model = NeuralNet(topology, model_name,LEARNING_RATE, 
 					HIDDEN_ACT, 
@@ -166,6 +167,8 @@ def main():
 					input_config=layers_cfg)
 	print("[stage] Model initialised with topology:", topology)
 	
+
+
 	if FORCE_NEW_MODEL is False:
 		try:
 			if MODEL_SAVE_PATH is not None:
@@ -173,10 +176,6 @@ def main():
 		except Exception as e:
 			del_model_files()
 			print(f"[stage] Failed to load model: {e}")
-			
-
-	
-	
 
 	
 	prune_telemetry(TELEMETRY_LOSS_PATH, model.GLOBAL_EPOCH - 1)
@@ -253,7 +252,10 @@ def main():
 
 				p.join()
 				remaining -= this_chunk
-			pass
+			
+			if ENABLE_LIVE_VIEWER:
+				del stream, channel_names, input_config
+				flush_pool()
 
 	except KeyboardInterrupt:
 		print("[ctrl-c] Interrupted — ending training…")
@@ -264,6 +266,11 @@ def main():
 
 	finally:
 		if ENABLE_END_VIEWER:
+			
+			input_config = inject_input_seeds(layers_cfg, HELDOUT_SEED)
+			stream, channel_names, X_u8 = build_display_stream(Y_rgb, input_config, H, W)
+
+
 			img_list = []
 			proc_inputs = []
 			for ch_idx, name in enumerate(channel_names):
