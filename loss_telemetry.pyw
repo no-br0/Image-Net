@@ -74,6 +74,16 @@ class TelemetryViewer(tk.Tk):
 		self._last_epoch = -1
 		self._last_model_name = None
 
+		# NEW: tailing + legend state
+		self._file_pos = 0
+		self._last_show_legends = True
+		self._last_deriv_show_legends = True
+		self._last_break_show_legends = True
+		self._last_acc_show_legends = True
+		self._last_deriv_visible = set()
+		self._last_break_visible = set()
+		self._last_acc_visible = set()
+
 		self.visible_break_keys = {}
 		self.visible_deriv_keys = {}
 		self.visible_acc_keys = {}
@@ -163,6 +173,13 @@ class TelemetryViewer(tk.Tk):
 		self.acc_button.pack(side=tk.LEFT, padx=6)
 		
 		
+	def _redraw_all(self):
+		self.panel_loss.draw_idle()
+		self.panel_deriv.draw_idle()
+		self.panel_break.draw_idle()
+		self.panel_acc.draw_idle()
+
+
 	def _open_dropdown(self, button, keys_dict, update_callback, title):
 		win = tk.Toplevel(self)
 		win.configure(bg="#1e1e1e")
@@ -210,13 +227,25 @@ class TelemetryViewer(tk.Tk):
 		win.focus_set()
 
 	def _open_break_dropdown(self):
-		self._open_dropdown(self.break_button, self.visible_break_keys, self._update_breakdown, "Breakdown Toggles")
+		self._open_dropdown(self.break_button, self.visible_break_keys, lambda:(self._update_breakdown(), 
+																				self.panel_break.ax.relim(),
+																				self.panel_break.ax.autoscale_view(),
+																				self.panel_break.draw_idle(),
+																				), "Breakdown Toggles")
 
 	def _open_deriv_dropdown(self):
-		self._open_dropdown(self.deriv_button, self.visible_deriv_keys, self._update_derivatives, "Derivative Toggles")
+		self._open_dropdown(self.deriv_button, self.visible_deriv_keys, lambda:(self._update_derivatives(),
+																				self.panel_deriv.ax.relim(),	
+																				self.panel_deriv.ax.autoscale_view(), 
+																				self.panel_deriv.draw_idle(),
+																				), "Derivative Toggles")
 
 	def _open_acc_dropdown(self):
-		self._open_dropdown(self.acc_button, self.visible_acc_keys, self._update_accuracy, "Accuracy Toggles")
+		self._open_dropdown(self.acc_button, self.visible_acc_keys, lambda:(self._update_accuracy(), 
+																			self.panel_acc.ax.relim(),
+																			self.panel_acc.ax.autoscale_view(),
+																			self.panel_acc.draw_idle(),
+																			), "Accuracy Toggles")
 
 	def _resolve_model_name(self):
 		if self.live_mode_var.get():
@@ -249,26 +278,42 @@ class TelemetryViewer(tk.Tk):
 
 	def _update_master(self):
 		if self.df.empty or "global_epoch" not in self.df.columns or "total_raw_loss" not in self.df.columns:
-			self.line_raw_loss.set_data([], [])
-			self.min_loss_dot.set_data([], [])   # clear the dot
-			self.panel_loss.draw_idle()
+			self.line_raw_loss.set_xdata([])
+			self.line_raw_loss.set_ydata([])
+			self.min_loss_dot.set_xdata([])
+			self.min_loss_dot.set_ydata([])
 			return
 
 		df = self.df[(self.df["global_epoch"] >= self.slider_start) & (self.df["global_epoch"] <= self.slider_end)]
-		self.line_raw_loss.set_data(df["global_epoch"], df["total_raw_loss"])
+		self.line_raw_loss.set_xdata(df["global_epoch"])
+		self.line_raw_loss.set_ydata(df["total_raw_loss"])
 
-		# --- NEW: compute and draw the minimum loss point ---
 		if not df.empty:
 			min_idx = df["total_raw_loss"].idxmin()
 			min_epoch = df.loc[min_idx, "global_epoch"]
 			min_value = df.loc[min_idx, "total_raw_loss"]
-			self.min_loss_dot.set_data([min_epoch], [min_value])
+			self.min_loss_dot.set_xdata([min_epoch])
+			self.min_loss_dot.set_ydata([min_value])
 		else:
-			self.min_loss_dot.set_data([], [])
+			self.min_loss_dot.set_xdata([])
+			self.min_loss_dot.set_ydata([])
 
 		self.panel_loss.ax.relim()
 		self.panel_loss.ax.autoscale_view()
-		self.panel_loss.draw_idle()
+
+		show = self.show_legends_var.get()
+
+		if show and (show != self._last_show_legends):
+			handles = [self.line_raw_loss, self.min_loss_dot]
+			labels = [ln.get_label() for ln in handles]
+			if self.panel_loss.ax.legend_:
+				self.panel_loss.ax.legend_.remove()
+			self.panel_loss.ax.legend(handles, labels, facecolor="black", edgecolor="white", labelcolor="white")
+		elif not show and self.panel_loss.ax.legend_ and show != self._last_show_legends:
+			self.panel_loss.ax.legend_.remove()
+
+		self._last_show_legends = show
+
 
 
 	def _init_plot_lines(self):
@@ -311,67 +356,86 @@ class TelemetryViewer(tk.Tk):
 	def _tail_and_update(self):
 		try:
 			model_name = self._resolve_model_name()
+
+			# Model switch → reset state
 			if model_name != self._last_model_name:
 				self._last_model_name = model_name
+				self._file_pos = 0
+				self.df = pd.DataFrame()
 				self._last_epoch = -1
+
 				for panel, lines, keys, checkbuttons in [
 					(self.panel_break, self.break_lines, self.visible_break_keys, self._break_checkbuttons),
 					(self.panel_deriv, self.deriv_lines, self.visible_deriv_keys, self._deriv_checkbuttons),
 					(self.panel_acc, self.acc_lines, self.visible_acc_keys, self._acc_checkbuttons),
 				]:
 					for ln in lines.values():
-						ln.set_data([], [])
+						ln.set_xdata([])
+						ln.set_ydata([])
 					lines.clear()
 					keys.clear()
 					checkbuttons.clear()
+
 				self._last_break_keys.clear()
 				self._last_deriv_keys.clear()
 				self._last_acc_keys.clear()
 
 			log_path = self._get_log_path()
 			if not os.path.exists(log_path):
-				print("Log file not found:", log_path)
 				self.after(1000, self._tail_and_update)
 				return
 
-			with open(log_path, "r") as f:
-				lines = f.readlines()
-
-			rows = []
-			for line in lines:
-				try:
-					obj = json.loads(line)
-					rows.append(obj)
-				except:
-					continue
-
-			df = pd.DataFrame(rows)
-			if "global_epoch" not in df.columns:
-				print("Missing global_epoch in telemetry log — cannot plot.")
+			file_size = os.path.getsize(log_path)
+			if not hasattr(self, "_file_pos") or file_size < self._file_pos:
+				self._file_pos = 0
 				self.df = pd.DataFrame()
+
+			new_rows = []
+			with open(log_path, "r") as f:
+				f.seek(self._file_pos)
+				new_lines = f.readlines()
+				self._file_pos = f.tell()
+
+			for line in new_lines:
+				try:
+					new_rows.append(json.loads(line))
+				except:
+					pass
+
+			new_df = None
+			if new_rows:
+				new_df = pd.DataFrame(new_rows)
+				if "global_epoch" in new_df.columns:
+					new_df["global_epoch"] = pd.to_numeric(new_df["global_epoch"], errors="coerce")
+					new_df = new_df.dropna(subset=["global_epoch"])
+
+				if self.df.empty:
+					self.df = new_df
+				else:
+					self.df = pd.concat([self.df, new_df], ignore_index=True)
+
+			if self.df.empty:
 				self.after(1000, self._tail_and_update)
 				return
 
-			df["global_epoch"] = pd.to_numeric(df["global_epoch"], errors="coerce")
-			df = df.dropna(subset=["global_epoch"])
-
-			max_epoch = int(df["global_epoch"].max()) if not df.empty else -1
-			self.df = df
-			self._last_epoch = max_epoch
 			self._sync_epoch_range()
 			self._update_master()
 			self._update_derivatives()
-			self._update_breakdown()
+			self._update_breakdown(new_df["raw_breakdown"] if (new_df is not None and "raw_breakdown" in new_df.columns) else None)
 			self._update_accuracy()
+
+			self._redraw_all()
 
 		except Exception as e:
 			print("Tail error:", e)
 
 		self.after(1000, self._tail_and_update)
 
+
 	def _on_model_entry_commit(self):
 		self._last_model_name = self.model_entry.get().strip()
 		self._tail_and_update()
+
 
 	def _on_epoch_entry_commit(self):
 		try:
@@ -380,11 +444,13 @@ class TelemetryViewer(tk.Tk):
 			self._on_range_changed()
 		except ValueError:
 			print("Invalid epoch range")
+
+
 	def _update_derivatives(self):
 		if self.df.empty or "global_epoch" not in self.df.columns:
 			for ln in self.deriv_lines.values():
-				ln.set_data([], [])
-			self.panel_deriv.draw_idle()
+				ln.set_xdata([])
+				ln.set_ydata([])
 			return
 
 		df = self.df[(self.df["global_epoch"] >= self.slider_start) & (self.df["global_epoch"] <= self.slider_end)]
@@ -394,6 +460,8 @@ class TelemetryViewer(tk.Tk):
 			self._deriv_checkbuttons.clear()
 			self._last_deriv_keys = current_keys
 
+		visible_now = set()
+
 		for label, col in self.deriv_map.items():
 			if label not in self.deriv_lines:
 				ln, = self.panel_deriv.ax.plot([], [], label=label)
@@ -402,37 +470,57 @@ class TelemetryViewer(tk.Tk):
 				self.visible_deriv_keys[label] = BooleanVar(value=True)
 
 			if col in df.columns and self.visible_deriv_keys[label].get():
-				self.deriv_lines[label].set_data(df["global_epoch"], df[col])
+				self.deriv_lines[label].set_xdata(df["global_epoch"])
+				self.deriv_lines[label].set_ydata(df[col])
+				visible_now.add(label)
 			else:
-				self.deriv_lines[label].set_data([], [])
+				self.deriv_lines[label].set_xdata([])
+				self.deriv_lines[label].set_ydata([])
 
-		handles = [ln for lbl, ln in self.deriv_lines.items() if self.visible_deriv_keys.get(lbl, BooleanVar()).get()]
-		labels = [ln.get_label() for ln in handles]
-		self.panel_deriv.ax.legend_.remove() if self.panel_deriv.ax.legend_ else None
-		if self.show_legends_var.get():
+		# Legend: only rebuild if visibility or show_legends changed
+		show = self.show_legends_var.get()
+		if show and (visible_now != self._last_deriv_visible or show != self._last_deriv_show_legends):
+			handles = [ln for lbl, ln in self.deriv_lines.items() if self.visible_deriv_keys.get(lbl, BooleanVar()).get()]
+			labels = [ln.get_label() for ln in handles]
+			if self.panel_deriv.ax.legend_:
+				self.panel_deriv.ax.legend_.remove()
 			self.panel_deriv.ax.legend(handles, labels, facecolor="black", edgecolor="white", labelcolor="white")
+		elif not show and self.panel_deriv.ax.legend_ and show != self._last_deriv_show_legends:
+			self.panel_deriv.ax.legend_.remove()
+
+		self._last_deriv_visible = visible_now
+		self._last_deriv_show_legends = show
+
 		self.panel_deriv.ax.relim()
 		self.panel_deriv.ax.autoscale_view()
-		self.panel_deriv.draw_idle()
 
-	def _update_breakdown(self):
+
+	def _update_breakdown(self, new_breakdown_rows=None):
 		if self.df.empty or "global_epoch" not in self.df.columns or "raw_breakdown" not in self.df.columns:
 			for ln in self.break_lines.values():
-				ln.set_data([], [])
-			self.panel_break.draw_idle()
+				ln.set_xdata([])
+				ln.set_ydata([])
 			return
 
 		df = self.df[(self.df["global_epoch"] >= self.slider_start) & (self.df["global_epoch"] <= self.slider_end)]
-		breakdown_keys = set()
-		for rb in df["raw_breakdown"]:
-			if isinstance(rb, dict):
-				breakdown_keys.update(rb.keys())
+
+		breakdown_keys = set(self._last_break_keys)
+		if new_breakdown_rows is not None:
+			for rb in new_breakdown_rows:
+				if isinstance(rb, dict):
+					breakdown_keys.update(rb.keys())
+		else:
+			# Fallback full scan if needed
+			for rb in df["raw_breakdown"]:
+				if isinstance(rb, dict):
+					breakdown_keys.update(rb.keys())
 
 		if breakdown_keys != self._last_break_keys:
 			self.visible_break_keys.clear()
 			self._break_checkbuttons.clear()
 			self._last_break_keys = breakdown_keys
-			#self.break_lines.clear()
+
+		visible_now = set()
 
 		for key in sorted(breakdown_keys):
 			values = [rb.get(key, None) if isinstance(rb, dict) else None for rb in df["raw_breakdown"]]
@@ -443,24 +531,35 @@ class TelemetryViewer(tk.Tk):
 				self.visible_break_keys[key] = BooleanVar(value=True)
 
 			if self.visible_break_keys[key].get():
-				self.break_lines[key].set_data(df["global_epoch"], values)
+				self.break_lines[key].set_xdata(df["global_epoch"])
+				self.break_lines[key].set_ydata(values)
+				visible_now.add(key)
 			else:
-				self.break_lines[key].set_data([], [])
+				self.break_lines[key].set_xdata([])
+				self.break_lines[key].set_ydata([])
 
-		handles = [ln for key, ln in self.break_lines.items() if self.visible_break_keys.get(key, BooleanVar()).get()]
-		labels = [ln.get_label() for ln in handles]
-		self.panel_break.ax.legend_.remove() if self.panel_break.ax.legend_ else None
-		if self.show_legends_var.get():
+		show = self.show_legends_var.get()
+		if show and (visible_now != self._last_break_visible or show != self._last_break_show_legends):
+			handles = [ln for key, ln in self.break_lines.items() if self.visible_break_keys.get(key, BooleanVar()).get()]
+			labels = [ln.get_label() for ln in handles]
+			if self.panel_break.ax.legend_:
+				self.panel_break.ax.legend_.remove()
 			self.panel_break.ax.legend(handles, labels, facecolor="black", edgecolor="white", labelcolor="white")
+		elif not show and self.panel_break.ax.legend_ and show != self._last_break_show_legends:
+			self.panel_break.ax.legend_.remove()
+
+		self._last_break_visible = visible_now
+		self._last_break_show_legends = show
+
 		self.panel_break.ax.relim()
 		self.panel_break.ax.autoscale_view()
-		self.panel_break.draw_idle()
+
 
 	def _update_accuracy(self):
 		if self.df.empty or "global_epoch" not in self.df.columns or "accuracy" not in self.df.columns:
 			for ln in self.acc_lines.values():
-				ln.set_data([], [])
-			self.panel_acc.draw_idle()
+				ln.set_xdata([])
+				ln.set_ydata([])
 			return
 
 		df = self.df[(self.df["global_epoch"] >= self.slider_start) & (self.df["global_epoch"] <= self.slider_end)]
@@ -469,6 +568,8 @@ class TelemetryViewer(tk.Tk):
 			self.visible_acc_keys.clear()
 			self._acc_checkbuttons.clear()
 			self._last_acc_keys = current_keys
+
+		visible_now = set()
 
 		for label, (key, idx) in self.acc_labels:
 			if label not in self.acc_lines:
@@ -490,26 +591,39 @@ class TelemetryViewer(tk.Tk):
 					values.append(val[idx] if isinstance(val, (list, tuple)) and len(val) > idx else None)
 
 			if self.visible_acc_keys[label].get():
-				self.acc_lines[label].set_data(df["global_epoch"], values)
+				self.acc_lines[label].set_xdata(df["global_epoch"])
+				self.acc_lines[label].set_ydata(values)
+				visible_now.add(label)
 			else:
-				self.acc_lines[label].set_data([], [])
+				self.acc_lines[label].set_xdata([])
+				self.acc_lines[label].set_ydata([])
 
-		handles = [ln for lbl, ln in self.acc_lines.items() if self.visible_acc_keys.get(lbl, BooleanVar()).get()]
-		labels = [ln.get_label() for ln in handles]
-		self.panel_acc.ax.legend_.remove() if self.panel_acc.ax.legend_ else None
-		if self.show_legends_var.get():
+		show = self.show_legends_var.get()
+		if show and (visible_now != self._last_acc_visible or show != self._last_acc_show_legends):
+			handles = [ln for lbl, ln in self.acc_lines.items() if self.visible_acc_keys.get(lbl, BooleanVar()).get()]
+			labels = [ln.get_label() for ln in handles]
+			if self.panel_acc.ax.legend_:
+				self.panel_acc.ax.legend_.remove()
 			self.panel_acc.ax.legend(handles, labels, facecolor="black", edgecolor="white", labelcolor="white")
+		elif not show and self.panel_acc.ax.legend_ and show != self._last_acc_show_legends:
+			self.panel_acc.ax.legend_.remove()
+
+		self._last_acc_visible = visible_now
+		self._last_acc_show_legends = show
+
 		self.panel_acc.ax.relim()
 		self.panel_acc.ax.autoscale_view()
-		self.panel_acc.draw_idle()
+
+
 	def _toggle_legends(self):
-		show = self.show_legends_var.get()
-		for panel in [self.panel_loss, self.panel_deriv, self.panel_break, self.panel_acc]:
-			if show:
-				panel.ax.legend(facecolor="black", edgecolor="white", labelcolor="white")
-			else:
-				panel.ax.legend_.remove() if panel.ax.legend_ else None
-			panel.draw_idle()
+		# Just trigger a refresh; legend logic is in update functions
+		self._last_show_legends = not self.show_legends_var.get()  # force mismatch
+		self._update_master()
+		self._update_derivatives()
+		self._update_breakdown()
+		self._update_accuracy()
+		self._redraw_all()
+
 
 if __name__ == "__main__":
 	viewer = TelemetryViewer()
