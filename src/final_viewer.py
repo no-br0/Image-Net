@@ -1,5 +1,4 @@
 import numpy as np
-import pygame
 from src.backend_cupy import to_cpu
 
 def _prep_img(arr):
@@ -24,6 +23,8 @@ def final_viewer(image_list):
 	image_list: list of (label:str, array: HxWx{1,3}, uint8/float[0..1 or 0..255])
 	Shows one image at a time; use LEFT/RIGHT or A/D to flip.
 	"""
+	import pygame
+
 	images = [(label, _prep_img(img)) for label, img in image_list if _prep_img(img) is not None]
 	if not images:
 		print("[final_viewer] No images to display")
