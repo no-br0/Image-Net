@@ -10,7 +10,7 @@ This guide explains every part of the model that can be configured, what each co
 
 ### 1.1 Architecture Configuration
 
-`HIDDEN_LAYER_TOPOLOGY`
+#### `HIDDEN_LAYER_TOPOLOGY`
 
 A list of integers defining the widths of the hidden layers.
 <br>
@@ -24,9 +24,7 @@ The system automatically constructs the full topology as:
 
 Users only modify the hidden layers.
 
----
-
-`HIDDEN_ACT`
+#### `HIDDEN_ACT`
 
 Selects the activation function used in all hidden layers.
 <br>
@@ -38,9 +36,7 @@ Activation names ending in `_255` (e.g., `sigmoid_255`, `tanh_255`) are __output
 <br>
 They should __not__ be used as hidden activations.
 
----
-
-`OUTPUT_ACT`
+#### `OUTPUT_ACT`
 
 Activation function for the output layer (RGB).
 <br>
@@ -54,9 +50,7 @@ These functions map values into the 0-255 pixel range and should be used for `OU
 <br>
 They are not suitable for hidden layers.
 
----
-
-`PATCH_SIZE`
+#### `PATCH_SIZE`
 
 Patch size used for extracting local neighbourhoods.
 <br>
@@ -71,7 +65,7 @@ Example:
 ### 1.2 Training Behaviour
 
 
-`EPOCHS`
+#### `EPOCHS`
 
 Controls how many epochs the program will run from the moment you start it, not the total number of epochs the model must reach.
 
@@ -85,76 +79,72 @@ Then training will stop once the model reaches:
 
 This makes `EPOCHS` a __relative value, not an absolute target__.
 
----
 
-`TRAIN`
+#### `TRAIN`
 
 Enable or disable training mode.
 
-`BATCH_SIZE`
+#### `BATCH_SIZE`
 
 Number of pixel-patch samples per batch.
 
 
-`ENABLE_SHUFFLE`
+#### `ENABLE_SHUFFLE`
 
 Toggle shuffling pixel indices each epoch.
 
-`LEARNING_RATE`
+#### `LEARNING_RATE`
 
 Initial learning rate.
 
-`ENABLE_SET_LR`
+#### `ENABLE_SET_LR`
 
 Force the learning rate to the configured value when loading the model.
 <br>
 This is applied __once at load time__, not every epoch.
 
-`ENABLE_ADAPTIVE_LR`
+#### `ENABLE_ADAPTIVE_LR`
 
 Enable adaptive learning rate logic.
 
-`LR_INCREASE_MULTIPLIER` __/__ `LR_DECREASE_MULTIPLIER`
+#### `LR_INCREASE_MULTIPLIER` __/__ `LR_DECREASE_MULTIPLIER`
+
 Controls how aggressively the adaptive learning rate adjusts.
 
-`ADAPTIVE_LR_INVERTED`
+#### `ADAPTIVE_LR_INVERTED`
 
 Invert the adaptive learning rate behaviour. (e.g., when it would normally increase LR decrease it instead, when it would normally decrease LR increase it instead.)
 
-`GRAD_CLIP`
+#### `GRAD_CLIP`
 
-Gradient clipping threshold
+Gradient clipping threshold.
 
----
-
-`OPTIMISER`
+#### `OPTIMISER`
 
 Selects the optimiser from `optimiser_registry.py`.
-
+<br>
 Example:
-
+<br>
 `OPTIMISER = { "name": "rmsprop" }`
 
-This also includes configurations for the optimiser
-
+This also includes configurations for the optimiser.
+<br>
 Example:
-
+<br>
 `OPTIMISER = { "name": "rmsprop", "weight_decay": 0.01 }`
 
----
-
-`LOSS_NAME`
+#### `LOSS_NAME`
 
 Name of the loss function to use.
 
 When set to `"wrapped_combined"`, `LOSS_CONFIG` is used to determine what loss functions are being combined.
 
-`LOSS_CONFIG`
+#### `LOSS_CONFIG`
 
 List of individual loss functions and their weighting.
-
+<br>
 Example:
-
+<br>
 `LOSS_CONFIG = [ ("mse", 1.0), ("mae", 1.0) ]`
 
 Available loss functions are defined in `loss_registry.py`, under the `LOSS_REGISTRY` dictionary.
@@ -167,13 +157,12 @@ __Important:__
 <br>
 `LOSS_CONFIG` is only ever used when `LOSS_NAME` is set to `"wrapped_combined"`
 
----
 
-`ENABLE_ADAPTIVE_LOSS_WEIGHTING`
+#### `ENABLE_ADAPTIVE_LOSS_WEIGHTING`
 
 Enable dynamic loss weighting.
 
-`LOSS_WEIGHTING_POWER_SCALE`
+#### `LOSS_WEIGHTING_POWER_SCALE`
 
 Controls the strength of adaptive weighting.
 
@@ -181,65 +170,77 @@ Controls the strength of adaptive weighting.
 
 ### 1.3 Generalisation Settings
 
-`ENABLE_ROTATE_TARGET_IMAGE`
+#### `ENABLE_ROTATE_TARGET_IMAGE`
 
 Randomly rotate the target image during training.
 
-`ROTATE_TARGET_FREQ`
+#### `ROTATE_TARGET_FREQ`
 
 How often to rotate (in epochs).
 
-`MULTI_IMAGE_COUNT`
+#### `MULTI_IMAGE_COUNT`
 
 Number of images trained on simultaneously per epoch.
 
-`HELDOUT_SEED`
+#### `HELDOUT_SEED`
 
 Seed used for procedural input seeding for live image display.
+
+Also used to determine which target image is shown in the live display when `ENABLE_CUSTOM_RESOLUTION == False`.
+
+When `ENABLE_ROTATE_TARGET_IMAGE == False` and `MULTI_IMAGE_COUNT == 1`, this seed selects which entry in `Config/image_registry.json` is used for training.
+
+__NOTE:__ If `Config/image_registry.json` does not exist, it will be created automatically when running `main.py`.
 
 ---
 
 ### 1.4 Viewer & Telemetry
 
-`ENABLE_LIVE_VIEWER`
+#### `ENABLE_LIVE_VIEWER`
 
-Enable live image display during training.
+Enables generation of live-display images during training.
 
-__NOTE:__ This does not launch the live image display it just enables the model to generate the images for the display telemetry to consume.
+__NOTE:__ This does not launch the viewer; it only enables the model to produce images for the telemetry system
 
-`ENABLE_END_VIEWER`
+#### `ENABLE_END_VIEWER`
 
-Show final viewer after training.
+Shows the final viewer after training.
 <br>
-This viewer allows for seeing a frozen epoch. It displays the output image and all procedural images.
+This viewer displays a frozen epoch, including the output image and all procedural inputs.
 <br>
-In order to navigate between images in the final viewer use the arrow keys on your keyboard.
+Use the arrow keys to navigate between images.
 
-`ENABLE_TELEMETRY_VIEWER`
+#### `ENABLE_TELEMETRY_VIEWER`
 
 Reserved for future use; currently has no effect.
 
-`LIVE_UPDATE_INTERVAL`
+#### `LIVE_UPDATE_INTERVAL`
 
-How often to generate the image for the live image display.
+How often (in epochs) to generate the live-display image.
 
 ---
 
 ### 1.5 Image & Display Settings
 
-`HEIGHT` __/__ `WIDTH`
+#### `HEIGHT` __/__ `WIDTH`
 
-Live display image resolution.
+Resolution of the live display image.
 
-__NOTE:__ This does not relate in any way to what resolution is or can be trained on it only determines what resolution the live display is generated and displayed at.
+__NOTE:__ This does not affect training resolution; it only controls the resolution used for live display output.
 
-`TARGET_IMAGE_ID`
+#### `ENABLE_CUSTOM_RESOLUTION`
 
-When `ENABLE_ROTATE_TARGET_IMAGE == False` and `MULTI_IMAGE_COUNT == 1`, this will be used to determine which image in `Config/image_registry.json` will be used for training.
+- When `True`:
+<br>
+The live display resolution is always taken from `HEIGHT` and `WIDTH`.
 
-__NOTE:__ If `Config/image_registry.json` does not exist it will be created when you run `main.py`
+- When `False`:
+<br>
+The live display resolution is taken from the target image associated with `HELDOUT_SEED`.
+<br>
+If the seed does not map to any entry in `Config/image_registry.json`, the system falls back to `HEIGHT` and `WIDTH`.
 
-`INPUT_CONFIG_PATH`
+#### `INPUT_CONFIG_PATH`
 
 __Important:__
 <br>
@@ -249,27 +250,27 @@ Do __not__ alter this value it is used to locate where the file is that tells th
 
 ### 1.6 Model Save/Load
 
-`MODEL_SEED`
+#### `MODEL_SEED`
 
 Seed for deterministic weight initialisation.
 
-`FORCE_NEW_MODEL`
+#### `FORCE_NEW_MODEL`
 
 Force creation of new model file.
 <br>
 This will cause the model save file to be deleted.
 
-`DEFAULT_MODEL_NAME`
+#### `DEFAULT_MODEL_NAME`
 
 Default name for saved models.
 <br>
 This is used for the file name.
 
-`SAVE_FOLDER`
+#### `SAVE_FOLDER`
 
 Directory where models are saved.
 
-`SAVE_INTERVAL`
+#### `SAVE_INTERVAL`
 
 Save model every N epochs.
 

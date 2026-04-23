@@ -6,7 +6,7 @@ WORKER_CHUNK_SIZE = 20
 ENABLE_ROTATE_TARGET_IMAGE 		= False
 ROTATE_TARGET_FREQ         		= 20
 
-HELDOUT_SEED = 0
+HELDOUT_SEED = 1
 
 MULTI_IMAGE_COUNT = 1 # number of images trained on simultaneously in a single epoch
 
@@ -17,6 +17,8 @@ ENABLE_END_VIEWER       = False
 ENABLE_LIVE_VIEWER      = True
 LIVE_UPDATE_INTERVAL    = 1  # Epochs per update
 ENABLE_TELEMETRY_VIEWER = False
+
+ENABLE_CUSTOM_RESOLUTION = False
 
 HEIGHT = 720
 WIDTH = 1280
@@ -106,8 +108,5 @@ DEFAULT_MODEL_NAME          = "nn_model"
 
 # --- Training ---
 LOSS_NAME       = "wrapped_combined"
-
-# --- Image ---
-TARGET_IMAGE_ID     = 1 # 4, 6, 5, 2, 1
 
 INPUT_CONFIG_PATH = "Config/input_config.json"

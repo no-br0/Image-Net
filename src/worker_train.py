@@ -3,7 +3,7 @@ import json
 import os
 
 import cupy as cp
-from Config.config import CONFIG_FILE, ENABLE_ROTATE_TARGET_IMAGE, MULTI_IMAGE_COUNT, PATCH_SIZE, ROTATE_TARGET_FREQ, SAVE_INTERVAL, TARGET_IMAGE_ID, USE_PAIR_COVERAGE_CYCLE
+from Config.config import CONFIG_FILE, ENABLE_ROTATE_TARGET_IMAGE, HELDOUT_SEED, MULTI_IMAGE_COUNT, PATCH_SIZE, ROTATE_TARGET_FREQ, SAVE_INTERVAL, USE_PAIR_COVERAGE_CYCLE
 from Config.image_registry import get_image_path, get_registry_size, get_seed
 from Config.layer_registry import build_input_stack, inject_input_seeds
 from src.data_utils import load_rgb_image, make_neighbor_stream
@@ -94,7 +94,7 @@ def build_multi_image_dataset(model, input_config, patch_size: int):
 
 	if not ENABLE_ROTATE_TARGET_IMAGE:
 		if MULTI_IMAGE_COUNT == 1:
-			active_ids = [model.TARGET_IMAGE]
+			active_ids = [HELDOUT_SEED]
 		else:
 			active_ids = get_active_images(0, reg_size, MULTI_IMAGE_COUNT)
 			print(f" Active Image IDs: {active_ids}")
@@ -126,8 +126,6 @@ def build_multi_image_dataset(model, input_config, patch_size: int):
 
 def worker_main(conn, model_state, epochs, batch_size, loss_name, shuffle):
 	model = NeuralNet.from_state(model_state)
-	if model.TARGET_IMAGE is None:
-		model.TARGET_IMAGE = TARGET_IMAGE_ID
 
 	stream = build_stream(model.input_config, model, batch_size)
 

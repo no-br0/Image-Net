@@ -3,7 +3,7 @@ import os, json
 import time
 import cupy as cp
 from Config.config import (
-	ENABLE_LIVE_VIEWER, EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, HEIGHT, HELDOUT_SEED, HIDDEN_LAYER_TOPOLOGY, TARGET_IMAGE_ID,
+	ENABLE_CUSTOM_RESOLUTION, ENABLE_LIVE_VIEWER, EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, HEIGHT, HELDOUT_SEED, HIDDEN_LAYER_TOPOLOGY,
 	PATCH_SIZE, OUTPUT_ACT, HIDDEN_ACT, LEARNING_RATE,
 	GRAD_CLIP, MODEL_SEED, FORCE_NEW_MODEL, DEFAULT_MODEL_NAME, SAVE_FOLDER, 
 	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL, CONFIG_FILE, SAVE_INTERVAL,
@@ -18,7 +18,7 @@ from Config.log_dir import (
 							)
 from Config.layer_registry import build_input_stack, inject_input_seeds  # optional, not used here
 from src.neural_net import NeuralNet
-from src.data_utils import generate_display_dimensions, make_neighbor_stream
+from src.data_utils import generate_display_dimensions, load_rgb_image, make_neighbor_stream
 from Config.image_registry import get_image_path
 from helpers.sync_input_config import sync_input_config
 from src.backend_cupy import log_vram_usage
@@ -130,17 +130,27 @@ def main():
 	if FORCE_NEW_MODEL:
 		del_model_files()
 		
-	TRAIN_IMAGE_PATH = get_image_path(TARGET_IMAGE_ID)
 
 	# Load RGB target; keep native size (or enforce H,W if you prefer)
-	Y_rgb = generate_display_dimensions(WIDTH, HEIGHT)
-	#Y_rgb = load_rgb_image(TRAIN_IMAGE_PATH)
+	if not ENABLE_CUSTOM_RESOLUTION:
+		TRAIN_IMAGE_PATH = get_image_path(HELDOUT_SEED)
+		if TRAIN_IMAGE_PATH is not None:
+			Y_rgb = load_rgb_image(TRAIN_IMAGE_PATH)
+		else:
+			Y_rgb = generate_display_dimensions(WIDTH, HEIGHT)
+	else:
+		Y_rgb = generate_display_dimensions(WIDTH, HEIGHT)
+
 	H, W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
 	
+
 	
 	settings = {}
 	settings["MODEL_SAVE_PATH"] = MODEL_SAVE_PATH
-	settings["TRAIN_IMAGE_PATH"] = TRAIN_IMAGE_PATH
+	try:
+		settings["TRAIN_IMAGE_PATH"] = TRAIN_IMAGE_PATH
+	except:
+		pass
 	settings["WIDTH"] = W
 	settings["HEIGHT"] = H
 	with open(CONFIG_FILE, "w") as f:
