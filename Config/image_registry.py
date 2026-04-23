@@ -83,7 +83,10 @@ def get_registry_size():
 
 def get_image_path(image_id):
 	reg = _load_registry()
-	return reg["images"][str(image_id)]["filename"]
+	try:
+		return reg["images"][str(image_id)]["filename"]
+	except KeyError:
+		return None
 
 
 

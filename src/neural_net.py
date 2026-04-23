@@ -85,7 +85,6 @@ class NeuralNet:
 		self.PREVIOUS_RAW_BREAKDOWN_DELTA = None
 		self.PREVIOUS_ABS_RAW_LOSS_DELTA = None
 
-		self.TARGET_IMAGE:int = None
 
 	def _init_weights_and_biases(self):
 		for i in range(len(self.topology) - 1):
@@ -217,7 +216,6 @@ class NeuralNet:
 			"PREVIOUS_ABS_RAW_LOSS_DELTA": float(self.PREVIOUS_ABS_RAW_LOSS_DELTA),
 			"optimiser_state": self.optimiser.get_state(),
 			"seed": int(self.seed),
-			"TARGET_IMAGE": int(self.TARGET_IMAGE),
 			"model_name": str(self.model_name),
 		}
 		
@@ -291,11 +289,6 @@ class NeuralNet:
 		if "seed" in npz:
 			nn.seed = int(npz["seed"])
 			
-		try:
-			nn.TARGET_IMAGE = int(npz["TARGET_IMAGE"])
-		except Exception:
-			print("[load] Invalid or Missing target image: resetting to None")
-			nn.TARGET_IMAGE = None
 
 		for i in range(len(topology) - 1):
 			nn.weights[i] = to_device(npz[f"W{i}"]).astype(cp.float32, copy=False)
@@ -334,7 +327,6 @@ class NeuralNet:
 			"PREVIOUS_ABS_RAW_LOSS_DELTA": float(self.PREVIOUS_ABS_RAW_LOSS_DELTA) if self.PREVIOUS_ABS_RAW_LOSS_DELTA is not None else None,
 			"optimiser_state": self.optimiser.get_state(),
 			"seed": int(self.seed),
-			"TARGET_IMAGE": int(self.TARGET_IMAGE) if self.TARGET_IMAGE is not None else -1,
 			"weights": [to_cpu(W) for W in self.weights],
 			"bias": [to_cpu(b) for b in self.bias],
 			"model_name": self.model_name,
@@ -367,7 +359,6 @@ class NeuralNet:
 
 		nn.GLOBAL_EPOCH = int(state["GLOBAL_EPOCH"])
 		nn.seed = state["seed"]
-		nn.TARGET_IMAGE = None if state["TARGET_IMAGE"] == -1 else state["TARGET_IMAGE"]
 
 		# restore weights/bias
 		nn.weights = [to_device(W).astype(cp.float32, copy=False) for W in state["weights"]]
