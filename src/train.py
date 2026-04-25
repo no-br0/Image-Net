@@ -1,16 +1,14 @@
 # train.py
-from Config.log_dir import TELEMETRY_LOG_FOLDER
-from Config.config import (SAVE_INTERVAL, CONFIG_FILE, LOWEST_LOSS_THRESHOLD,
+from Config.config import (LOWEST_LOSS_THRESHOLD,
 						LR_DECREASE_MULTIPLIER, LR_INCREASE_MULTIPLIER,
 						MAX_LEARNING_RATE, MIN_LEARNING_RATE, ENABLE_ADAPTIVE_LR, 
 						ADAPTIVE_LR_INVERTED)
 from src.loss_registry import combined_loss, wrapped_combined_loss
 import cupy as cp, numpy as np
-import os, json, time
+import time
 from collections import defaultdict
 from src.cooling import post_batch_cooling
 from src.display_utils import compute_accuracy_metrics
-
 from Telemetry.telemetry import TelemetryLogger
 
 
@@ -30,10 +28,8 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	previous_raw_breakdown_delta = model.PREVIOUS_RAW_BREAKDOWN_DELTA
 	previous_abs_raw_loss_delta = model.PREVIOUS_ABS_RAW_LOSS_DELTA
 	
-
 	telemetry_logger = TelemetryLogger(
-		log_dir=TELEMETRY_LOG_FOLDER,
-		model_signature=model.model_name,
+		model_name=model.model_name,
 		enabled=True,
 	)
 

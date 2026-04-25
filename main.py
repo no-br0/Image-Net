@@ -1,21 +1,19 @@
 # main.py
-import os, json
-import time
+import os, json, time, shutil
 import cupy as cp
 from Config.config import (
-	ENABLE_CUSTOM_RESOLUTION, ENABLE_LIVE_VIEWER, EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, HEIGHT, HELDOUT_SEED, HIDDEN_LAYER_TOPOLOGY,
+	ENABLE_CUSTOM_RESOLUTION, ENABLE_LIVE_VIEWER, EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, 
+	HEIGHT, HELDOUT_SEED, HIDDEN_LAYER_TOPOLOGY,
 	PATCH_SIZE, OUTPUT_ACT, HIDDEN_ACT, LEARNING_RATE,
-	GRAD_CLIP, MODEL_SEED, FORCE_NEW_MODEL, DEFAULT_MODEL_NAME, SAVE_FOLDER, 
-	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL, CONFIG_FILE, SAVE_INTERVAL,
+	GRAD_CLIP, MODEL_SEED, FORCE_NEW_MODEL, DEFAULT_MODEL_NAME,
+	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL, CONFIG_FILE,
 	ENABLE_CUSTOM_MODEL_NAME, ENABLE_END_VIEWER, WIDTH, WORKER_CHUNK_SIZE
 )
-import Config.log_dir as log_dir
 from Config.log_dir import ( 
-							GPU_LOG_PATH, GPU_TEMP_LOG_PATH,
-							SAVE_ERROR_LOG_PATH,
-							TELEMETRY_LOG_FOLDER,
-							CURRENT_MODEL_NAME_PATH
-							)
+	GPU_TEMP_LOG_PATH,
+	SAVE_ERROR_LOG_PATH,
+	CURRENT_MODEL_NAME_PATH
+	)
 from Config.layer_registry import build_input_stack, inject_input_seeds  # optional, not used here
 from src.neural_net import NeuralNet
 from src.data_utils import generate_display_dimensions, load_rgb_image, make_neighbor_stream
@@ -28,6 +26,16 @@ from src.worker_train import worker_main
 import multiprocessing as mp
 from src.cooling import post_epoch_cooling, pre_display_cooling
 from cupy.lib.stride_tricks import sliding_window_view as swv
+from src.file_utils import (
+	get_folder_for_model,
+	set_model_folder,
+	get_model_folder,
+	get_model_save_path,
+	get_loss_path,
+	get_optimiser_telemetry_path,
+	get_epoch_time_path,
+	get_gpu_path,
+)
 
 # -------- Utilities --------
 def flush_pool():
@@ -103,32 +111,29 @@ def main():
 		user_input =  input("Enter model name (leave blank for default): ").strip()
 	else:
 		user_input = False
+
 	model_name = user_input if user_input else DEFAULT_MODEL_NAME
-	MODEL_SAVE_PATH = os.path.join(SAVE_FOLDER, f"{model_name}.npz")
 	
+	model_folder = get_folder_for_model(model_name)
+	set_model_folder(model_folder)
+
+	MODEL_SAVE_PATH = get_model_save_path()
+	TELEMETRY_LOSS_PATH = get_loss_path()
+	TELEMETRY_OPTIMISER_PATH = get_optimiser_telemetry_path()
+	TIME_LOG_PATH = get_epoch_time_path()
+	GPU_LOG_PATH = get_gpu_path()
+
 	save_model_name(model_name)
-	
-	TELEMETRY_LOSS_PATH = os.path.join(TELEMETRY_LOG_FOLDER, f"{model_name}.jsonl")
-	TELEMETRY_OPTIMISER_PATH = os.path.join(TELEMETRY_LOG_FOLDER, f"{model_name}_optimiser.jsonl")
 
-	TIME_LOG_PATH = log_dir.TIME_LOG
-
-	def del_model_files():
-		if os.path.exists(MODEL_SAVE_PATH):
-			os.remove(MODEL_SAVE_PATH)
-		if os.path.exists(TELEMETRY_LOSS_PATH):
-			os.remove(TELEMETRY_LOSS_PATH)
-		if os.path.exists(TIME_LOG_PATH):
-			os.remove(TIME_LOG_PATH)
-		if os.path.exists(TELEMETRY_OPTIMISER_PATH):
-			os.remove(TELEMETRY_OPTIMISER_PATH)
-		if os.path.exists(GPU_LOG_PATH):
-			os.remove(GPU_LOG_PATH)
+	def reset_model_folder():
+		folder = get_model_folder()
+		shutil.rmtree(folder, ignore_errors=True)
+		os.makedirs(folder, exist_ok=True)
 		print("Model files deleted.")
 
 
 	if FORCE_NEW_MODEL:
-		del_model_files()
+		reset_model_folder()
 		
 
 	# Load RGB target; keep native size (or enforce H,W if you prefer)
@@ -147,6 +152,7 @@ def main():
 	
 	settings = {}
 	settings["MODEL_SAVE_PATH"] = MODEL_SAVE_PATH
+	settings["model_folder"] = model_folder
 	try:
 		settings["TRAIN_IMAGE_PATH"] = TRAIN_IMAGE_PATH
 	except:
@@ -184,7 +190,7 @@ def main():
 			if MODEL_SAVE_PATH is not None:
 				model = model.load(MODEL_SAVE_PATH)
 		except Exception as e:
-			del_model_files()
+			reset_model_folder()
 			print(f"[stage] Failed to load model: {e}")
 
 	

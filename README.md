@@ -85,9 +85,11 @@ This will:
 
 <br>__4. Run the telemetry viewers__<br>
 the different telemetry/image viewers include:
-- viewer_pygame.pyw
-- loss_telemetry.pyw
-- optimiser_telemetry.pyw
+- viewer.pyw
+- loss_view.pyw
+- time_view.pyw
+- gpu_view.pyw
+- optimiser_view.pyw
 
 <br>
 
@@ -116,12 +118,11 @@ If you want to see the live image or telemetry graphs, run those scripts locally
 
 ### Entry Points
 - main.py -> starts training
-- viewer_pygame.pyw -> starts the live image viewer
-- loss_telemetry.pyw -> starts the live network loss telemetry viewer
-- epoch_time_telemetry.pyw -> graphs the time epochs take along with the breakdown of where that time is spent
-- gpu_telemetry.pyw -> graphs the gpu temp, utilisation, and VRAM usage
-- optimiser_telemetry.pyw -> starts the live optimiser telemetry viewer (NOTE: only viable with some specific optimisers that have logging built into them.)
-
+- viewer.pyw -> starts the live image viewer
+- loss_view.pyw -> starts the live network loss telemetry viewer
+- time_view.pyw -> graphs the time epochs take along with the breakdown of where that time is spent
+- gpu_view.pyw -> graphs the gpu temp, utilisation, and VRAM usage
+- optimiser_view.pyw -> starts the live optimiser telemetry viewer (NOTE: only viable with some specific optimisers that have logging built into them.)
 - Config/config.py -> contains various settings for tweaking the model.
 - Config/Inputs/layers_config.py -> contains a list of all procedural inputs the model is using (NOTE: there can be duplicates without issue)
 
@@ -161,13 +162,18 @@ A simple MLP implemented entirely by hand:<br>
 
 ### 3. Telemetry and Visualisation
 Training writes metrics to disk each epoch:
-- `Telemetry/telemetry_logs/nn_model.jsonl` for loss data
-- `Telemetry/telemetry_logs/nn_model_optimiser.jsonl` for optimiser data
+- `Saves/[modelName]/loss.jsonl` for loss data
+- `Saves/[modelName]/optimiser.jsonl` for optimiser data
+- `Saves/[modelName]/epoch_time.jsonl` for epoch time data
+- `Saves/[modelName]/gpu.jsonl` for gpu metric data
 - `outputs/latest_frame.npy` for current output image
+
 A viewer script loads these files to display:
-- loss curves
-- optimisation behaviour
-- the most recent output image generated
+- Loss curves
+- Optimisation behaviour
+- The most recent output image generated
+- Epoch time breakdowns (compute, sleep)
+- GPU metrics (VRAM, utilisation, temp)
 
 
 ## Skills Demonstrated

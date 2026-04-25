@@ -3,14 +3,16 @@ import json
 import os
 
 import cupy as cp
-from Config.config import CONFIG_FILE, ENABLE_ROTATE_TARGET_IMAGE, HELDOUT_SEED, MULTI_IMAGE_COUNT, PATCH_SIZE, ROTATE_TARGET_FREQ, SAVE_INTERVAL, USE_PAIR_COVERAGE_CYCLE
+from Config.config import (
+	CONFIG_FILE, ENABLE_ROTATE_TARGET_IMAGE, HELDOUT_SEED, MULTI_IMAGE_COUNT, PATCH_SIZE, 
+	ROTATE_TARGET_FREQ, SAVE_INTERVAL, USE_PAIR_COVERAGE_CYCLE,
+	)
 from Config.image_registry import get_image_path, get_registry_size, get_seed
 from Config.layer_registry import build_input_stack, inject_input_seeds
 from src.data_utils import load_rgb_image, make_neighbor_stream
 from src.train import train_streaming
 from src.neural_net import NeuralNet
 from src.loss_registry import LOSS_REGISTRY
-from cupy.lib.stride_tricks import sliding_window_view as swv
 import math, numpy as np
 
 def build_stream(input_config, model, batch_size):

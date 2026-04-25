@@ -2,8 +2,7 @@
 from src.backend_cupy import to_device, to_cpu, _ACT_MAP
 from Losses import mse
 from Config.log_dir import SAVE_ERROR_LOG_PATH
-from Config.Inputs.layers_config import layers_cfg
-from Config.config import INPUT_CONFIG_PATH, ENABLE_SET_LR, LEARNING_RATE, OPTIMISER, GRAD_CLIP
+from Config.config import INPUT_CONFIG_PATH, ENABLE_SET_LR, LEARNING_RATE, OPTIMISER
 import json, os
 from src.optimiser_registry import OPTIMISER_REGISTRY
 import cupy as cp

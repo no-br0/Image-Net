@@ -103,7 +103,7 @@ OUTPUT_ACT                      = "sin_255"
 
 CONFIG_FILE                 = "Config/settings.json"
 SAVE_FOLDER                 = "Saves"
-DEFAULT_MODEL_NAME          = "nn_model"
+DEFAULT_MODEL_NAME          = "default"
 
 
 # --- Training ---

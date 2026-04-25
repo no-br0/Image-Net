@@ -2,7 +2,7 @@
 import cupy as cp
 import numpy as np
 import subprocess, json
-from Config.log_dir import GPU_LOG_PATH
+from src.file_utils import get_gpu_path
 
 rng = cp.random.default_rng
 
@@ -53,7 +53,8 @@ def get_vram_usage():
 def log_vram_usage(global_epoch):
 
 	stats = get_vram_usage()
-	with open(GPU_LOG_PATH, "a") as f:
+	path = get_gpu_path()
+	with open(path, "a") as f:
 		log = {
 			"global_epoch": global_epoch,
 			"vram_used": stats["vram_used"],

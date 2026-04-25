@@ -2,7 +2,6 @@
 from src.backend_cupy import to_device
 from PIL import Image
 import cupy as cp
-from cupy.lib.stride_tricks import sliding_window_view as swv
 
 # Minimal CPU I/O for images, then immediately push to GPU
 def load_grayscale_image(path, resize_to=None):

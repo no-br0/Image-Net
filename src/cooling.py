@@ -109,15 +109,8 @@ def check_gpu_temp_and_exit(nn, epoch, warn_temp, poll_interval=0.20, gpu_id=0):
 			set_gpu_fan_speed(target_speed, gpu_id)
 			last_speed = target_speed
 
-	# Critical: save & exit immediately
+	# Critical: exit immediately
 	if temp >= MAX_TEMP:
-		if os.path.exists(CONFIG_FILE):
-			with open(CONFIG_FILE) as f:
-				settings = json.load(f)
-			MODEL_SAVE_PATH = settings.get("MODEL_SAVE_PATH", None)
-		else:
-			MODEL_SAVE_PATH = None
-		
 		print("GPU exceeded max temp threshold! Exiting to prevent damage.")
 		exit(0)
 

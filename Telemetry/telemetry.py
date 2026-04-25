@@ -1,48 +1,47 @@
 # telemetry.py
-import os, json, hashlib, datetime
+import json
+import datetime
 import numpy as np
+from src.file_utils import get_loss_path
+
 
 class TelemetryLogger:
-    def __init__(self, log_dir, model_signature, enabled=True):
+    """
+    Loss-only telemetry logger.
+    Uses file_utils.get_loss_path(model_name) to resolve the correct per-model loss.jsonl file.
+    Never resets, never truncates, always appends.
+    """
+
+    def __init__(self, model_name, enabled=True):
         self.enabled = enabled
-        self.model_signature = model_signature
-        os.makedirs(log_dir, exist_ok=True)
-        self.log_path = os.path.join(log_dir, f"{model_signature}.jsonl")
+        self.model_name = model_name
 
-        # If file exists, check signature
-        if os.path.exists(self.log_path):
-            with open(self.log_path, "r", encoding="utf-8") as f:
-                first_line = f.readline().strip()
-                if first_line:
-                    try:
-                        first_entry = json.loads(first_line)
-                        if first_entry.get("_model_signature") != model_signature:
-                            # Start fresh if signature mismatch
-                            self._reset_log()
-                    except json.JSONDecodeError:
-                        self._reset_log()
-        else:
-            self._reset_log()
+        # file_utils returns the FULL path to loss.jsonl
+        self.log_path = get_loss_path(model_name)
 
-    def _reset_log(self):
-        with open(self.log_path, "w", encoding="utf-8") as f:
-            pass  # truncate file
+        # Ensure the file exists but DO NOT truncate it.
+        try:
+            open(self.log_path, "a", encoding="utf-8").close()
+        except Exception as e:
+            print("[telemetry] Failed to open loss file:", e)
 
     def log(self, epoch_metrics):
         if not self.enabled:
             return
+
         entry = {
             "_timestamp": datetime.datetime.utcnow().isoformat(),
-            "_model_signature": self.model_signature,
             **epoch_metrics
         }
 
         try:
             with open(self.log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry) + "\n")
+
         except TypeError as e:
             print("\n[telemetry] JSON TypeError:", e)
 
+            # Debug helper for numpy objects
             def walk(path, obj):
                 if isinstance(obj, np.ndarray):
                     print(f"  NDARRAY at {path}: shape={obj.shape}, dtype={obj.dtype}")
@@ -55,12 +54,3 @@ class TelemetryLogger:
 
             walk("entry", entry)
             raise
-
-def make_model_signature(topology, input_config):
-    """Create a stable hash for model identity."""
-    sig_data = {
-        "topology": topology,
-        "input_config": input_config
-    }
-    raw = json.dumps(sig_data, sort_keys=True)
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
