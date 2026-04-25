@@ -1,3 +1,4 @@
+# gpu_view.pyw
 import os
 import json
 import pandas as pd
@@ -5,7 +6,7 @@ import tkinter as tk
 from tkinter import BooleanVar
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from Config.log_dir import GPU_LOG_PATH
+from src.file_utils import get_gpu_path
 
 
 class GPUViewer(tk.Tk):
@@ -29,6 +30,9 @@ class GPUViewer(tk.Tk):
         self.slider_start = 0
         self.slider_end = 1
 
+        self._file_pos = 0
+        self._last_log_path = None
+
         self.stick_left_var = BooleanVar(value=False)
         self.stick_right_var = BooleanVar(value=True)
 
@@ -45,27 +49,50 @@ class GPUViewer(tk.Tk):
         bar = tk.Frame(self, bg="#1e1e1e")
         bar.pack(side=tk.TOP, fill=tk.X, padx=10, pady=6)
 
+        # Live mode toggle
+        self.live_mode_var = BooleanVar(value=True)
+        tk.Checkbutton(
+            bar, text="Live Mode", variable=self.live_mode_var,
+            fg="white", bg="#1e1e1e", selectcolor="#1e1e1e"
+        ).pack(side=tk.LEFT, padx=6)
+
+        # Manual model entry
+        tk.Label(bar, text="Model:", fg="white", bg="#1e1e1e").pack(side=tk.LEFT)
+        self.model_entry = tk.Entry(
+            bar, width=20, bg="#1e1e1e", fg="white", insertbackground="white"
+        )
+        self.model_entry.bind("<Return>", lambda e: self._on_model_entry_commit())
+        self.model_entry.pack(side=tk.LEFT, padx=6)
+
         tk.Label(bar, text="Start:", fg="white", bg="#1e1e1e").pack(side=tk.LEFT)
         self.start_var = tk.StringVar(value="0")
-        self.start_entry = tk.Entry(bar, width=6, textvariable=self.start_var,
-                                    bg="#1e1e1e", fg="white", insertbackground="white")
+        self.start_entry = tk.Entry(
+            bar, width=6, textvariable=self.start_var,
+            bg="#1e1e1e", fg="white", insertbackground="white"
+        )
         self.start_entry.bind("<Return>", lambda e: self._on_range_commit())
         self.start_entry.pack(side=tk.LEFT, padx=6)
 
         tk.Label(bar, text="End:", fg="white", bg="#1e1e1e").pack(side=tk.LEFT)
         self.end_var = tk.StringVar(value="1")
-        self.end_entry = tk.Entry(bar, width=6, textvariable=self.end_var,
-                                  bg="#1e1e1e", fg="white", insertbackground="white")
+        self.end_entry = tk.Entry(
+            bar, width=6, textvariable=self.end_var,
+            bg="#1e1e1e", fg="white", insertbackground="white"
+        )
         self.end_entry.bind("<Return>", lambda e: self._on_range_commit())
         self.end_entry.pack(side=tk.LEFT, padx=6)
 
-        tk.Checkbutton(bar, text="Stick to start", variable=self.stick_left_var,
-                       fg="white", bg="#1e1e1e", selectcolor="#1e1e1e",
-                       command=self._on_range_changed).pack(side=tk.LEFT, padx=12)
+        tk.Checkbutton(
+            bar, text="Stick to start", variable=self.stick_left_var,
+            fg="white", bg="#1e1e1e", selectcolor="#1e1e1e",
+            command=self._on_range_changed
+        ).pack(side=tk.LEFT, padx=12)
 
-        tk.Checkbutton(bar, text="Stick to end", variable=self.stick_right_var,
-                       fg="white", bg="#1e1e1e", selectcolor="#1e1e1e",
-                       command=self._on_range_changed).pack(side=tk.LEFT, padx=12)
+        tk.Checkbutton(
+            bar, text="Stick to end", variable=self.stick_right_var,
+            fg="white", bg="#1e1e1e", selectcolor="#1e1e1e",
+            command=self._on_range_changed
+        ).pack(side=tk.LEFT, padx=12)
 
         self.lbl_max_epoch = tk.Label(bar, text="Max: 0", fg="yellow", bg="#1e1e1e")
         self.lbl_max_epoch.pack(side=tk.LEFT, padx=12)
@@ -156,8 +183,10 @@ class GPUViewer(tk.Tk):
         panel.bind("<Enter>", lambda e: canvas.bind_all("<MouseWheel>", _on_mousewheel))
         panel.bind("<Leave>", lambda e: canvas.unbind_all("<MouseWheel>"))
 
-        tk.Label(panel, text="Timing Toggles", fg="white", bg="#1e1e1e",
-                 font=("Arial", 10, "bold")).pack(anchor="w", padx=6, pady=(6, 4))
+        tk.Label(
+            panel, text="Timing Toggles", fg="white", bg="#1e1e1e",
+            font=("Arial", 10, "bold")
+        ).pack(anchor="w", padx=6, pady=(6, 4))
 
         for key in sorted(self.visible_keys.keys()):
             cb = tk.Checkbutton(
@@ -201,45 +230,105 @@ class GPUViewer(tk.Tk):
 
         self._update_plot()
 
-    def _tail_and_update(self):
-        if not os.path.exists(GPU_LOG_PATH):
-            self.after(500, self._tail_and_update)
-            return
+    def _resolve_log_path(self):
+        if self.live_mode_var.get():
+            return get_gpu_path()
+        else:
+            name = self.model_entry.get().strip()
+            return get_gpu_path(name if name else None)
 
-        rows = []
-        with open(GPU_LOG_PATH, "r", encoding="utf8") as f:
-            for line in f:
+    def _on_model_entry_commit(self):
+        self._last_log_path = None
+        self._file_pos = 0
+        self.df = pd.DataFrame()
+        self._update_plot()
+        self._tail_and_update()
+
+    def _tail_and_update(self):
+        try:
+            log_path = self._resolve_log_path()
+
+            # Detect model switch
+            if log_path != self._last_log_path:
+                self._last_log_path = log_path
+                self._file_pos = 0
+                self.df = pd.DataFrame()
+
+                # Remove all dynamic lines
+                for ln in list(self.lines.values()):
+                    try:
+                        ln.remove()
+                    except:
+                        pass
+
+                self.lines.clear()
+                self.visible_keys.clear()
+
+                if self.ax_vram.legend_:
+                    self.ax_vram.legend_.remove()
+
+                self.ax_vram.relim()
+                self.ax_vram.autoscale_view()
+                self.ax_temp.relim()
+                self.ax_temp.autoscale_view()
+                self.ax_util.relim()
+                self.ax_util.autoscale_view()
+                self.canvas.draw_idle()
+
+            if not os.path.exists(log_path):
+                self.after(500, self._tail_and_update)
+                return
+
+            rows = []
+            with open(log_path, "r", encoding="utf8") as f:
+                f.seek(self._file_pos)
+                new_lines = f.readlines()
+                self._file_pos = f.tell()
+
+            for line in new_lines:
                 try:
                     rows.append(json.loads(line))
                 except:
                     pass
 
-        df = pd.DataFrame(rows)
-        if "global_epoch" not in df.columns:
-            self.after(500, self._tail_and_update)
-            return
+            if not rows:
+                self.after(500, self._tail_and_update)
+                return
 
-        df["global_epoch"] = pd.to_numeric(df["global_epoch"], errors="coerce")
-        df = df.dropna(subset=["global_epoch"])
+            new_df = pd.DataFrame(rows)
+            if "global_epoch" not in new_df.columns:
+                self.after(500, self._tail_and_update)
+                return
 
-        self.df = df
-        self.lbl_max_epoch.config(text=f"Max: {int(df['global_epoch'].max())}")
+            new_df["global_epoch"] = pd.to_numeric(new_df["global_epoch"], errors="coerce")
+            new_df = new_df.dropna(subset=["global_epoch"])
 
-        gpu_keys = [
-            c for c in df.columns
-            if c.startswith("gpu_") or c.startswith("vram_") or c.startswith("pool_")
-        ]
+            if self.df.empty:
+                self.df = new_df
+            else:
+                self.df = pd.concat([self.df, new_df], ignore_index=True)
 
-        for key in gpu_keys:
-            if key not in self.visible_keys:
-                self.visible_keys[key] = BooleanVar(value=True)
-            if key not in self.lines:
-                axis = self._axis_for_key(key)
-                color = self.metric_colors.get(key, "white")
-                ln, = axis.plot([], [], label=key, color=color)
-                self.lines[key] = ln
+            self.lbl_max_epoch.config(text=f"Max: {int(self.df['global_epoch'].max())}")
 
-        self._on_range_changed()
+            gpu_keys = [
+                c for c in self.df.columns
+                if c.startswith("gpu_") or c.startswith("vram_") or c.startswith("pool_")
+            ]
+
+            for key in gpu_keys:
+                if key not in self.visible_keys:
+                    self.visible_keys[key] = BooleanVar(value=True)
+                if key not in self.lines:
+                    axis = self._axis_for_key(key)
+                    color = self.metric_colors.get(key, "white")
+                    ln, = axis.plot([], [], label=key, color=color)
+                    self.lines[key] = ln
+
+            self._on_range_changed()
+
+        except Exception as e:
+            print("GPU tail error:", e)
+
         self.after(500, self._tail_and_update)
 
     def _update_plot(self):

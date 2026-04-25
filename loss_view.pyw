@@ -1,3 +1,4 @@
+#loss_view.pyw
 import os
 import json
 import pandas as pd
@@ -5,7 +6,7 @@ import tkinter as tk
 from tkinter import BooleanVar
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from Config.log_dir import TELEMETRY_LOG_FOLDER, CURRENT_MODEL_NAME_PATH
+from src.file_utils import get_loss_path
 
 class PlotPanel(tk.Frame):
 	def __init__(self, parent, title="", ylabel=""):
@@ -72,7 +73,6 @@ class TelemetryViewer(tk.Tk):
 		self.slider_start = 0
 		self.slider_end = 1
 		self._last_epoch = -1
-		self._last_model_name = None
 
 		# NEW: tailing + legend state
 		self._file_pos = 0
@@ -247,22 +247,6 @@ class TelemetryViewer(tk.Tk):
 																			self.panel_acc.draw_idle(),
 																			), "Accuracy Toggles")
 
-	def _resolve_model_name(self):
-		if self.live_mode_var.get():
-			try:
-				with open(CURRENT_MODEL_NAME_PATH, "r") as f:
-					obj = json.load(f)
-					return obj.get("model_name", "nn_model")
-			except Exception as e:
-				print("Model name read error:", e)
-				return "nn_model"
-		else:
-			return self._last_model_name or self.model_entry.get().strip() or "nn_model"
-
-	def _get_log_path(self):
-		model_name = self._resolve_model_name()
-		return os.path.join(os.getcwd(), TELEMETRY_LOG_FOLDER, f"{model_name}.jsonl")
-
 	def _sync_epoch_range(self):
 		if self.df.empty:
 			return
@@ -353,43 +337,94 @@ class TelemetryViewer(tk.Tk):
 		self.panel_acc.ax.legend(facecolor="black", edgecolor="white", labelcolor="white")
 
 		self.after(1000, self._tail_and_update)
+
+
+	def _resolve_log_path(self):
+		if self.live_mode_var.get():
+			return get_loss_path()
+		else:
+			name = self.model_entry.get().strip()
+			return get_loss_path(name if name else None)
+
+
 	def _tail_and_update(self):
 		try:
-			model_name = self._resolve_model_name()
+			# Resolve the correct telemetry file path
+			log_path = self._resolve_log_path()
 
-			# Model switch → reset state
-			if model_name != self._last_model_name:
-				self._last_model_name = model_name
+			# Detect model/folder change → reset everything
+			if log_path != getattr(self, "_last_log_path", None):
+				self._last_log_path = log_path
 				self._file_pos = 0
 				self.df = pd.DataFrame()
 				self._last_epoch = -1
 
+				# RAW LOSS PANEL — DO NOT REMOVE LINES
+				# Only clear their data
+				self.line_raw_loss.set_xdata([])
+				self.line_raw_loss.set_ydata([])
+				self.min_loss_dot.set_xdata([])
+				self.min_loss_dot.set_ydata([])
+
+				if self.panel_loss.ax.legend_:
+					self.panel_loss.ax.legend_.remove()
+
+				self.panel_loss.ax.relim()
+				self.panel_loss.ax.autoscale_view()
+				self.panel_loss.draw_idle()
+
+				# OTHER PANELS — REMOVE LINES COMPLETELY
 				for panel, lines, keys, checkbuttons in [
 					(self.panel_break, self.break_lines, self.visible_break_keys, self._break_checkbuttons),
 					(self.panel_deriv, self.deriv_lines, self.visible_deriv_keys, self._deriv_checkbuttons),
 					(self.panel_acc, self.acc_lines, self.visible_acc_keys, self._acc_checkbuttons),
 				]:
-					for ln in lines.values():
-						ln.set_xdata([])
-						ln.set_ydata([])
+					# Remove line objects from axes
+					for ln in list(lines.values()):
+						try:
+							ln.remove()
+						except:
+							pass
+
+					# Clear dictionaries
 					lines.clear()
 					keys.clear()
 					checkbuttons.clear()
 
+					# Remove legend if present
+					if panel.ax.legend_:
+						panel.ax.legend_.remove()
+
+					# Reset axes
+					panel.ax.relim()
+					panel.ax.autoscale_view()
+					panel.draw_idle()
+
+				# Reset legend state flags
+				self._last_show_legends = True
+				self._last_deriv_show_legends = True
+				self._last_break_show_legends = True
+				self._last_acc_show_legends = True
+				self._last_deriv_visible = set()
+				self._last_break_visible = set()
+				self._last_acc_visible = set()
 				self._last_break_keys.clear()
 				self._last_deriv_keys.clear()
 				self._last_acc_keys.clear()
 
-			log_path = self._get_log_path()
+
+			# If the telemetry file doesn't exist yet → wait
 			if not os.path.exists(log_path):
 				self.after(1000, self._tail_and_update)
 				return
 
+			# Detect file truncation or reset
 			file_size = os.path.getsize(log_path)
 			if not hasattr(self, "_file_pos") or file_size < self._file_pos:
 				self._file_pos = 0
 				self.df = pd.DataFrame()
 
+			# Read new lines
 			new_rows = []
 			with open(log_path, "r") as f:
 				f.seek(self._file_pos)
@@ -402,6 +437,7 @@ class TelemetryViewer(tk.Tk):
 				except:
 					pass
 
+			# Append new data
 			new_df = None
 			if new_rows:
 				new_df = pd.DataFrame(new_rows)
@@ -414,10 +450,12 @@ class TelemetryViewer(tk.Tk):
 				else:
 					self.df = pd.concat([self.df, new_df], ignore_index=True)
 
+			# If still empty → nothing to plot
 			if self.df.empty:
 				self.after(1000, self._tail_and_update)
 				return
 
+			# Update all plots
 			self._sync_epoch_range()
 			self._update_master()
 			self._update_derivatives()
@@ -433,7 +471,10 @@ class TelemetryViewer(tk.Tk):
 
 
 	def _on_model_entry_commit(self):
-		self._last_model_name = self.model_entry.get().strip()
+		self._last_lod_path = None
+		self._file_pos = 0
+		self.df = pd.DataFrame()
+		self._last_epoch = -1
 		self._tail_and_update()
 
 
