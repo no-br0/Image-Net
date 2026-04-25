@@ -189,6 +189,7 @@ def main():
 		try:
 			if MODEL_SAVE_PATH is not None:
 				model = model.load(MODEL_SAVE_PATH)
+				model.model_name = model_name
 		except Exception as e:
 			reset_model_folder()
 			print(f"[stage] Failed to load model: {e}")
