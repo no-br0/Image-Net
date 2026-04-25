@@ -6,8 +6,6 @@ Logs/*
 Saves/*
 !Saves/.keep
 
-Telemetry/telemetry_logs/*
-!Telemetry/telemetry_logs/.keep
 
 outputs/*
 !outputs/.keep
