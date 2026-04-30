@@ -42,15 +42,30 @@ def flush_pool():
 	cp.get_default_memory_pool().free_all_blocks()
 
 	
+
 def prune_telemetry(telemetry_path, last_epoch):
 	if os.path.exists(telemetry_path):
 		cleaned = []
 		if last_epoch > 0:
 			with open(telemetry_path, "r") as f:
 				for line in f:
-					entry = json.loads(line)
+					stripped = line.strip()
+					if not stripped:
+						continue
+
+					# Skip any line that isn't valid JSON (e.g. "nullnullnull...")
+					try:
+						entry = json.loads(stripped)
+					except json.JSONDecodeError:
+						continue
+
+					# Skip json null
+					if entry is None:
+						continue
+
 					if entry['global_epoch'] <= last_epoch:
 						cleaned.append(line)
+
 		with open(telemetry_path, "w") as f:
 			f.writelines(cleaned)
 
