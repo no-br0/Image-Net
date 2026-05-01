@@ -150,64 +150,66 @@ def main():
 	if FORCE_NEW_MODEL:
 		reset_model_folder()
 		
-
-	# Load RGB target; keep native size (or enforce H,W if you prefer)
-	if not ENABLE_CUSTOM_RESOLUTION:
-		TRAIN_IMAGE_PATH = get_image_path(HELDOUT_SEED)
-		if TRAIN_IMAGE_PATH is not None:
-			Y_rgb = load_rgb_image(TRAIN_IMAGE_PATH)
-		else:
-			Y_rgb = generate_display_dimensions(WIDTH, HEIGHT)
-	else:
-		Y_rgb = generate_display_dimensions(WIDTH, HEIGHT)
-
-	H, W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
-	
-
 	
 	settings = {}
 	settings["MODEL_SAVE_PATH"] = MODEL_SAVE_PATH
 	settings["model_folder"] = model_folder
-	try:
-		settings["TRAIN_IMAGE_PATH"] = TRAIN_IMAGE_PATH
-	except:
-		pass
-	settings["WIDTH"] = W
-	settings["HEIGHT"] = H
+	settings["WIDTH"] = WIDTH
+	settings["HEIGHT"] = HEIGHT
 	with open(CONFIG_FILE, "w") as f:
 		json.dump(settings, f, indent=4)
-	del settings
 	
-	
-	layers_cfg = sync_input_config(MODEL_SAVE_PATH)
-	input_config = inject_input_seeds(layers_cfg, HELDOUT_SEED)
-	
-	stream, channel_names, _ = build_display_stream(Y_rgb, input_config, H, W)
-	
-	# Model: input features -> 3 outputs (RGB)
-	topology = [stream.N_features] + HIDDEN_LAYER_TOPOLOGY + [3]
-
-	if ENABLE_LIVE_VIEWER is False:
-		del stream, channel_names, input_config
-		flush_pool()
-
-	model = NeuralNet(topology, model_name,LEARNING_RATE, 
-					HIDDEN_ACT, 
-					OUTPUT_ACT, GRAD_CLIP,
-					MODEL_SEED,
-					input_config=layers_cfg)
-	print("[stage] Model initialised with topology:", topology)
-	
-
 
 	if FORCE_NEW_MODEL is False:
 		try:
 			if MODEL_SAVE_PATH is not None:
-				model = model.load(MODEL_SAVE_PATH)
+				model = NeuralNet.load(MODEL_SAVE_PATH)
 				model.model_name = model_name
+				print(f"[stage] Model loaded with topology: {model.topology}")
 		except Exception as e:
 			reset_model_folder()
 			print(f"[stage] Failed to load model: {e}")
+	else:
+		layers_cfg = sync_input_config(MODEL_SAVE_PATH)
+		input_size = PATCH_SIZE * PATCH_SIZE * len(layers_cfg)
+		topology = [input_size] + HIDDEN_LAYER_TOPOLOGY + [3]
+
+		model = NeuralNet(
+			topology,
+			model_name,
+			LEARNING_RATE,
+			HIDDEN_ACT,
+			OUTPUT_ACT,
+			GRAD_CLIP,
+			MODEL_SEED,
+			input_config=layers_cfg
+		)
+		print(f"[stage] Model initialised with topology: {model.topology}")
+
+
+	if ENABLE_LIVE_VIEWER:
+		if not ENABLE_CUSTOM_RESOLUTION:
+			TRAIN_IMAGE_PATH = get_image_path(HELDOUT_SEED)
+			if TRAIN_IMAGE_PATH is not None:
+				Y_rgb = load_rgb_image(TRAIN_IMAGE_PATH)
+			else:
+				Y_rgb = generate_display_dimensions(WIDTH, HEIGHT)
+		else:
+			Y_rgb = generate_display_dimensions(WIDTH, HEIGHT)
+
+		H, W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
+		
+		input_config = inject_input_seeds(model.input_config, HELDOUT_SEED)
+		
+		stream, _, _ = build_display_stream(Y_rgb, input_config, H, W)
+
+		settings = {}
+		settings["MODEL_SAVE_PATH"] = MODEL_SAVE_PATH
+		settings["model_folder"] = model_folder
+		settings["WIDTH"] = W
+		settings["HEIGHT"] = H
+		with open(CONFIG_FILE, "w") as f:
+			json.dump(settings, f, indent=4)
 
 	
 	prune_telemetry(TELEMETRY_LOSS_PATH, model.GLOBAL_EPOCH - 1)
@@ -286,7 +288,7 @@ def main():
 				remaining -= this_chunk
 			
 			if ENABLE_LIVE_VIEWER:
-				del stream, channel_names, input_config
+				del stream, input_config
 				flush_pool()
 
 	except KeyboardInterrupt:
@@ -299,7 +301,7 @@ def main():
 	finally:
 		if ENABLE_END_VIEWER:
 			
-			input_config = inject_input_seeds(layers_cfg, HELDOUT_SEED)
+			input_config = inject_input_seeds(model.input_config, HELDOUT_SEED)
 			stream, channel_names, X_u8 = build_display_stream(Y_rgb, input_config, H, W)
 
 
@@ -319,9 +321,10 @@ def main():
 		print("[done] Training run complete")
 
 if __name__ == "__main__":
-	
+	mp.set_start_method("spawn", force=True)
+
 	open(GPU_TEMP_LOG_PATH, "w").close()
-	
+
 	if os.path.exists(SAVE_ERROR_LOG_PATH):
 		os.remove(SAVE_ERROR_LOG_PATH)
 	
