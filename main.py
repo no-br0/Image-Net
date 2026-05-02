@@ -159,6 +159,7 @@ def main():
 	with open(CONFIG_FILE, "w") as f:
 		json.dump(settings, f, indent=4)
 	
+	model = None
 
 	if FORCE_NEW_MODEL is False:
 		try:
@@ -169,7 +170,8 @@ def main():
 		except Exception as e:
 			reset_model_folder()
 			print(f"[stage] Failed to load model: {e}")
-	else:
+	
+	if model is None:
 		layers_cfg = sync_input_config(MODEL_SAVE_PATH)
 		input_size = PATCH_SIZE * PATCH_SIZE * len(layers_cfg)
 		topology = [input_size] + HIDDEN_LAYER_TOPOLOGY + [3]
