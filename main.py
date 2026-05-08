@@ -303,6 +303,14 @@ def main():
 	finally:
 		if ENABLE_END_VIEWER:
 			
+			TRAIN_IMAGE_PATH = get_image_path(HELDOUT_SEED)
+			if TRAIN_IMAGE_PATH is not None:
+				Y_rgb = load_rgb_image(TRAIN_IMAGE_PATH)
+			else:
+				Y_rgb = generate_display_dimensions(WIDTH, HEIGHT)
+
+			H, W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
+
 			input_config = inject_input_seeds(model.input_config, HELDOUT_SEED)
 			stream, channel_names, X_u8 = build_display_stream(Y_rgb, input_config, H, W)
 
