@@ -388,7 +388,6 @@ class TelemetryViewer(tk.Tk):
 
 					# Clear dictionaries
 					lines.clear()
-					keys.clear()
 					checkbuttons.clear()
 
 					# Remove legend if present
@@ -496,10 +495,18 @@ class TelemetryViewer(tk.Tk):
 
 		df = self.df[(self.df["global_epoch"] >= self.slider_start) & (self.df["global_epoch"] <= self.slider_end)]
 		current_keys = set(self.deriv_map.keys())
-		if current_keys != self._last_deriv_keys:
-			self.visible_deriv_keys.clear()
-			self._deriv_checkbuttons.clear()
-			self._last_deriv_keys = current_keys
+		# REMOVE toggles for keys that disappeared
+		for old_key in list(self.visible_deriv_keys.keys()):
+			if old_key not in current_keys:
+				del self.visible_deriv_keys[old_key]
+
+		# ADD toggles for new keys
+		for key in current_keys:
+			if key not in self.visible_deriv_keys:
+				self.visible_deriv_keys[key] = BooleanVar(value=True)
+
+		self._last_deriv_keys = current_keys
+
 
 		visible_now = set()
 
@@ -556,10 +563,17 @@ class TelemetryViewer(tk.Tk):
 				if isinstance(rb, dict):
 					breakdown_keys.update(rb.keys())
 
-		if breakdown_keys != self._last_break_keys:
-			self.visible_break_keys.clear()
-			self._break_checkbuttons.clear()
-			self._last_break_keys = breakdown_keys
+		# REMOVE toggles for keys that disappeared
+		for old_key in list(self.visible_break_keys.keys()):
+			if old_key not in breakdown_keys:
+				del self.visible_break_keys[old_key]
+
+		# ADD toggles for new keys
+		for key in breakdown_keys:
+			if key not in self.visible_break_keys:
+				self.visible_break_keys[key] = BooleanVar(value=True)
+
+		self._last_break_keys = breakdown_keys
 
 		visible_now = set()
 
@@ -605,10 +619,17 @@ class TelemetryViewer(tk.Tk):
 
 		df = self.df[(self.df["global_epoch"] >= self.slider_start) & (self.df["global_epoch"] <= self.slider_end)]
 		current_keys = set(lbl for lbl, _ in self.acc_labels)
-		if current_keys != self._last_acc_keys:
-			self.visible_acc_keys.clear()
-			self._acc_checkbuttons.clear()
-			self._last_acc_keys = current_keys
+		# REMOVE toggles for keys that disappeared
+		for old_key in list(self.visible_acc_keys.keys()):
+			if old_key not in current_keys:
+				del self.visible_acc_keys[old_key]
+
+		# ADD toggles for new keys
+		for key in current_keys:
+			if key not in self.visible_acc_keys:
+				self.visible_acc_keys[key] = BooleanVar(value=True)
+
+		self._last_acc_keys = current_keys
 
 		visible_now = set()
 
