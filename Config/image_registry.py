@@ -24,24 +24,24 @@ def _load_registry():
 
 
 def _merge_new_images():
-    global _registry
-    supported_exts = {".jpg", ".jpeg", ".png"}
+	global _registry
+	supported_exts = {".jpg", ".jpeg", ".png"}
 
-    # Files currently in the folder
-    folder_files = {
-        str(p) for p in _TRAIN_DIR.iterdir()
-        if p.suffix.lower() in supported_exts
-    }
+	# Files currently in the folder
+	folder_files = {
+		str(p) for p in _TRAIN_DIR.iterdir()
+		if p.suffix.lower() in supported_exts
+	}
 
-    # Files currently in the registry
-    registry_files = {
-        entry["filename"] for entry in _registry["images"].values()
-    }
+	# Files currently in the registry
+	registry_files = {
+		entry["filename"] for entry in _registry["images"].values()
+	}
 
-    # If anything changed (added OR removed), rebuild
-    if folder_files != registry_files:
-        _registry = _build_registry()
-        _save_registry()
+	# If anything changed (added OR removed), rebuild
+	if folder_files != registry_files:
+		_registry = _build_registry()
+		_save_registry()
 
 	
 	

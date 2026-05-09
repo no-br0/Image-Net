@@ -10,7 +10,6 @@ from Config.config import (
 	ENABLE_CUSTOM_MODEL_NAME, ENABLE_END_VIEWER, WIDTH, WORKER_CHUNK_SIZE
 )
 from Config.log_dir import ( 
-	GPU_TEMP_LOG_PATH,
 	SAVE_ERROR_LOG_PATH,
 	CURRENT_MODEL_NAME_PATH
 	)
@@ -332,8 +331,6 @@ def main():
 
 if __name__ == "__main__":
 	mp.set_start_method("spawn", force=True)
-
-	open(GPU_TEMP_LOG_PATH, "w").close()
 
 	if os.path.exists(SAVE_ERROR_LOG_PATH):
 		os.remove(SAVE_ERROR_LOG_PATH)

@@ -69,7 +69,7 @@ LOSS_WEIGHTING_POWER_SCALE      = 4
 # "qhlion_refine", "qhlion_belief_refine", "qhlion_belief_refine_adaptive"
 
 OPTIMISER                     = {
-    "name": "rmsprop",
+	"name": "rmsprop",
 }
 
 
@@ -78,11 +78,11 @@ SAVE_INTERVAL       = 5
 
 
 LOSS_CONFIG = [
-    
+	
 	("mse", 1.0),    
 	("mae", 1.0),
 
-    ]
+	]
 
 # ==================
 # --- Neural Net ---
