@@ -1,6 +1,3 @@
-RIPPLE_LOG_PATH = "Logs/ripple_log.txt"
-
-GPU_TEMP_LOG_PATH = "Logs/gpu_temp_log.txt"
 SAVE_ERROR_LOG_PATH = "Logs/save_errors.txt"
 TELEMETRY_LOG_FOLDER = "Telemetry/telemetry_logs/"
 

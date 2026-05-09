@@ -33,40 +33,40 @@ def build_stream(input_config, model, batch_size):
 
 
 def get_active_images(global_epoch, reg_size, count):
-    step_index = int(global_epoch // ROTATE_TARGET_FREQ)
+	step_index = int(global_epoch // ROTATE_TARGET_FREQ)
 
-    if USE_PAIR_COVERAGE_CYCLE:
+	if USE_PAIR_COVERAGE_CYCLE:
 
-        total = math.comb(reg_size, count)
+		total = math.comb(reg_size, count)
 
-        lap = step_index // total
-        pos = step_index % total
+		lap = step_index // total
+		pos = step_index % total
 
-        # CPU RNG (faster, no GPU sync)
-        rng = np.random.default_rng(lap)
-        shuffled_index = int(rng.permutation(total)[pos])
+		# CPU RNG (faster, no GPU sync)
+		rng = np.random.default_rng(lap)
+		shuffled_index = int(rng.permutation(total)[pos])
 
-        # Combinatorial unranking (O(k))
-        r = shuffled_index
-        result = []
-        x = 0
+		# Combinatorial unranking (O(k))
+		r = shuffled_index
+		result = []
+		x = 0
 
-        for i in range(count):
-            for j in range(x, reg_size):
-                c = math.comb(reg_size - j - 1, count - i - 1)
-                if r < c:
-                    result.append(j + 1)
-                    x = j + 1
-                    break
-                r -= c
+		for i in range(count):
+			for j in range(x, reg_size):
+				c = math.comb(reg_size - j - 1, count - i - 1)
+				if r < c:
+					result.append(j + 1)
+					x = j + 1
+					break
+				r -= c
 
-        return result
+		return result
 
-    else:
-        seed = int(max(0, global_epoch))
-        rng = np.random.default_rng(seed)
-        perm = rng.permutation(reg_size) + 1
-        return perm[:count].tolist()
+	else:
+		seed = int(max(0, global_epoch))
+		rng = np.random.default_rng(seed)
+		perm = rng.permutation(reg_size) + 1
+		return perm[:count].tolist()
 
 
 

@@ -2,8 +2,7 @@ import warnings
 
 import cupy as cp
 from typing import Dict, List, Tuple
-from .utils import _get_scratch, free_after
-from cupyx.scipy.ndimage import laplace
+from .utils import _get_scratch
 
 
 
@@ -15,7 +14,6 @@ from cupyx.scipy.ndimage import laplace
 #==================
 # --- Flow field ---
 #==================
-@free_after
 def gen_flow_field(H: int, W: int, params: Dict) -> Tuple[cp.ndarray, List[str]]:
 	"""
 	Gaussian-smoothed random vector magnitude field. Uses scratch buffers for noise channels.
@@ -48,7 +46,6 @@ def gen_flow_field(H: int, W: int, params: Dict) -> Tuple[cp.ndarray, List[str]]
 #==================
 # --- Perlin Flow ---
 #==================
-@free_after
 def gen_perlin_flow(H: int, W: int, params: Dict) -> Tuple[cp.ndarray, List[str]]:
 	"""
 	Deterministic Perlin-like flow magnitude channel.
@@ -154,7 +151,6 @@ def gen_perlin_flow(H: int, W: int, params: Dict) -> Tuple[cp.ndarray, List[str]
 #==================
 # --- Edge-like flow ---
 #==================
-@free_after
 def gen_edge_like_flow(H: int, W: int, params: Dict) -> Tuple[cp.ndarray, List[str]]:
 	"""
 	Procedural sinusoidal + random noise pattern with gradient magnitude taken as edge field.
@@ -189,7 +185,6 @@ def gen_edge_like_flow(H: int, W: int, params: Dict) -> Tuple[cp.ndarray, List[s
 #==================
 # --- Multi-scale flow ---
 #==================
-@free_after
 def gen_multi_scale_flow(H: int, W: int, params: Dict) -> Tuple[cp.ndarray, List[str]]:
 	"""
 	VRAM-stable multi-scale flow field with exact behavioral fidelity.
@@ -237,7 +232,6 @@ def gen_multi_scale_flow(H: int, W: int, params: Dict) -> Tuple[cp.ndarray, List
 #==================
 # --- Heightmap-like flow via spectrum synthesis ---
 #==================
-@free_after
 def gen_heightmap_flow_spectrum(H: int, W: int, params: Dict) -> Tuple[cp.ndarray, List[str]]:
 	"""
 	Heightmap-like flow via spectrum synthesis, LIC-based detail, and local contrast/sharpening.
@@ -368,7 +362,6 @@ def gen_heightmap_flow_spectrum(H: int, W: int, params: Dict) -> Tuple[cp.ndarra
 #==================
 # --- Curvature from procedural noise ---
 #==================
-@free_after
 def gen_procedural_curvature(H: int, W: int, params: Dict) -> Tuple[cp.ndarray, List[str]]:
 	"""
 	VRAM-stable curvature map with exact behavioral fidelity.
