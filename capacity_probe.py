@@ -5,7 +5,7 @@ from src.cooling import post_epoch_cooling
 from src.data_utils import generate_display_dimensions, load_rgb_image
 from src.display_utils import predict_full_from_stream
 from src.file_utils import get_folder_for_model, get_model_save_path, set_model_folder
-from helpers.tooling import publish_image
+from src.helpers.tooling import publish_image
 from Config.config import (
 	DEFAULT_MODEL_NAME,
 	HEIGHT,
