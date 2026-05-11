@@ -1,6 +1,6 @@
 # neural_net.py
 from src.backend_cupy import to_device, to_cpu, _ACT_MAP
-from Losses import mse
+from src.Losses import mse
 from Config.log_dir import SAVE_ERROR_LOG_PATH
 from Config.config import INPUT_CONFIG_PATH, ENABLE_SET_LR, LEARNING_RATE, OPTIMISER
 import json, os

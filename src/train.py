@@ -9,7 +9,7 @@ import time
 from collections import defaultdict
 from src.cooling import post_batch_cooling
 from src.display_utils import compute_accuracy_metrics
-from Telemetry.telemetry import TelemetryLogger
+from src.helpers.telemetry import TelemetryLogger
 
 
 def train_streaming(model, stream, batch_size, shuffle=True,

@@ -2,7 +2,7 @@ import os
 import shutil
 from Config.layer_registry import LAYER_REGISTRY
 import cupy as cp
-from helpers.tooling import publish_image
+from src.helpers.tooling import publish_image
 from Config.log_dir import PATTERN_FORGE_PATH
 
 

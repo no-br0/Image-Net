@@ -17,7 +17,7 @@ from Config.layer_registry import build_input_stack, inject_input_seeds  # optio
 from src.neural_net import NeuralNet
 from src.data_utils import generate_display_dimensions, load_rgb_image, make_neighbor_stream
 from Config.image_registry import get_image_path
-from helpers.sync_input_config import sync_input_config
+from src.helpers.sync_input_config import sync_input_config
 from src.backend_cupy import log_vram_usage
 from src.final_viewer import final_viewer
 from src.display_utils import predict_full_from_stream, publish_frame
