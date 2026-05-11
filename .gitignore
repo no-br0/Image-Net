@@ -37,3 +37,5 @@ Config/Inputs/__pycache__/
 helpers/__pycache__/
 .vscode/
 __pycache__/
+
+pattern_forge_outputs/

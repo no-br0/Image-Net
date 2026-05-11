@@ -11,3 +11,5 @@ GIF_SAVE_PATH = "Saves/Output_GIF/"
 FRAME_PATH = "outputs/latest_frame.npy"
 FRAME_META_PATH = "outputs/latest_frame_meta.json"
 CURRENT_MODEL_NAME_PATH = "outputs/current_model_name.json"
+
+PATTERN_FORGE_PATH = "pattern_forge_outputs/"
