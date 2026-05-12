@@ -188,9 +188,9 @@ Seed used for procedural input seeding for live image display.
 
 Also used to determine which target image is shown in the live display when `ENABLE_CUSTOM_RESOLUTION == False`.
 
-When `ENABLE_ROTATE_TARGET_IMAGE == False` and `MULTI_IMAGE_COUNT == 1`, this seed selects which entry in `Config/image_registry.json` is used for training.
+When `ENABLE_ROTATE_TARGET_IMAGE == False` and `MULTI_IMAGE_COUNT == 1`, this seed selects which entry in `runtime/image_registry.json` is used for training.
 
-__NOTE:__ If `Config/image_registry.json` does not exist, it will be created automatically when running `main.py`.
+__NOTE:__ If `runtime/image_registry.json` does not exist, it will be created automatically when running `main.py`.
 
 ---
 
@@ -235,7 +235,7 @@ The live display resolution is always taken from `HEIGHT` and `WIDTH`.
 
 - When `False`:<br>
 The live display resolution is taken from the target image associated with `HELDOUT_SEED`.<br>
-If the seed does not map to any entry in `Config/image_registry.json`, the system falls back to `HEIGHT` and `WIDTH`.
+If the seed does not map to any entry in `runtime/image_registry.json`, the system falls back to `HEIGHT` and `WIDTH`.
 
 #### `INPUT_CONFIG_PATH`
 
@@ -293,7 +293,7 @@ Each dictionary includes:
 
 There are many other options but you will need to check the specific procedural function to see their modification options as they vary drastically from one function to another.
 
-These procedural functions can be found in the scripts within `Inputs/`
+These procedural functions can be found in the scripts within `src/inputs/`
 
 ---
 
