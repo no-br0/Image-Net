@@ -23,6 +23,7 @@ _research/full/
 !_docs/model_config_guide/
 !_docs/multi_image_learning/
 !_docs/images/
+!_docs/procedural_pattern_reference
 
 src/__pycache__/
 src/optimisers/__pycache__/
