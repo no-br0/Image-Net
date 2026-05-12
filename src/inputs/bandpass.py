@@ -4,7 +4,7 @@ import cupy as cp
 
 
 
-def bandpass_noise(H: int, W: int, params: Dict) -> Tuple[cp.ndarray, List[str]]:
+def bandpass(H: int, W: int, params: Dict) -> Tuple[cp.ndarray, List[str]]:
 	"""
 	Deterministic low‑frequency band‑limited noise.
 	VRAM‑aware, returns (1, H, W) in [0,1].

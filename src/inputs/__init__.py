@@ -29,5 +29,5 @@ from .fbm_rock import *
 from .triangle_pattern import *
 from .hexagon_pattern import *
 from .perlin_flow import *
-from .bandpass_noise import *
+from .bandpass import *
 from .checkerboard_radial import *
