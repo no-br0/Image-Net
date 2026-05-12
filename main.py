@@ -14,7 +14,7 @@ from config.log_dir import (
 	CURRENT_MODEL_NAME_PATH,
 	SETTINGS_FILE
 	)
-from src.registries.layer_registry import build_input_stack, inject_input_seeds  # optional, not used here
+from src.registries.pattern_registry import build_input_stack, inject_input_seeds  # optional, not used here
 from src.neural_net import NeuralNet
 from src.data_utils import generate_display_dimensions, load_rgb_image, make_neighbor_stream
 from src.registries.image_registry import get_image_path
@@ -172,8 +172,8 @@ def main():
 			print(f"[stage] Failed to load model: {e}")
 	
 	if model is None:
-		layers_cfg = sync_input_config(MODEL_SAVE_PATH)
-		input_size = PATCH_SIZE * PATCH_SIZE * len(layers_cfg)
+		pattern_cfg = sync_input_config(MODEL_SAVE_PATH)
+		input_size = PATCH_SIZE * PATCH_SIZE * len(pattern_cfg)
 		topology = [input_size] + HIDDEN_LAYER_TOPOLOGY + [3]
 
 		model = NeuralNet(
@@ -184,7 +184,7 @@ def main():
 			OUTPUT_ACT,
 			GRAD_CLIP,
 			MODEL_SEED,
-			input_config=layers_cfg
+			input_config=pattern_cfg
 		)
 		print(f"[stage] Model initialised with topology: {model.topology}")
 

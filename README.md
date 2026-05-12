@@ -123,8 +123,8 @@ If you want to see the live image or telemetry graphs, run those scripts locally
 - time_view.pyw -> graphs the time epochs take along with the breakdown of where that time is spent
 - gpu_view.pyw -> graphs the gpu temp, utilisation, and VRAM usage
 - optimiser_view.pyw -> starts the live optimiser telemetry viewer (NOTE: only viable with some specific optimisers that have logging built into them.)
-- Config/config.py -> contains various settings for tweaking the model.
-- Config/Inputs/layers_config.py -> contains a list of all procedural inputs the model is using (NOTE: there can be duplicates without issue)
+- config/config.py -> contains various settings for tweaking the model.
+- config/pattern_config.py -> contains a list of all procedural inputs the model is using (NOTE: there can be duplicates without issue)
 
 <br>
 

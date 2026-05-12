@@ -1,6 +1,6 @@
 import os
 import shutil
-from src.registries.layer_registry import LAYER_REGISTRY
+from src.registries.pattern_registry import PATTERN_REGISTRY
 import cupy as cp
 from src.helpers.tooling import publish_image
 from config.log_dir import PATTERN_FORGE_PATH
@@ -28,7 +28,7 @@ def gen_patterns(H: int, W: int):
 
 	for i in range(size):
 		cfg = patterns[i]
-		gen_fn = LAYER_REGISTRY[cfg["type"]]
+		gen_fn = PATTERN_REGISTRY[cfg["type"]]
 		arr, _ = gen_fn(H, W, dict(cfg))
 		arr = cp.moveaxis(arr, 0, -1)
 		arr = cp.asnumpy(arr)

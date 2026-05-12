@@ -1,6 +1,6 @@
 
 # --- Define which layers you want to use ---
-layers_cfg = [
+pattern_cfg = [
 	
 	{"type": "perlin", "frequency": 100.0, "octaves": 6},
 	{"type": "perlin", "frequency": 10.0},

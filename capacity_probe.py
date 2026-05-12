@@ -1,6 +1,6 @@
 import shutil
 from src.registries.image_registry import get_image_path, get_registry_size
-from src.registries.layer_registry import inject_input_seeds
+from src.registries.pattern_registry import inject_input_seeds
 from src.cooling import post_epoch_cooling
 from src.data_utils import generate_display_dimensions, load_rgb_image
 from src.display_utils import predict_full_from_stream
@@ -30,7 +30,7 @@ NUM_PROBE_IMAGES = 5
 CUSTOM_HELDOUT_LIST = [0, 500, 1000, 1500, 2000]
 
 
-def build_stream(image_id, layers_cfg, is_training_image):
+def build_stream(image_id, pattern_cfg, is_training_image):
 	TRAIN_IMAGE_PATH = get_image_path(image_id)
 	
 	if is_training_image:
@@ -39,7 +39,7 @@ def build_stream(image_id, layers_cfg, is_training_image):
 		Y_rgb = generate_display_dimensions(WIDTH, HEIGHT)
 
 	H,W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
-	input_config = inject_input_seeds(layers_cfg, image_id)
+	input_config = inject_input_seeds(pattern_cfg, image_id)
 
 	stream, _, _ = build_display_stream(Y_rgb, input_config, H, W)
 	

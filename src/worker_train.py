@@ -8,7 +8,7 @@ from config.config import (
 	ROTATE_TARGET_FREQ, SAVE_INTERVAL, USE_PAIR_COVERAGE_CYCLE,
 	)
 from src.registries.image_registry import get_image_path, get_registry_size, get_seed
-from src.registries.layer_registry import build_input_stack, inject_input_seeds
+from src.registries.pattern_registry import build_input_stack, inject_input_seeds
 from src.data_utils import load_rgb_image, make_neighbor_stream
 from src.train import train_streaming
 from src.neural_net import NeuralNet

@@ -275,11 +275,11 @@ Directory where models are saved.
 Save model every N epochs.
 
 
-## 2. `layers_config.py` — Procedural Input Basis
+## 2. `pattern_config.py` — Procedural Input Basis
 
 This file defines the __procedural input fields__ used by the model.
 <br>
-Each entry in `layers_config` corresponds to one procedural field.
+Each entry in `pattern_config` corresponds to one procedural field.
 
 Example entry:
 
@@ -385,7 +385,7 @@ These files define the available options for the configs above.
 
 ---
 
-### 4.1 `layer_registry.py` __/__ `Inputs/` — Procedural Pattern Definitions
+### 4.1 `pattern_registry.py` __/__ `src/inputs/` — Procedural Pattern Definitions
 
 This file contains all available procedural field types.
 
