@@ -99,18 +99,18 @@ This behaviour represents the current, demonstrated capability of the architectu
 
 ## How to Inspect a Learned Image
 
-To visually verify how well the model is reproducing a specific target image, set the following configuration values in `Config/config.py`:
+To visually verify how well the model is reproducing a specific target image, set the following configuration values in `config/config.py`:
 
 `ENABLE_END_VIEWER = True`<br>
 `FORCE_NEW_MODEL = False`<br>
 `TRAIN = False`
 
-Then set the following parameters in `Config/config.py`:
+Then set the following parameters in `config/config.py`:
 
 - __HELDOUT_SEED__<br>
 Set this to the seed associated with the target image you want to inspect.<br>
 This value is stored in:<br>
-`Config/image_registry.json`
+`runtime/image_registry.json`
 
 - __HEIGHT__ and __WIDTH__<br>
 Set these to the __exact pixel dimensions__ of the target image.
