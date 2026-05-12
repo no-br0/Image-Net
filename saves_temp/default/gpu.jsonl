@@ -1,0 +1,4 @@
+{"global_epoch": 0, "vram_used": 1188.6875, "vram_total": 11263.6875, "pool_used": 12.12744140625, "pool_total": 21.1455078125, "pool_free": 9.01806640625, "gpu_temp": 60, "gpu_util": 32}
+{"global_epoch": 1, "vram_used": 1194.6875, "vram_total": 11263.6875, "pool_used": 12.12744140625, "pool_total": 25.42333984375, "pool_free": 13.2958984375, "gpu_temp": 61, "gpu_util": 31}
+{"global_epoch": 2, "vram_used": 1198.6875, "vram_total": 11263.6875, "pool_used": 12.12744140625, "pool_total": 28.169921875, "pool_free": 16.04248046875, "gpu_temp": 63, "gpu_util": 28}
+{"global_epoch": 3, "vram_used": 1198.6875, "vram_total": 11263.6875, "pool_used": 12.12744140625, "pool_total": 28.169921875, "pool_free": 16.04248046875, "gpu_temp": 63, "gpu_util": 27}
