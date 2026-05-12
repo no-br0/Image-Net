@@ -28,7 +28,7 @@ src/__pycache__/
 src/optimisers/__pycache__/
 src/losses/__pycache__/
 src/inputs/__pycache__/
-Config/__pycache__/
+config/__pycache__/
 src/helpers/__pycache__/
 src/registries/__pycache__/
 .vscode/
