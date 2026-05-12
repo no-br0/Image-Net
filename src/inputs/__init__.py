@@ -22,7 +22,7 @@ from .random_line_overlay import *
 from .curl_noise_flow import *
 from .checkerboard import *
 from .checkerboard_alt_gray import *
-from .checkerboard_full_gray import *
+from .full_random import *
 from .fbm_noise import *
 from .fbm_vein import *
 from .fbm_rock import *

@@ -4,7 +4,7 @@ from .utils import _get_scratch
 
 
 
-def checkerboard_full_gray(H: int, W: int, params: Dict) -> Tuple[cp.ndarray, List[str]]:
+def full_random(H: int, W: int, params: Dict) -> Tuple[cp.ndarray, List[str]]:
 	"""
 	Full-random checkerboard tiling:
 	  - Each tile is a single uniform grayscale value in [0, 255]
