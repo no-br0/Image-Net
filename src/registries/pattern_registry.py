@@ -38,7 +38,7 @@ PATTERN_REGISTRY = {
 	"triangle_pattern": triangle_pattern,
 	"hexagon_pattern": hexagon_pattern,
 	"perlin_flow": perlin_flow,
-	"bandpass": bandpass_noise,
+	"bandpass": bandpass,
 	"checkerboard_radial": checkerboard_radial,
 }
 
