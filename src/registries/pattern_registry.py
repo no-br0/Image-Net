@@ -31,7 +31,7 @@ PATTERN_REGISTRY = {
 	"curl_noise_flow": curl_noise_flow,
 	"checkerboard": checkerboard,
 	"checkerboard_alt_gray": checkerboard_alt_gray,
-	"checkerboard_full_gray": checkerboard_full_gray,
+	"full_random": full_random,
 	"fbm_noise": fbm_noise,
 	"fbm_vein": fbm_vein,
 	"fbm_rock": fbm_rock,
