@@ -13,16 +13,12 @@ Both components rely on the same underlying pattern types, but maintain their ow
 
 __Note:__ 
 
-- __Most patterns include a `seed` parameter.__
-<br>
-This parameter is used only for visualisation and previewing variations.
-<br>
-During training, all seeds are overridden by the system's deterministic seed pipeline.
-<br>
+- __Most patterns include a `seed` parameter.__<br>
+This parameter is used only for visualisation and previewing variations.<br>
+During training, all seeds are overridden by the system's deterministic seed pipeline.<br>
 Patterns that are constant functions do not include a `seed` parameter because they have no variation.
 
-- __All patterns inlude a `name` parameter.__
-<br>
+- __All patterns inlude a `name` parameter.__<br>
 This is used only by the end_viewer tool to display a title and has no effect on pattern generation or training. 
 
 
