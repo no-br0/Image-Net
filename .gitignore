@@ -13,10 +13,6 @@ outputs/*
 training/*
 !training/.keep
 
-Config/image_registry.json
-Config/input_config.json
-Config/settings.json
-
 _docs/*
 _research/
 
@@ -32,9 +28,11 @@ src/optimisers/__pycache__/
 src/Losses/__pycache__/
 src/Inputs/__pycache__/
 Config/__pycache__/
-Config/Inputs/__pycache__/
 src/helpers/__pycache__/
+src/registries/__pycache__/
 .vscode/
 __pycache__/
 
 pattern_forge_outputs/
+runtime/*
+!runtime/.keep

@@ -4,16 +4,17 @@ import os
 
 import cupy as cp
 from Config.config import (
-	CONFIG_FILE, ENABLE_ROTATE_TARGET_IMAGE, HELDOUT_SEED, MULTI_IMAGE_COUNT, PATCH_SIZE, 
+	ENABLE_ROTATE_TARGET_IMAGE, HELDOUT_SEED, MULTI_IMAGE_COUNT, PATCH_SIZE, 
 	ROTATE_TARGET_FREQ, SAVE_INTERVAL, USE_PAIR_COVERAGE_CYCLE,
 	)
-from Config.image_registry import get_image_path, get_registry_size, get_seed
-from Config.layer_registry import build_input_stack, inject_input_seeds
+from src.registries.image_registry import get_image_path, get_registry_size, get_seed
+from src.registries.layer_registry import build_input_stack, inject_input_seeds
 from src.data_utils import load_rgb_image, make_neighbor_stream
 from src.train import train_streaming
 from src.neural_net import NeuralNet
-from src.loss_registry import LOSS_REGISTRY
+from src.registries.loss_registry import LOSS_REGISTRY
 import math, numpy as np
+from Config.log_dir import SETTINGS_FILE
 
 def build_stream(input_config, model, batch_size):
 	images, pixel_offsets, global_indices = build_multi_image_dataset(
@@ -160,8 +161,8 @@ def worker_main(conn, model_state, epochs, batch_size, loss_name, shuffle):
 
 		if model.GLOBAL_EPOCH % SAVE_INTERVAL == 0:
 			try:
-				if os.path.exists(CONFIG_FILE):
-					with open(CONFIG_FILE) as f:
+				if os.path.exists(SETTINGS_FILE):
+					with open(SETTINGS_FILE) as f:
 						settings = json.load(f)
 					MODEL_SAVE_PATH = settings.get("MODEL_SAVE_PATH", None)
 				else:

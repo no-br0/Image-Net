@@ -101,12 +101,9 @@ OUTPUT_ACT                      = "sin_255"
 
 # --- Model save/load ---
 
-CONFIG_FILE                 = "Config/settings.json"
 SAVE_FOLDER                 = "Saves"
 DEFAULT_MODEL_NAME          = "default"
 
 
 # --- Training ---
 LOSS_NAME       = "wrapped_combined"
-
-INPUT_CONFIG_PATH = "Config/input_config.json"

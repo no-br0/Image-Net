@@ -5,7 +5,7 @@ from collections import defaultdict
 from src.backend_cupy import get_vram_usage
 
 
-from Config.config import (	 CONFIG_FILE, )
+from Config.log_dir import SETTINGS_FILE
 
 
 PROFILE_VRAM    = False     # Set True to log VRAM each epoch

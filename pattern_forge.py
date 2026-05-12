@@ -1,6 +1,6 @@
 import os
 import shutil
-from Config.layer_registry import LAYER_REGISTRY
+from src.registries.layer_registry import LAYER_REGISTRY
 import cupy as cp
 from src.helpers.tooling import publish_image
 from Config.log_dir import PATTERN_FORGE_PATH
