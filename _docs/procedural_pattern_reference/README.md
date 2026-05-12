@@ -11,10 +11,6 @@ __These pattern definitions are used in two places:__
 
 Both components rely on the same underlying pattern types, but maintain their own pattern lists.
 
-
-This document provides the authoritative reference for all procedural input functions registered in the system. Each entry lists the registry name, parameter names, and expected types. The functions are presented in registry order to maintain consistency with the registry definition.
-
-
 __Note:__ 
 
 - __Most patterns include a `seed` parameter.__
