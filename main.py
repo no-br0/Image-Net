@@ -1,22 +1,23 @@
 # main.py
 import os, json, time, shutil
 import cupy as cp
-from Config.config import (
+from config.config import (
 	ENABLE_CUSTOM_RESOLUTION, ENABLE_LIVE_VIEWER, EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, 
 	HEIGHT, HELDOUT_SEED, HIDDEN_LAYER_TOPOLOGY,
 	PATCH_SIZE, OUTPUT_ACT, HIDDEN_ACT, LEARNING_RATE,
 	GRAD_CLIP, MODEL_SEED, FORCE_NEW_MODEL, DEFAULT_MODEL_NAME,
-	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL, CONFIG_FILE,
+	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL,
 	ENABLE_CUSTOM_MODEL_NAME, ENABLE_END_VIEWER, WIDTH, WORKER_CHUNK_SIZE
 )
-from Config.log_dir import ( 
+from config.log_dir import ( 
 	SAVE_ERROR_LOG_PATH,
-	CURRENT_MODEL_NAME_PATH
+	CURRENT_MODEL_NAME_PATH,
+	SETTINGS_FILE
 	)
-from Config.layer_registry import build_input_stack, inject_input_seeds  # optional, not used here
+from src.registries.pattern_registry import build_input_stack, inject_input_seeds  # optional, not used here
 from src.neural_net import NeuralNet
 from src.data_utils import generate_display_dimensions, load_rgb_image, make_neighbor_stream
-from Config.image_registry import get_image_path
+from src.registries.image_registry import get_image_path
 from src.helpers.sync_input_config import sync_input_config
 from src.backend_cupy import log_vram_usage
 from src.final_viewer import final_viewer
@@ -155,7 +156,7 @@ def main():
 	settings["model_folder"] = model_folder
 	settings["WIDTH"] = WIDTH
 	settings["HEIGHT"] = HEIGHT
-	with open(CONFIG_FILE, "w") as f:
+	with open(SETTINGS_FILE, "w") as f:
 		json.dump(settings, f, indent=4)
 	
 	model = None
@@ -171,8 +172,8 @@ def main():
 			print(f"[stage] Failed to load model: {e}")
 	
 	if model is None:
-		layers_cfg = sync_input_config(MODEL_SAVE_PATH)
-		input_size = PATCH_SIZE * PATCH_SIZE * len(layers_cfg)
+		pattern_cfg = sync_input_config(MODEL_SAVE_PATH)
+		input_size = PATCH_SIZE * PATCH_SIZE * len(pattern_cfg)
 		topology = [input_size] + HIDDEN_LAYER_TOPOLOGY + [3]
 
 		model = NeuralNet(
@@ -183,7 +184,7 @@ def main():
 			OUTPUT_ACT,
 			GRAD_CLIP,
 			MODEL_SEED,
-			input_config=layers_cfg
+			input_config=pattern_cfg
 		)
 		print(f"[stage] Model initialised with topology: {model.topology}")
 
@@ -209,7 +210,7 @@ def main():
 		settings["model_folder"] = model_folder
 		settings["WIDTH"] = W
 		settings["HEIGHT"] = H
-		with open(CONFIG_FILE, "w") as f:
+		with open(SETTINGS_FILE, "w") as f:
 			json.dump(settings, f, indent=4)
 
 	

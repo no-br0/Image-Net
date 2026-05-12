@@ -1,7 +1,7 @@
 import os, json
 import numpy as np
-from Config.config import INPUT_CONFIG_PATH
-from Config.Inputs.layers_config import layers_cfg
+from config.log_dir import INPUT_CONFIG_PATH
+from config.pattern_config import pattern_cfg
 
 def sync_input_config(model_save_path):
 	if os.path.exists(model_save_path):
@@ -9,9 +9,9 @@ def sync_input_config(model_save_path):
 		if "input_config" in npz:
 			input_config = npz["input_config"].tolist()
 		else:
-			input_config = layers_cfg
+			input_config = pattern_cfg
 	else:
-		input_config = layers_cfg
+		input_config = pattern_cfg
 
 	os.makedirs(os.path.dirname(INPUT_CONFIG_PATH), exist_ok=True)
 	with open(INPUT_CONFIG_PATH, "w") as f:

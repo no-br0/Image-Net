@@ -14,25 +14,25 @@ This project avoids datasets entirely, using procedural inputs to keep training 
 ### Training Metrics
 Tracks loss, derivatives, and accuracy over training, showing how the model stabilises and improves.
 
-![Training Metrics](Images/Loss_Telemetry.PNG)
+![Training Metrics](_docs/images/Loss_Telemetry.PNG)
 
 
 ### GPU Metrics
 Real‑time GPU temperature, utilisation, and VRAM usage during training.
 
-![GPU Telemetry](Images/GPU_Telemetry.PNG)
+![GPU Telemetry](_docs/images/GPU_Telemetry.PNG)
 
 
 ### Epoch Time Metrics
 Breakdown of compute, active, and sleep time per epoch, showing training loop performance.
 
-![Epoch Time Metrics](Images/Epoch_Time.PNG)
+![Epoch Time Metrics](_docs/images/Epoch_Time.PNG)
 
 
 ### Live Image Display
 Live output from the model during training.
 
-![Live Image Display](Images/Live_Display.PNG)
+![Live Image Display](_docs/images/Live_Display.PNG)
 
 
 ## Running The Project
@@ -123,8 +123,8 @@ If you want to see the live image or telemetry graphs, run those scripts locally
 - time_view.pyw -> graphs the time epochs take along with the breakdown of where that time is spent
 - gpu_view.pyw -> graphs the gpu temp, utilisation, and VRAM usage
 - optimiser_view.pyw -> starts the live optimiser telemetry viewer (NOTE: only viable with some specific optimisers that have logging built into them.)
-- Config/config.py -> contains various settings for tweaking the model.
-- Config/Inputs/layers_config.py -> contains a list of all procedural inputs the model is using (NOTE: there can be duplicates without issue)
+- config/config.py -> contains various settings for tweaking the model.
+- config/pattern_config.py -> contains a list of all procedural inputs the model is using (NOTE: there can be duplicates without issue)
 
 <br>
 
@@ -162,10 +162,10 @@ A simple MLP implemented entirely by hand:<br>
 
 ### 3. Telemetry and Visualisation
 Training writes metrics to disk each epoch:
-- `Saves/[modelName]/loss.jsonl` for loss data
-- `Saves/[modelName]/optimiser.jsonl` for optimiser data
-- `Saves/[modelName]/epoch_time.jsonl` for epoch time data
-- `Saves/[modelName]/gpu.jsonl` for gpu metric data
+- `saves/[modelName]/loss.jsonl` for loss data
+- `saves/[modelName]/optimiser.jsonl` for optimiser data
+- `saves/[modelName]/epoch_time.jsonl` for epoch time data
+- `saves/[modelName]/gpu.jsonl` for gpu metric data
 - `outputs/latest_frame.npy` for current output image
 
 A viewer script loads these files to display:

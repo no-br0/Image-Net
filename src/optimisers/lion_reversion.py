@@ -1,6 +1,6 @@
 from src.backend_cupy import to_cpu, to_device
 import cupy as cp
-from Config.log_dir import TELEMETRY_LOG_FOLDER
+from config.log_dir import TELEMETRY_LOG_FOLDER
 import os, json
 
 class LionReversion:

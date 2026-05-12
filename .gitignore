@@ -1,10 +1,10 @@
 venv/
 
-Logs/*
-!Logs/.keep
+logs/*
+!logs/.keep
 
-Saves/*
-!Saves/.keep
+saves/*
+!saves/.keep
 
 
 outputs/*
@@ -12,10 +12,6 @@ outputs/*
 
 training/*
 !training/.keep
-
-Config/image_registry.json
-Config/input_config.json
-Config/settings.json
 
 _docs/*
 _research/
@@ -26,15 +22,18 @@ _research/full/
 !_docs/procedural_inputs/
 !_docs/model_config_guide/
 !_docs/multi_image_learning/
+!_docs/images/
 
 src/__pycache__/
 src/optimisers/__pycache__/
-src/Losses/__pycache__/
-src/Inputs/__pycache__/
+src/losses/__pycache__/
+src/inputs/__pycache__/
 Config/__pycache__/
-Config/Inputs/__pycache__/
 src/helpers/__pycache__/
+src/registries/__pycache__/
 .vscode/
 __pycache__/
 
 pattern_forge_outputs/
+runtime/*
+!runtime/.keep

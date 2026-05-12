@@ -1,7 +1,7 @@
 import json, os
 from pathlib import Path
 
-_REGISTRY_PATH = "Config/image_registry.json"
+_REGISTRY_PATH = "runtime/image_registry.json"
 _TRAIN_DIR = Path("training/")
 _registry = None  # internal cache
 

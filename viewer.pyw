@@ -4,7 +4,7 @@ import json
 import time
 import numpy as np
 import pygame
-from Config.log_dir import FRAME_PATH, FRAME_META_PATH
+from config.log_dir import FRAME_PATH, FRAME_META_PATH
 
 DEFAULT_SIZE = (320, 180)  # placeholder before first frame
 FRAME_CHECK_INTERVAL = 0.2  # seconds between file polls (~5Hz)

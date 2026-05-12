@@ -1,20 +1,21 @@
 # file_utils.py
 import os
 import json
-from Config.config import CONFIG_FILE, SAVE_FOLDER, DEFAULT_MODEL_NAME
+from config.config import SAVE_FOLDER, DEFAULT_MODEL_NAME
+from config.log_dir import SETTINGS_FILE
 
 def _load_settings():
-	if not os.path.exists(CONFIG_FILE):
+	if not os.path.exists(SETTINGS_FILE):
 		return {}
 	try:
-		with open(CONFIG_FILE, "r") as f:
+		with open(SETTINGS_FILE, "r") as f:
 			return json.load(f)
 	except Exception:
 		return {}
 
 def _save_settings(settings):
-	os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
-	with open(CONFIG_FILE, "w") as f:
+	os.makedirs(os.path.dirname(SETTINGS_FILE), exist_ok=True)
+	with open(SETTINGS_FILE, "w") as f:
 		json.dump(settings, f, indent=4)
 
 def _ensure_folder(path):

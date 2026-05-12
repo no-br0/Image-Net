@@ -2,8 +2,8 @@
 
 import cupy as cp
 import os
-from Config.config import ENABLE_ADAPTIVE_LOSS_WEIGHTING, LOSS_CONFIG, LOSS_WEIGHTING_POWER_SCALE
-from src.Losses import *
+from config.config import ENABLE_ADAPTIVE_LOSS_WEIGHTING, LOSS_CONFIG, LOSS_WEIGHTING_POWER_SCALE
+from src.losses import *
 
 
 

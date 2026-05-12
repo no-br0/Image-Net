@@ -1,9 +1,9 @@
 # train.py
-from Config.config import (LOWEST_LOSS_THRESHOLD,
+from config.config import (LOWEST_LOSS_THRESHOLD,
 						LR_DECREASE_MULTIPLIER, LR_INCREASE_MULTIPLIER,
 						MAX_LEARNING_RATE, MIN_LEARNING_RATE, ENABLE_ADAPTIVE_LR, 
 						ADAPTIVE_LR_INVERTED)
-from src.loss_registry import combined_loss, wrapped_combined_loss
+from src.registries.loss_registry import combined_loss, wrapped_combined_loss
 import cupy as cp, numpy as np
 import time
 from collections import defaultdict

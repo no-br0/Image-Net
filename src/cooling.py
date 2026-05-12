@@ -5,7 +5,7 @@ from collections import defaultdict
 from src.backend_cupy import get_vram_usage
 
 
-from Config.config import (	 CONFIG_FILE, )
+from config.log_dir import SETTINGS_FILE
 
 
 PROFILE_VRAM    = False     # Set True to log VRAM each epoch
@@ -157,14 +157,14 @@ def aggregate_temp_log(epoch):
 	totals = defaultdict(float)
 	count = 0
 	try:
-		with open("Logs/Temp/perceptual_temp.txt", "r") as f:
+		with open("logs/temp/perceptual_temp.txt", "r") as f:
 			for line in f:
 				count += 1
 				for pair in line.strip().split(","):
 					k, v = pair.split(":")
 					totals[k] += float(v)
 	finally:
-		open("Logs/Temp/perceptual_temp.txt", "w").close()
+		open("logs/temp/perceptual_temp.txt", "w").close()
 
 
 
