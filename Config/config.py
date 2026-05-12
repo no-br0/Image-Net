@@ -101,7 +101,7 @@ OUTPUT_ACT                      = "sin_255"
 
 # --- Model save/load ---
 
-SAVE_FOLDER                 = "Saves"
+SAVE_FOLDER                 = "saves"
 DEFAULT_MODEL_NAME          = "default"
 
 

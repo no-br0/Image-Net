@@ -3,7 +3,7 @@ import json
 import os
 
 import cupy as cp
-from Config.config import (
+from config.config import (
 	ENABLE_ROTATE_TARGET_IMAGE, HELDOUT_SEED, MULTI_IMAGE_COUNT, PATCH_SIZE, 
 	ROTATE_TARGET_FREQ, SAVE_INTERVAL, USE_PAIR_COVERAGE_CYCLE,
 	)
@@ -14,7 +14,7 @@ from src.train import train_streaming
 from src.neural_net import NeuralNet
 from src.registries.loss_registry import LOSS_REGISTRY
 import math, numpy as np
-from Config.log_dir import SETTINGS_FILE
+from config.log_dir import SETTINGS_FILE
 
 def build_stream(input_config, model, batch_size):
 	images, pixel_offsets, global_indices = build_multi_image_dataset(

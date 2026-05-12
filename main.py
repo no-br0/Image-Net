@@ -1,7 +1,7 @@
 # main.py
 import os, json, time, shutil
 import cupy as cp
-from Config.config import (
+from config.config import (
 	ENABLE_CUSTOM_RESOLUTION, ENABLE_LIVE_VIEWER, EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, 
 	HEIGHT, HELDOUT_SEED, HIDDEN_LAYER_TOPOLOGY,
 	PATCH_SIZE, OUTPUT_ACT, HIDDEN_ACT, LEARNING_RATE,
@@ -9,7 +9,7 @@ from Config.config import (
 	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL,
 	ENABLE_CUSTOM_MODEL_NAME, ENABLE_END_VIEWER, WIDTH, WORKER_CHUNK_SIZE
 )
-from Config.log_dir import ( 
+from config.log_dir import ( 
 	SAVE_ERROR_LOG_PATH,
 	CURRENT_MODEL_NAME_PATH,
 	SETTINGS_FILE

@@ -1,8 +1,8 @@
 # file_utils.py
 import os
 import json
-from Config.config import SAVE_FOLDER, DEFAULT_MODEL_NAME
-from Config.log_dir import SETTINGS_FILE
+from config.config import SAVE_FOLDER, DEFAULT_MODEL_NAME
+from config.log_dir import SETTINGS_FILE
 
 def _load_settings():
 	if not os.path.exists(SETTINGS_FILE):

@@ -1,11 +1,11 @@
 import time
 
 import cupy as cp
-from Config.config import BATCH_SIZE
+from config.config import BATCH_SIZE
 import os, json
 import numpy as np
 from src.backend_cupy import to_cpu
-from Config.log_dir import FRAME_PATH, FRAME_META_PATH
+from config.log_dir import FRAME_PATH, FRAME_META_PATH
 from src.cooling import display_batch_cooling
 
 def predict_full_from_stream(model, stream, *, batch_size=BATCH_SIZE):

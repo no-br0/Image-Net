@@ -1,7 +1,7 @@
 import cupy as cp
 import os, json
 from src.backend_cupy import to_cpu, to_device
-from Config.log_dir import TELEMETRY_LOG_FOLDER
+from config.log_dir import TELEMETRY_LOG_FOLDER
 
 class YogiReversion:
 	def __init__(self, params={}):

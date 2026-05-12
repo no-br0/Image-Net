@@ -1,6 +1,6 @@
 import cupy as cp
 import os, json
-from Config.log_dir import TELEMETRY_LOG_FOLDER
+from config.log_dir import TELEMETRY_LOG_FOLDER
 from collections import deque
 
 class AdaBeliefLookahead:

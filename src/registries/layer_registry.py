@@ -1,7 +1,7 @@
 # layer_registry.py
 from typing import Dict, List, Tuple
 import cupy as cp
-from src.Inputs import *  # all your @free_after generators
+from src.inputs import *  # all your @free_after generators
 import random
 import sys
 

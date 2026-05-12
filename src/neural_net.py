@@ -1,8 +1,8 @@
 # neural_net.py
 from src.backend_cupy import to_device, to_cpu, _ACT_MAP
-from src.Losses import mse
-from Config.log_dir import SAVE_ERROR_LOG_PATH, INPUT_CONFIG_PATH
-from Config.config import ENABLE_SET_LR, LEARNING_RATE, OPTIMISER
+from src.losses import mse
+from config.log_dir import SAVE_ERROR_LOG_PATH, INPUT_CONFIG_PATH
+from config.config import ENABLE_SET_LR, LEARNING_RATE, OPTIMISER
 import json, os
 from src.registries.optimiser_registry import OPTIMISER_REGISTRY
 import cupy as cp

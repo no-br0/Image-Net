@@ -1,10 +1,10 @@
 venv/
 
-Logs/*
-!Logs/.keep
+logs/*
+!logs/.keep
 
-Saves/*
-!Saves/.keep
+saves/*
+!saves/.keep
 
 
 outputs/*
@@ -25,8 +25,8 @@ _research/full/
 
 src/__pycache__/
 src/optimisers/__pycache__/
-src/Losses/__pycache__/
-src/Inputs/__pycache__/
+src/losses/__pycache__/
+src/inputs/__pycache__/
 Config/__pycache__/
 src/helpers/__pycache__/
 src/registries/__pycache__/
