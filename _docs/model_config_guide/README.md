@@ -230,14 +230,11 @@ __NOTE:__ This does not affect training resolution; it only controls the resolut
 
 #### `ENABLE_CUSTOM_RESOLUTION`
 
-- When `True`:
-<br>
+- When `True`:<br>
 The live display resolution is always taken from `HEIGHT` and `WIDTH`.
 
-- When `False`:
-<br>
-The live display resolution is taken from the target image associated with `HELDOUT_SEED`.
-<br>
+- When `False`:<br>
+The live display resolution is taken from the target image associated with `HELDOUT_SEED`.<br>
 If the seed does not map to any entry in `Config/image_registry.json`, the system falls back to `HEIGHT` and `WIDTH`.
 
 #### `INPUT_CONFIG_PATH`
@@ -332,17 +329,13 @@ These determine what temperature the GPU will wait till it gets down to at each 
 __NOTE:__ All batch cooling has a toggle for a shallow version of its cooling it changes the method of cooling from a target GPU temp to a specified timeframe (seconds).
 
 - `ENABLE_BATCH_COOLING`
-- `ENABLE_SHALLOW_BATCH_COOLING`
-<br>
+- `ENABLE_SHALLOW_BATCH_COOLING`<br>
 
 For this cooling logic to be used `ENABLE_BATCH_COOLING` must be set to `True`. But when `ENABLE_SHALLOW_BATCH_COOLING` is `True` it changes how the cooling logic works from a target GPU temp to a specified interval.
 
-- `ENABLE_PRE_DISPLAY_COOLING` — Occurs after training for the epoch but before generating the image for live display
-<br>
-<br>
+- `ENABLE_PRE_DISPLAY_COOLING` — Occurs after training for the epoch but before generating the image for live display<br><br>
 - `ENABLE_DISPLAY_BATCH_COOLING`
-- `ENABLE_SHALLOW_DISPLAY_BATCH_COOLING`
-<br>
+- `ENABLE_SHALLOW_DISPLAY_BATCH_COOLING`<br>
 
 This is just like with `ENABLE_BATCH_COOLING` and `ENABLE_SHALLOW_BATCH_COOLING` it just happens after each batch when generating the live image rather than after each batch during training. 
 
@@ -350,13 +343,10 @@ This is just like with `ENABLE_BATCH_COOLING` and `ENABLE_SHALLOW_BATCH_COOLING`
 
 ### 3.3 Shallow Batch Cooling
 
-- `SHALLOW_BATCH_COOL_TIME`
-
-Specifies the time (seconds) that the process will sleep for after each batch during training if `SHALLOW_BATCH_COOLING = True` and `ENABLE_BATCH_COOLING = True`
-
-Example:
-<br>
-`SHALLOW_BATCH_COOL_TIME = 0.05`
+- `SHALLOW_BATCH_COOL_TIME`<br>
+Specifies the time (seconds) that the process will sleep for after each batch during training if `SHALLOW_BATCH_COOLING = True` and `ENABLE_BATCH_COOLING = True`<br><br>
+Example:<br>
+`SHALLOW_BATCH_COOL_TIME = 0.05`<br>
 
 - `SHALLOW_DISPLAY_COOL_TIME`
 

@@ -101,24 +101,18 @@ This behaviour represents the current, demonstrated capability of the architectu
 
 To visually verify how well the model is reproducing a specific target image, set the following configuration values in `Config/config.py`:
 
-`ENABLE_END_VIEWER = True`
-<br>
-`FORCE_NEW_MODEL = False`
-<br>
+`ENABLE_END_VIEWER = True`<br>
+`FORCE_NEW_MODEL = False`<br>
 `TRAIN = False`
 
 Then set the following parameters in `Config/config.py`:
 
-- __HELDOUT_SEED__
-<br>
-Set this to the seed associated with the target image you want to inspect.
-<br>
-This value is stored in:
-<br>
+- __HELDOUT_SEED__<br>
+Set this to the seed associated with the target image you want to inspect.<br>
+This value is stored in:<br>
 `Config/image_registry.json`
 
-- __HEIGHT__ and __WIDTH__
-<br>
+- __HEIGHT__ and __WIDTH__<br>
 Set these to the __exact pixel dimensions__ of the target image.
 
 ### Procedure
