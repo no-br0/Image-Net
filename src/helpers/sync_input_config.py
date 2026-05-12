@@ -1,7 +1,7 @@
 import os, json
 import numpy as np
 from Config.log_dir import INPUT_CONFIG_PATH
-from Config.layers_config import layers_cfg
+from Config.pattern_config import layers_cfg
 
 def sync_input_config(model_save_path):
 	if os.path.exists(model_save_path):
