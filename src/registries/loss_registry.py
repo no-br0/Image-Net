@@ -134,7 +134,7 @@ LOSS_REGISTRY = {
 	
 	"mse": mse,
 	"mse_luma": mse_luma,
-	"mse_inverse_luma": mse_inverse_luma,
+	"mse_shadow": mse_shadow,
 	"mse_red": mse_red,
 	"mse_green": mse_green,
 	"mse_blue": mse_blue,
