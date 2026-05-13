@@ -31,3 +31,5 @@ from .hexagon_pattern import *
 from .perlin_flow import *
 from .bandpass import *
 from .checkerboard_radial import *
+from .domain_warped_fbm import *
+from .wind_warped_blobs import *

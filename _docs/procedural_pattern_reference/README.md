@@ -310,3 +310,23 @@ This is used only by the end_viewer tool to display a title and has no effect on
 - __gamma:__ float (default: 2.0)
 - __fade_mult:__ float (default: 1.3)
 - __core_shrink:__ float (default: 0.8)
+
+
+### `"domain_warp_fbm"`
+
+- __seed:__ int (default: 0)
+- __name:__ str (default: "domain_warped_fbm")
+- __base_frequency:__ float (default: 0.01)
+- __octaves:__ int (default: 5)
+- __warp_strength:__ float (default: 60.0)
+- __contrast:__ float (default: 1.5)
+
+
+### `"wind_warped_blobs"`
+
+- __seed:__ int (default: 0)
+- __name:__ str (default: "wind_warped_blobs")
+- __blob_count:__ int (default: 35)
+- __blob_radius:__ float (default: 0.08)
+- __warp_strength:__ float (default: 1.5)
+- __wind_frequency:__ float (default: 0.4)
