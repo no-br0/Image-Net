@@ -40,6 +40,8 @@ PATTERN_REGISTRY = {
 	"perlin_flow": perlin_flow,
 	"bandpass": bandpass,
 	"checkerboard_radial": checkerboard_radial,
+	"domain_warped_fbm": domain_warped_fbm,
+	"wind_warped_blobs": wind_warped_blobs,
 }
 
 

@@ -8,14 +8,16 @@ from src.file_utils import get_folder_for_model, get_model_save_path, set_model_
 from src.helpers.tooling import publish_image
 from config.config import (
 	DEFAULT_MODEL_NAME,
-	HEIGHT,
-	WIDTH,
 )
 from main import build_display_stream
 from src.neural_net import NeuralNet
 import os
 import numpy as np
 import multiprocessing as mp
+
+
+WIDTH = 1920
+HEIGHT = 1080
 
 ENABLE_CUSTOM_MODEL_NAME = False
 ALLOW_DELETE = True
