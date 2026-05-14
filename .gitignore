@@ -23,18 +23,14 @@ _research/full/
 !_docs/model_config_guide/
 !_docs/multi_image_learning/
 !_docs/images/
-!_docs/procedural_pattern_reference
+!_docs/procedural_pattern_reference/
+!_docs/deterministic_experiment_usage_pattern/
 
-src/__pycache__/
-src/optimisers/__pycache__/
-src/losses/__pycache__/
-src/inputs/__pycache__/
-config/__pycache__/
-src/helpers/__pycache__/
-src/registries/__pycache__/
 .vscode/
 __pycache__/
 
 pattern_forge_outputs/
 runtime/*
 !runtime/.keep
+
+_experiments/_drafts
