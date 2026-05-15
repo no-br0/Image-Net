@@ -127,7 +127,8 @@ To resume a variant
 1. Ensure configuration matches the original run.
 2. Ensure training images inside `training/` match exactly.
 3. Enable `ENABLE_CUSTOM_MODEL_NAME`.
-4. Run `main.py` and enter the same model name.
+4. __Disable__ `FORCE_NEW_MODEL` so the existing model folder is not deleted.
+5. Run `main.py` and enter the same model name.
 
 The system loads `model.npz`, prunes telemetry newer than the save, and continues deterministically.
 
