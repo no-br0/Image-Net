@@ -18,7 +18,8 @@ def _act_name(fn):
 
 
 class NeuralNet:
-	def __init__(self, topology, model_name, learning_rate=0.0005,
+	def __init__(self, topology, model_name, patch_size,
+				learning_rate=0.0005,
 				hidden_activation_function=_ACT_MAP["relu"],
 				output_activation_function=_ACT_MAP["linear"],
 				grad_clip_norm=1.0, seed=42,
@@ -27,6 +28,7 @@ class NeuralNet:
 		self.topology = list(topology)
 		self.learning_rate = float(learning_rate)
 		self.model_name = model_name
+		self.patch_size = patch_size
 		
 		self.hidden_activation = (
 			_ACT_MAP[hidden_activation_function]
@@ -216,6 +218,7 @@ class NeuralNet:
 			"optimiser_state": self.optimiser.get_state(),
 			"seed": int(self.seed),
 			"model_name": str(self.model_name),
+			"patch_size": int(self.patch_size),
 		}
 		
 		
@@ -259,6 +262,8 @@ class NeuralNet:
 		o_act = npz["output_activation"].item()
 		
 		model_name = str(npz["model_name"])
+		patch_size = int(npz["patch_size"])
+
 
 		if "input_config" in npz:
 			input_config = npz["input_config"].tolist()
@@ -266,7 +271,7 @@ class NeuralNet:
 			with open(INPUT_CONFIG_PATH, "w") as f:
 				json.dump(input_config, f, indent=4)
 		
-		nn = NeuralNet(topology, model_name, lr, h_act, o_act, gcn, input_config=input_config)
+		nn = NeuralNet(topology, model_name, patch_size, lr, h_act, o_act, gcn, input_config=input_config)
 		nn.LOWEST_LOSS = float(npz["LOWEST_LOSS"])
 		nn.LOWEST_RAW_LOSS = float(npz["LOWEST_RAW_LOSS"])
 		nn.NORM_LOWEST_RAW_LOSS = float(npz["NORM_LOWEST_RAW_LOSS"])
@@ -329,6 +334,7 @@ class NeuralNet:
 			"weights": [to_cpu(W) for W in self.weights],
 			"bias": [to_cpu(b) for b in self.bias],
 			"model_name": self.model_name,
+			"patch_size": self.patch_size,
 		}
 
 	@classmethod
@@ -342,8 +348,9 @@ class NeuralNet:
 		o_act = state["output_activation"]
 		input_config = state["input_config"]
 		model_name = state["model_name"]
+		patch_size = state["patch_size"]
 
-		nn = NeuralNet(topology, model_name, lr, h_act, o_act, gcn, seed=state["seed"], input_config=input_config)
+		nn = NeuralNet(topology, model_name, patch_size, lr, h_act, o_act, gcn, seed=state["seed"], input_config=input_config)
 
 		nn.LOWEST_LOSS = state["LOWEST_LOSS"]
 		nn.LOWEST_RAW_LOSS = state["LOWEST_RAW_LOSS"]

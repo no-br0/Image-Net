@@ -108,13 +108,14 @@ The following remain identical:
 - learning rate
 - adaptive LR toggles
 - batch size
+- patch size
 - training image set and order
 - loss weights
 - procedural patterns and parameters
 - topology (except the final layer)
 - all other configuration values
 
-__The model save includes the full set of procedural patterns, their parameters, and the `HIDDEN_LAYER_TOPOLOGY`, ensuring these cannot drift when a model is loaded.__
+__The model save includes the procedural patterns, their parameters, the `HIDDEN_LAYER_TOPOLOGY`, and the `PATCH_SIZE`, ensuring these cannot drift when a model is loaded.__
 
 Deviation breaks deterministic comparability.
 
