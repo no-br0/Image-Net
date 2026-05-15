@@ -4,7 +4,7 @@ import os
 
 import cupy as cp
 from config.config import (
-	ENABLE_ROTATE_TARGET_IMAGE, HELDOUT_SEED, MULTI_IMAGE_COUNT, PATCH_SIZE, 
+	ENABLE_ROTATE_TARGET_IMAGE, HELDOUT_SEED, MULTI_IMAGE_COUNT,
 	ROTATE_TARGET_FREQ, SAVE_INTERVAL, USE_PAIR_COVERAGE_CYCLE,
 	)
 from src.registries.image_registry import get_image_path, get_registry_size, get_seed
@@ -18,14 +18,14 @@ from config.log_dir import SETTINGS_FILE
 
 def build_stream(input_config, model, batch_size):
 	images, pixel_offsets, global_indices = build_multi_image_dataset(
-		model, input_config, PATCH_SIZE
+		model, input_config
 	)
 
 	stream = make_neighbor_stream(
 		images,
 		pixel_offsets,
 		global_indices,
-		patch_size=PATCH_SIZE,
+		patch_size=model.patch_size,
 		batch_size=batch_size,
 	)
 	return stream
@@ -92,7 +92,7 @@ def build_image_dataset(image_id: int, input_config, patch_size):
 
 	
 
-def build_multi_image_dataset(model, input_config, patch_size: int):
+def build_multi_image_dataset(model, input_config):
 	reg_size = get_registry_size()
 
 	if not ENABLE_ROTATE_TARGET_IMAGE:
@@ -114,7 +114,7 @@ def build_multi_image_dataset(model, input_config, patch_size: int):
 	total_pixels = 0
 
 	for img_id in active_ids:
-		rec = build_image_dataset(img_id, input_config, patch_size)
+		rec = build_image_dataset(img_id, input_config, model.patch_size)
 		n_pix = rec["H"] * rec["W"]
 		pixel_offsets.append(total_pixels)
 		total_pixels += n_pix

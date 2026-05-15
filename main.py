@@ -84,8 +84,8 @@ def extract_patches_for_display(X_u8, Y_rgb, patch_size):
 	return P, T
 
 
-def build_display_stream(Y_rgb, input_config, H, W):
-	pad = PATCH_SIZE // 2
+def build_display_stream(Y_rgb, input_config, patch_size, H, W):
+	pad = patch_size // 2
 	H_proc = H  + (2*pad)
 	W_proc = W  + (2*pad)
 
@@ -95,7 +95,7 @@ def build_display_stream(Y_rgb, input_config, H, W):
 		"T": Y_rgb.reshape(-1, 3).astype(cp.float32),
 		"H": H,
 		"W": W,
-		"pad": PATCH_SIZE // 2,
+		"pad": patch_size // 2,
 	}
 
 	images = [rec]
@@ -106,7 +106,7 @@ def build_display_stream(Y_rgb, input_config, H, W):
 		images,
 		pixel_offsets,
 		global_indices,
-		patch_size=PATCH_SIZE,
+		patch_size=patch_size,
 		batch_size=BATCH_SIZE,
 	)
 
@@ -179,6 +179,7 @@ def main():
 		model = NeuralNet(
 			topology,
 			model_name,
+			PATCH_SIZE,
 			LEARNING_RATE,
 			HIDDEN_ACT,
 			OUTPUT_ACT,
@@ -203,7 +204,7 @@ def main():
 		
 		input_config = inject_input_seeds(model.input_config, HELDOUT_SEED)
 		
-		stream, _, _ = build_display_stream(Y_rgb, input_config, H, W)
+		stream, _, _ = build_display_stream(Y_rgb, input_config, model.patch_size, H, W)
 
 		settings = {}
 		settings["MODEL_SAVE_PATH"] = MODEL_SAVE_PATH
@@ -312,7 +313,7 @@ def main():
 			H, W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
 
 			input_config = inject_input_seeds(model.input_config, HELDOUT_SEED)
-			stream, channel_names, X_u8 = build_display_stream(Y_rgb, input_config, H, W)
+			stream, channel_names, X_u8 = build_display_stream(Y_rgb, input_config, model.patch_size, H, W)
 
 
 			img_list = []
