@@ -114,7 +114,7 @@ The following remain identical:
 - topology (except the final layer)
 - all other configuration values
 
-__The model save includes the full set of procedural patterns and their parameters, ensuring these cannot drift when a model is loaded.__
+__The model save includes the full set of procedural patterns, their parameters, and the `HIDDEN_LAYER_TOPOLOGY`, ensuring these cannot drift when a model is loaded.__
 
 Deviation breaks deterministic comparability.
 
