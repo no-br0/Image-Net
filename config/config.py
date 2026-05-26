@@ -23,6 +23,12 @@ ENABLE_CUSTOM_RESOLUTION = False
 HEIGHT = 720
 WIDTH = 1280
 
+# --- Snapshot Settings ---
+
+# Note: Snapshots should be taken sparingly due to storage and epoch time considerations
+ENABLE_SNAPSHOTS = False
+SNAPSHOT_INTERVAL = 200 # Epochs
+
 # --- Settings ---
 # some useful values to use, but any value can be used.
 # (2048, 1792, 1536, 1280, 1024, 960, 768, 512, 384, 256, 192, 128)

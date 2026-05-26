@@ -1,19 +1,15 @@
 import shutil
-from src.registries.image_registry import get_image_path, get_registry_size
-from src.registries.pattern_registry import inject_input_seeds
+from src.registries.image_registry import get_registry_size
 from src.cooling import post_epoch_cooling
-from src.data_utils import generate_display_dimensions, load_rgb_image
-from src.display_utils import predict_full_from_stream
 from src.file_utils import get_folder_for_model, get_model_save_path, set_model_folder
-from src.helpers.tooling import publish_image
 from config.config import (
 	DEFAULT_MODEL_NAME,
 )
-from main import build_display_stream
 from src.neural_net import NeuralNet
 import os
 import numpy as np
 import multiprocessing as mp
+from src.helpers.probe import worker_process
 
 
 WIDTH = 1920
@@ -32,33 +28,10 @@ NUM_PROBE_IMAGES = 5
 CUSTOM_HELDOUT_LIST = [0, 500, 1000, 1500, 2000]
 
 
-def build_stream(image_id, pattern_cfg, is_training_image):
-	TRAIN_IMAGE_PATH = get_image_path(image_id)
-	
-	if is_training_image:
-		Y_rgb = load_rgb_image(TRAIN_IMAGE_PATH)
-	else:
-		Y_rgb = generate_display_dimensions(WIDTH, HEIGHT)
-
-	H,W = int(Y_rgb.shape[0]), int(Y_rgb.shape[1])
-	input_config = inject_input_seeds(pattern_cfg, image_id)
-
-	stream, _, _ = build_display_stream(Y_rgb, input_config, H, W)
-	
-	return stream
-
-
-def worker_process(image_id, state, output_folder, is_training_image):
-	model = NeuralNet.from_state(state)
-	stream = build_stream(image_id, model.input_config, is_training_image)
-	pred, _ = predict_full_from_stream(model, stream)
-	publish_image(pred, str(image_id), output_folder)
-
-
 def run_single_worker(image_id, state, output_folder, is_training_image):
 	p = mp.Process(
 		target=worker_process,
-		args=(image_id, state, output_folder, is_training_image)
+		args=(image_id, state, output_folder, is_training_image, WIDTH, HEIGHT)
 	)
 	p.start()
 	p.join()

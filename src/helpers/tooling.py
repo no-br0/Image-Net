@@ -1,7 +1,12 @@
+from config.config import BATCH_SIZE
+from src.data_utils import make_neighbor_stream
+from src.registries.pattern_registry import build_input_stack
 from src.backend_cupy import to_cpu
 import numpy as np
 import os
 from PIL import Image
+import cupy as cp
+
 
 
 
@@ -34,3 +39,35 @@ def publish_image(arr, name, dir):
 
 	Image.fromarray(img).save(path)
 	print(f'[Publish Image] published image "{name}" to "{dir}"')
+
+
+
+def build_display_stream(Y_rgb, input_config, patch_size, H, W):
+	pad = patch_size // 2
+	H_proc = H  + (2*pad)
+	W_proc = W  + (2*pad)
+
+	X_u8, channel_names = build_input_stack(H_proc, W_proc, input_config)
+	rec = {
+		"X": X_u8.astype(cp.float32),
+		"T": Y_rgb.reshape(-1, 3).astype(cp.float32),
+		"H": H,
+		"W": W,
+		"pad": patch_size // 2,
+	}
+
+	images = [rec]
+	pixel_offsets = cp.asarray([0], dtype=cp.int64)
+	global_indices = cp.arange(H * W, dtype=cp.int64)
+
+	stream = make_neighbor_stream(
+		images,
+		pixel_offsets,
+		global_indices,
+		patch_size=patch_size,
+		batch_size=BATCH_SIZE,
+	)
+
+	stream.set_epoch(shuffle=False)
+	
+	return stream, channel_names, X_u8
