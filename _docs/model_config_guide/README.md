@@ -271,6 +271,21 @@ Directory where models are saved.
 
 Save model every N epochs.
 
+---
+
+### 1.7 Snapshot Settings
+
+__Important:__<br>
+Snapshots should be taken sparingly due to file size adding up quickly and snapshots making epochs significantly longer.<br>
+A snapshot involves generating an image for each training image at the given epoch.
+
+#### `ENABLE_SNAPSHOTS`
+
+Toggles the snapshot feature.
+
+#### `SNAPSHOT_INTERVAL`
+
+How often in epochs a snapshot should be taken.
 
 ## 2. `pattern_config.py` — Procedural Input Basis
 

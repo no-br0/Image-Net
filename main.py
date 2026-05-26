@@ -2,11 +2,11 @@
 import os, json, time, shutil
 import cupy as cp
 from config.config import (
-	ENABLE_CUSTOM_RESOLUTION, ENABLE_LIVE_VIEWER, EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, 
+	ENABLE_CUSTOM_RESOLUTION, ENABLE_LIVE_VIEWER, ENABLE_SNAPSHOTS, EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, 
 	HEIGHT, HELDOUT_SEED, HIDDEN_LAYER_TOPOLOGY,
 	PATCH_SIZE, OUTPUT_ACT, HIDDEN_ACT, LEARNING_RATE,
 	GRAD_CLIP, MODEL_SEED, FORCE_NEW_MODEL, DEFAULT_MODEL_NAME,
-	LOSS_NAME, TRAIN, LIVE_UPDATE_INTERVAL,
+	LOSS_NAME, SNAPSHOT_INTERVAL, TRAIN, LIVE_UPDATE_INTERVAL,
 	ENABLE_CUSTOM_MODEL_NAME, ENABLE_END_VIEWER, WIDTH, WORKER_CHUNK_SIZE
 )
 from config.log_dir import ( 
@@ -14,7 +14,7 @@ from config.log_dir import (
 	CURRENT_MODEL_NAME_PATH,
 	SETTINGS_FILE
 	)
-from src.registries.pattern_registry import build_input_stack, inject_input_seeds  # optional, not used here
+from src.registries.pattern_registry import build_input_stack, inject_input_seeds
 from src.neural_net import NeuralNet
 from src.data_utils import generate_display_dimensions, load_rgb_image, make_neighbor_stream
 from src.registries.image_registry import get_image_path
@@ -36,6 +36,8 @@ from src.file_utils import (
 	get_epoch_time_path,
 	get_gpu_path,
 )
+from src.helpers.tooling import build_display_stream
+from src.helpers.snapshot import snapshot
 
 # -------- Utilities --------
 def flush_pool():
@@ -84,35 +86,6 @@ def extract_patches_for_display(X_u8, Y_rgb, patch_size):
 	return P, T
 
 
-def build_display_stream(Y_rgb, input_config, patch_size, H, W):
-	pad = patch_size // 2
-	H_proc = H  + (2*pad)
-	W_proc = W  + (2*pad)
-
-	X_u8, channel_names = build_input_stack(H_proc, W_proc, input_config)
-	rec = {
-		"X": X_u8.astype(cp.float32),
-		"T": Y_rgb.reshape(-1, 3).astype(cp.float32),
-		"H": H,
-		"W": W,
-		"pad": patch_size // 2,
-	}
-
-	images = [rec]
-	pixel_offsets = cp.asarray([0], dtype=cp.int64)
-	global_indices = cp.arange(H * W, dtype=cp.int64)
-
-	stream = make_neighbor_stream(
-		images,
-		pixel_offsets,
-		global_indices,
-		patch_size=patch_size,
-		batch_size=BATCH_SIZE,
-	)
-
-	stream.set_epoch(shuffle=False)
-	
-	return stream, channel_names, X_u8
 
 
 def save_model_name(model_name):
@@ -272,11 +245,18 @@ def main():
 						
 						pe_sleep_time = post_epoch_cooling(model, model.GLOBAL_EPOCH)
 
+						ss_start = time.perf_counter()
+						if ENABLE_SNAPSHOTS and model.GLOBAL_EPOCH % SNAPSHOT_INTERVAL == 0:
+							snapshot(model, model_folder)
+						ss_end = time.perf_counter()
+						snapshot_time = ss_end - ss_start
+
+						timing["epoch_breakdown"]["snapshot_time"] = snapshot_time
 						timing["epoch_breakdown"]["callback_time"] = callback_time
 						timing["epoch_breakdown"]["sleep_time"] += sleep_time
 						timing["epoch_breakdown"]["sleep_time"] += pe_sleep_time
 						timing["epoch_breakdown"]["sleep_time"] += pd_sleep_time
-						timing["epoch_time"] += callback_time + sleep_time + pe_sleep_time + pd_sleep_time
+						timing["epoch_time"] += callback_time + sleep_time + pe_sleep_time + pd_sleep_time + snapshot_time
 
 						with open(TIME_LOG_PATH, "a") as f:
 							f.write(json.dumps(timing) + "\n")
