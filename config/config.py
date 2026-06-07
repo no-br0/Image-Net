@@ -27,6 +27,7 @@ WIDTH = 1280
 
 # Note: Snapshots should be taken sparingly due to storage and epoch time considerations
 ENABLE_SNAPSHOTS = False
+ENABLE_MODEL_SNAPSHOTS = False
 SNAPSHOT_INTERVAL = 200 # Epochs
 
 # --- Settings ---

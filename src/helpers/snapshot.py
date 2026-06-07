@@ -21,3 +21,8 @@ def snapshot(model, model_folder):
 	for i in range(1, get_registry_size() + 1):
 		run_single_worker(i, model.to_state(), SNAPSHOT_FOLDER)
 		post_epoch_cooling(model, model.GLOBAL_EPOCH)
+
+
+def model_snapshot(model, model_folder):
+	SNAPSHOT_FOLDER = os.path.join(model_folder, FOLDER_NAME, str(model.GLOBAL_EPOCH), "model")
+	model.save(SNAPSHOT_FOLDER)

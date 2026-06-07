@@ -2,7 +2,7 @@
 import os, json, time, shutil
 import cupy as cp
 from config.config import (
-	ENABLE_CUSTOM_RESOLUTION, ENABLE_LIVE_VIEWER, ENABLE_SNAPSHOTS, EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, 
+	ENABLE_CUSTOM_RESOLUTION, ENABLE_LIVE_VIEWER, ENABLE_MODEL_SNAPSHOTS, ENABLE_SNAPSHOTS, EPOCHS, BATCH_SIZE, ENABLE_SHUFFLE, 
 	HEIGHT, HELDOUT_SEED, HIDDEN_LAYER_TOPOLOGY,
 	PATCH_SIZE, OUTPUT_ACT, HIDDEN_ACT, LEARNING_RATE,
 	GRAD_CLIP, MODEL_SEED, FORCE_NEW_MODEL, DEFAULT_MODEL_NAME,
@@ -37,7 +37,7 @@ from src.file_utils import (
 	get_gpu_path,
 )
 from src.helpers.tooling import build_display_stream
-from src.helpers.snapshot import snapshot
+from src.helpers.snapshot import model_snapshot, snapshot
 
 # -------- Utilities --------
 def flush_pool():
@@ -248,6 +248,8 @@ def main():
 						ss_start = time.perf_counter()
 						if ENABLE_SNAPSHOTS and model.GLOBAL_EPOCH % SNAPSHOT_INTERVAL == 0:
 							snapshot(model, model_folder)
+						if ENABLE_MODEL_SNAPSHOTS and model.GLOBAL_EPOCH % SNAPSHOT_INTERVAL == 0:
+							model_snapshot(model, model_folder)
 						ss_end = time.perf_counter()
 						snapshot_time = ss_end - ss_start
 
