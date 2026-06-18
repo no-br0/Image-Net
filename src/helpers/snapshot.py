@@ -24,5 +24,6 @@ def snapshot(model, model_folder):
 
 
 def model_snapshot(model, model_folder):
-	SNAPSHOT_FOLDER = os.path.join(model_folder, FOLDER_NAME, str(model.GLOBAL_EPOCH), "model")
-	model.save(SNAPSHOT_FOLDER)
+	SNAPSHOT_FOLDER = os.path.join(model_folder, FOLDER_NAME, str(model.GLOBAL_EPOCH))
+	os.makedirs(SNAPSHOT_FOLDER, exist_ok=True)
+	model.save(os.path.join(SNAPSHOT_FOLDER, "model"))
