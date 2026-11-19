@@ -1,6 +1,7 @@
 from .legacy import *
 from .mse import *
 from .mae import *
+from .exp import *
 #from .mae.maxe import *
 #from .mae.mae_luma import *
 #from .mae.mae_shadow import *

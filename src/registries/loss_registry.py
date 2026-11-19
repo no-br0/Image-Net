@@ -165,4 +165,7 @@ LOSS_REGISTRY = {
 	"mse_luma_bias": mse_luma_bias,
 	"mse_luma_suppress": mse_luma_suppressed,
 	
+
+	"exp_decay": exp_decay,
+	"exp_growth": exp_growth,
 }
