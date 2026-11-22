@@ -33,3 +33,14 @@ from .bandpass import *
 from .checkerboard_radial import *
 from .domain_warped_fbm import *
 from .wind_warped_blobs import *
+from .log_polar import *
+from .fm_synth import *
+from .ridged_trig import *
+from .worley_ridge import *
+from .voronoi_l1 import *
+from .xor_fractal import *
+from .truchet_maze import *
+from .quasirandom_r2 import *
+from .turing_spots import *
+from .prime_hash import *
+from .z_order_curve import *
