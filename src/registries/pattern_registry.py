@@ -42,6 +42,18 @@ PATTERN_REGISTRY = {
 	"checkerboard_radial": checkerboard_radial,
 	"domain_warped_fbm": domain_warped_fbm,
 	"wind_warped_blobs": wind_warped_blobs,
+	
+	"log_polar": log_polar,
+	"fm_synth": fm_synth,
+	"voronoi_l1": voronoi_l1,
+	"worley_ridge": worley_ridge,
+	"truchet_maze": truchet_maze,
+	"ridged_trig": ridged_trig,
+	"xor_fractal": xor_fractal,
+	"prime_hash": prime_hash,
+	"turing_spots": turing_spots,
+	"quasirandom_r2": quasirandom_r2,
+	"z_order_curve": z_order_curve
 }
 
 

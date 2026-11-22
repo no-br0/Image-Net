@@ -168,4 +168,6 @@ LOSS_REGISTRY = {
 
 	"exp_decay": exp_decay,
 	"exp_growth": exp_growth,
+	"mse_scaled": mse_scaled,
+	"exp_decay_5": exp_decay_5,
 }
