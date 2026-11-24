@@ -409,3 +409,13 @@ This is used only by the end_viewer tool to display a title and has no effect on
 - __seed:__ int (default: 0)
 - __name:__ str (default: "z_order_curve")
 
+
+### `"grid_varied"`
+
+- __seed:__ int (default: 0)
+- __min_spacing:__ int (default: 1)
+- __max_spacing:__ int (default: 8)
+- __min_thickness:__ int (default: 1)
+- __max_thickness:__ int (default: 3)
+- __invert:__ bool (default: False)
+- __name:__ str (default: "grid_varied")

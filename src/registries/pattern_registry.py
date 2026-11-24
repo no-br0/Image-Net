@@ -53,7 +53,8 @@ PATTERN_REGISTRY = {
 	"prime_hash": prime_hash,
 	"turing_spots": turing_spots,
 	"quasirandom_r2": quasirandom_r2,
-	"z_order_curve": z_order_curve
+	"z_order_curve": z_order_curve,
+	"grid_varied": grid_varied,
 }
 
 
