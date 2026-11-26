@@ -44,3 +44,6 @@ from .quasirandom_r2 import *
 from .turing_spots import *
 from .prime_hash import *
 from .z_order_curve import *
+from .grid_varied import *
+from .unbound import *
+from .fractal_fast import fractal_fast

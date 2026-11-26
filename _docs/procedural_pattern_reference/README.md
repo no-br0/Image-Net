@@ -330,3 +330,92 @@ This is used only by the end_viewer tool to display a title and has no effect on
 - __blob_radius:__ float (default: 0.08)
 - __warp_strength:__ float (default: 1.5)
 - __wind_frequency:__ float (default: 0.4)
+
+
+### `"log_polar"`
+
+- __seed:__ int (default: 0)
+- __radial_freq:__ float (default: 12.0)
+- __name:__ str (default: "log_polar")
+
+
+### `"fm_synth"`
+
+- __seed:__ int (default: 0)
+- __frequency:__ float (default: 14.0)
+- __mod_depth:__ float (default: 4.5)
+- __name:__ str (default: "fm_synth")
+
+
+### `"voronoi_l1"`
+
+- __seed:__ int (default: 0)
+- __n_pts:__ int (default: 48)
+- __name:__ str (default: "voronoi_l1")
+
+
+### `"worley_ridge"`
+
+- __seed:__ int (default: 0)
+- __n_pts:__ int (default: 42)
+- __sharpness:__ float (default: 6.0)
+- __name:__ str (default: "worley_ridge")
+
+
+### `"truchet_maze"`
+
+- __seed:__ int (default: 0)
+- __cells:__ int (default: 20)
+- __name:__ str (default: "truchet_maze")
+
+
+### `"ridged_trig"`
+
+- __seed:__ int (default: 0)
+- __octaves:__ int (default: 5)
+- __frequency:__ float (default: 3.5)
+- __name:__ str (default: "ridged_trig")
+
+
+### `"xor_fractal"`
+
+- __seed:__ int (default: 0)
+- __mod:__ int (default: 17)
+- __name:__ str (default: "xor_fractal")
+
+
+### `"prime_hash"`
+
+- __seed:__ int (default: 0)
+- __name:__ str (default: "prime_hash")
+
+
+### `"turing_spots"`
+
+- __seed:__ int (default: 0)
+- __r_small:__ int (default: 2)
+- __r_large:__ int (default: 8)
+- __name:__ str (default: "turing_spots")
+
+
+### `"quasirandom_r2"`
+
+- __seed:__ int (default: 0)
+- __name:__ str (default: "quasirandom_r2")
+
+
+### `"z_order_curve"`
+
+- __seed:__ int (default: 0)
+- __name:__ str (default: "z_order_curve")
+
+
+### `"grid_varied"`
+
+- __seed:__ int (default: 0)
+- __min_spacing:__ int (default: 1)
+- __max_spacing:__ int (default: 8)
+- __min_thickness:__ int (default: 1)
+- __max_thickness:__ int (default: 3)
+- __invert:__ bool (default: False)
+- __name:__ str (default: "grid_varied")
