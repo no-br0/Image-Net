@@ -62,6 +62,8 @@ BATCH_SIZE	  	 = 32768
 
 #BATCH_SIZE      = 24576
 #BATCH_SIZE      = 163840
+ENABLE_GROUP_BATCHING = True #splits the batch into groups of size "BATCH_GROUP_SIZE", only the group with the highest loss value is used for backprop among that batch
+GROUP_BATCH_SIZE = 5000
 ENABLE_SHUFFLE         = True
 EPOCHS          = 20
 

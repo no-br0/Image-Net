@@ -7,6 +7,85 @@ from src.losses import *
 
 
 
+def select_highest_loss_group(target, pred, group_size):
+	"""
+	Evaluates all groups of `group_size` in parallel on the GPU using the exact
+	formulas and weights in LOSS_CONFIG, returning (start_idx, end_idx) of
+	the highest-loss group with zero per-group CPU syncs.
+	"""
+	n_samples = pred.shape[0]
+	full_groups = n_samples // group_size
+	remainder = n_samples % group_size
+
+	if full_groups == 0:
+		return 0, n_samples
+
+	# Zero-copy reshape on GPU into (num_groups, group_size, ...)
+	t_full = target[:full_groups * group_size].reshape(full_groups, group_size, *target.shape[1:])
+	p_full = pred[:full_groups * group_size].reshape(full_groups, group_size, *pred.shape[1:])
+
+	diff = p_full - t_full
+	abs_diff_smooth = cp.sqrt(diff * diff + 1e-6)
+	reduce_axes = tuple(range(1, diff.ndim))
+	max_range = 255.0
+
+	fast_group_fns = {
+		"mae": lambda: cp.mean(cp.abs(diff), axis=reduce_axes),
+		"mse_scaled": lambda: cp.mean(diff ** 2, axis=reduce_axes) / max_range,
+		"exp_decay_5": lambda: cp.mean(
+			max_range * (1.0 - cp.exp(-(5.0 / max_range) * abs_diff_smooth)),
+			axis=reduce_axes
+		),
+		"exp_growth": lambda: cp.mean(
+			max_range * ((cp.exp((3.0 / max_range) * abs_diff_smooth) - 1.0) / (cp.exp(3.0) - 1.0)),
+			axis=reduce_axes
+		),
+	}
+
+	raw_group_vals = []
+	for loss_name, default_weight in LOSS_CONFIG:
+		if loss_name in fast_group_fns:
+			g_vals = fast_group_fns[loss_name]()  # shape (full_groups,) on GPU
+		else:
+			# Automatic fallback if you ever enable a spatial/custom loss in LOSS_CONFIG
+			loss_fn = LOSS_REGISTRY[loss_name]
+			g_vals = cp.stack([
+				cp.asarray(loss_fn(t_full[g], p_full[g], derivative=False))
+				for g in range(full_groups)
+			])
+
+		if remainder > 0:
+			loss_fn = LOSS_REGISTRY[loss_name]
+			rem_val = cp.asarray(loss_fn(
+				target[full_groups * group_size:],
+				pred[full_groups * group_size:],
+				derivative=False
+			)).reshape(1)
+			g_vals = cp.concatenate([g_vals, rem_val])
+
+		raw_group_vals.append((default_weight, g_vals))
+
+	# Exact weighting (static or adaptive) across all groups in parallel on GPU
+	stacked_vals = cp.stack([v for _, v in raw_group_vals], axis=0)  # (num_losses, total_groups)
+
+	if ENABLE_ADAPTIVE_LOSS_WEIGHTING:
+		eps = 1e-8
+		weights = cp.power(cp.log(stacked_vals + 1.0 + eps), LOSS_WEIGHTING_POWER_SCALE)
+		weights = weights / cp.sum(weights, axis=0, keepdims=True)
+	else:
+		w_vec = cp.array([w for w, _ in raw_group_vals], dtype=cp.float32)[:, None]
+		weights = w_vec / cp.sum(w_vec)
+
+	total_group_losses = cp.sum(weights * stacked_vals, axis=0)  # shape (total_groups,)
+	best_idx = int(cp.argmax(total_group_losses))
+
+	best_start = best_idx * group_size
+	best_end = min(best_start + group_size, n_samples)
+	return best_start, best_end
+
+
+
+
 # ==============================
 # Combined loss and registry
 # ==============================
