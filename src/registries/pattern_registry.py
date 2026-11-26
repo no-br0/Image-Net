@@ -55,6 +55,8 @@ PATTERN_REGISTRY = {
 	"quasirandom_r2": quasirandom_r2,
 	"z_order_curve": z_order_curve,
 	"grid_varied": grid_varied,
+	"fractal_fast": fractal_fast,
+	"fractal_infinite": fractal_infinite,
 }
 
 
