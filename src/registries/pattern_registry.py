@@ -57,6 +57,7 @@ PATTERN_REGISTRY = {
 	"grid_varied": grid_varied,
 	"fractal_fast": fractal_fast,
 	"fractal_infinite": fractal_infinite,
+	"voronoi_segmentation_infinite": voronoi_segmentation_infinite,
 }
 
 
