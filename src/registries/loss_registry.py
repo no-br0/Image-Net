@@ -65,7 +65,7 @@ def select_top_n_loss_groups(target, pred, group_size, top_n=1):
 		raw_group_vals.append((default_weight, g_vals))
 
 	# Exact weighting (static or adaptive) across all groups in parallel on GPU
-	stacked_vals = cp.stack([v for _, v in raw_group_vals], axis=0)
+	stacked_vals = cp.stack([v for _, v in raw_group_vals], axis=0)  # (num_losses, total_groups)
 
 	if ENABLE_ADAPTIVE_LOSS_WEIGHTING:
 		eps = 1e-8
@@ -75,28 +75,35 @@ def select_top_n_loss_groups(target, pred, group_size, top_n=1):
 		w_vec = cp.array([w for w, _ in raw_group_vals], dtype=cp.float32)[:, None]
 		weights = w_vec / cp.sum(w_vec)
 
-	total_group_losses = cp.sum(weights * stacked_vals, axis=0)  # shape (total_groups,)
+	total_group_losses = cp.sum(weights * stacked_vals, axis=0)      # weighted total per group (for ranking)
+	raw_group_totals = cp.sum(stacked_vals, axis=0)                  # unweighted raw total per group
 	total_groups = total_group_losses.shape[0]
+
+	# Sample-weighted raw total across all groups (handles uneven remainder group accurately)
+	group_sizes = cp.full((full_groups,), group_size, dtype=cp.float32)
+	if remainder > 0:
+		group_sizes = cp.concatenate([group_sizes, cp.array([remainder], dtype=cp.float32)])
+	size_weights = group_sizes / cp.sum(group_sizes)
+
+	full_total_raw_loss = float(cp.sum(raw_group_totals * size_weights))
+
 	k = max(1, min(int(top_n), total_groups))
 
-	# Fast path when top_n == 1 (avoids full sort and uses zero-copy slice bounds)
 	if k == 1:
 		best_idx = int(cp.argmax(total_group_losses))
 		best_start = best_idx * group_size
 		best_end = min(best_start + group_size, n_samples)
-		return slice(best_start, best_end)
+		return slice(best_start, best_end), full_total_raw_loss
 
-	# Top-N selection on GPU: grab indices of the k highest-loss groups
 	top_group_indices = cp.argsort(total_group_losses)[-k:]
-
-	# Build sample index array on GPU for all selected groups (handles variable remainder size cleanly)
 	idx_chunks = []
 	for g_idx in top_group_indices.tolist():
 		g_start = g_idx * group_size
 		g_end = min(g_start + group_size, n_samples)
 		idx_chunks.append(cp.arange(g_start, g_end, dtype=cp.int32))
 
-	return cp.concatenate(idx_chunks)
+	return cp.concatenate(idx_chunks), full_total_raw_loss
+
 
 
 

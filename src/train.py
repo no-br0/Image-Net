@@ -50,6 +50,7 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	}
 
 	total_loss = None  # defined even if no batches
+	full_raw_loss_sum = 0.0
 
 	shuffle_start = time.perf_counter()
 	stream.set_epoch(shuffle, seed=(model.seed + model.GLOBAL_EPOCH))
@@ -77,7 +78,9 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 
 		# Group Batching: select top-N highest-loss groups and slice existing forward caches
 		if model.ENABLE_GROUP_BATCHING and xb.shape[0] > model.GROUP_BATCH_SIZE:
-			sel = select_top_n_loss_groups(yb, out, model.GROUP_BATCH_SIZE, top_n=model.TOP_N_GROUPS)
+			sel, batch_full_raw_loss = select_top_n_loss_groups(
+					yb, out, model.GROUP_BATCH_SIZE, top_n=model.TOP_N_GROUPS
+			)
 			xb_train = xb[sel]
 			yb_train = yb[sel]
 			out_train = out[sel]
@@ -87,6 +90,7 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 			xb_train = xb
 			yb_train = yb
 			out_train = out
+			batch_full_raw_loss = None
 
 
 		
@@ -126,6 +130,8 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 		
 		for k, v in raw_loss.items():
 			raw_totals[k] += float(v)
+		
+		full_raw_loss_sum += float(batch_full_raw_loss) if batch_full_raw_loss is not None else float(sum(raw_loss.values()))
 
 		cp.cuda.Device().synchronize()
 		compute_end = time.perf_counter()
@@ -149,6 +155,7 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	
 	total_loss = sum(v for k, v in avg_breakdown.items())
 	total_raw_loss = sum(v for k, v in avg_raw_breakdown.items())
+	full_total_raw_loss = full_raw_loss_sum / max(1, batches)
 	
 	avg_elems_per_sample = total_elements / total_samples
 	norm_total_raw_loss = total_raw_loss / avg_elems_per_sample
@@ -252,6 +259,7 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 			"loss_delta": float(loss_delta),
 			"curvature": float(curvature),
 			"total_raw_loss": float(total_raw_loss),
+			"full_total_raw_loss": float(full_total_raw_loss),
 			"raw_loss_delta": float(raw_loss_delta),
 			"raw_loss_curvature": float(raw_loss_curvature),
 			"abs_raw_loss_delta": float(abs_raw_loss_delta),
