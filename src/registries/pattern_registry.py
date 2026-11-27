@@ -58,6 +58,9 @@ PATTERN_REGISTRY = {
 	"fractal_fast": fractal_fast,
 	"fractal_infinite": fractal_infinite,
 	"voronoi_segmentation_infinite": voronoi_segmentation_infinite,
+	"perlin_infinite": perlin_infinite,
+	"grid_varied_infinite": grid_varied_infinite,
+	"curl_noise_flow_infinite": curl_noise_flow_infinite,
 }
 
 

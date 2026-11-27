@@ -84,6 +84,13 @@ class TelemetryViewer(tk.Tk):
 		self._last_break_visible = set()
 		self._last_acc_visible = set()
 
+		self._last_loss_visible = set()
+		self.visible_loss_keys = {
+			"Total Raw Loss": BooleanVar(value=True),
+			"Full Total Raw Loss": BooleanVar(value=True),
+		}
+
+
 		self.visible_break_keys = {}
 		self.visible_deriv_keys = {}
 		self.visible_acc_keys = {}
@@ -164,13 +171,16 @@ class TelemetryViewer(tk.Tk):
 		#self.dropdown_bar.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=6)
 		#self.dropdown_bar.pack_propagate(False)
 
+		self.loss_button = tk.Button(self.dropdown_bar, text="Total Loss ▼", bg="#1e1e1e", fg="white", activebackground="#2a2a2a", activeforeground="white", command=self._open_loss_dropdown)
 		self.break_button = tk.Button(self.dropdown_bar, text="Breakdown ▼", bg="#1e1e1e", fg="white", activebackground="#2a2a2a", activeforeground="white", command=self._open_break_dropdown)
 		self.deriv_button = tk.Button(self.dropdown_bar, text="Derivatives ▼", bg="#1e1e1e", fg="white", activebackground="#2a2a2a", activeforeground="white", command=self._open_deriv_dropdown)
 		self.acc_button = tk.Button(self.dropdown_bar, text="Accuracy ▼", bg="#1e1e1e", fg="white", activebackground="#2a2a2a", activeforeground="white", command=self._open_acc_dropdown)
 
+		self.loss_button.pack(side=tk.LEFT, padx=6)
 		self.break_button.pack(side=tk.LEFT, padx=6)
 		self.deriv_button.pack(side=tk.LEFT, padx=6)
 		self.acc_button.pack(side=tk.LEFT, padx=6)
+
 		
 		
 	def _redraw_all(self):
@@ -226,26 +236,38 @@ class TelemetryViewer(tk.Tk):
 		win.bind("<FocusOut>", lambda e: win.destroy())
 		win.focus_set()
 
+	def _open_loss_dropdown(self):
+		self._open_dropdown(self.loss_button, self.visible_loss_keys, lambda: (
+			self._update_master(),
+			self.panel_loss.ax.relim(),
+			self.panel_loss.ax.autoscale_view(),
+			self.panel_loss.draw_idle(),
+		), "Total Loss Toggles")
+
+
 	def _open_break_dropdown(self):
-		self._open_dropdown(self.break_button, self.visible_break_keys, lambda:(self._update_breakdown(), 
-																				self.panel_break.ax.relim(),
-																				self.panel_break.ax.autoscale_view(),
-																				self.panel_break.draw_idle(),
-																				), "Breakdown Toggles")
+		self._open_dropdown(self.break_button, self.visible_break_keys, lambda: (
+			self._update_breakdown(), 
+			self.panel_break.ax.relim(),
+			self.panel_break.ax.autoscale_view(),
+			self.panel_break.draw_idle(),
+		), "Breakdown Toggles")
 
 	def _open_deriv_dropdown(self):
-		self._open_dropdown(self.deriv_button, self.visible_deriv_keys, lambda:(self._update_derivatives(),
-																				self.panel_deriv.ax.relim(),	
-																				self.panel_deriv.ax.autoscale_view(), 
-																				self.panel_deriv.draw_idle(),
-																				), "Derivative Toggles")
+		self._open_dropdown(self.deriv_button, self.visible_deriv_keys, lambda: (
+			self._update_derivatives(),
+			self.panel_deriv.ax.relim(),	
+			self.panel_deriv.ax.autoscale_view(), 
+			self.panel_deriv.draw_idle(),
+		), "Derivative Toggles")
 
 	def _open_acc_dropdown(self):
-		self._open_dropdown(self.acc_button, self.visible_acc_keys, lambda:(self._update_accuracy(), 
-																			self.panel_acc.ax.relim(),
-																			self.panel_acc.ax.autoscale_view(),
-																			self.panel_acc.draw_idle(),
-																			), "Accuracy Toggles")
+		self._open_dropdown(self.acc_button, self.visible_acc_keys, lambda: (
+			self._update_accuracy(), 
+			self.panel_acc.ax.relim(),
+			self.panel_acc.ax.autoscale_view(),
+			self.panel_acc.draw_idle(),
+		), "Accuracy Toggles")
 
 	def _sync_epoch_range(self):
 		if self.df.empty:
@@ -266,44 +288,100 @@ class TelemetryViewer(tk.Tk):
 			self.line_raw_loss.set_ydata([])
 			self.min_loss_dot.set_xdata([])
 			self.min_loss_dot.set_ydata([])
+			self.line_full_raw_loss.set_xdata([])
+			self.line_full_raw_loss.set_ydata([])
+			self.min_full_loss_dot.set_xdata([])
+			self.min_full_loss_dot.set_ydata([])
+			self.gap_badge.set_text("")
+			self.gap_badge.set_visible(False)
+
 			return
 
 		df = self.df[(self.df["global_epoch"] >= self.slider_start) & (self.df["global_epoch"] <= self.slider_end)]
-		self.line_raw_loss.set_xdata(df["global_epoch"])
-		self.line_raw_loss.set_ydata(df["total_raw_loss"])
+		visible_now = set()
+		handles = []
 
-		if not df.empty:
+		# 1. Top-N / Targeted Total Raw Loss
+		if self.visible_loss_keys["Total Raw Loss"].get() and not df.empty:
+			self.line_raw_loss.set_xdata(df["global_epoch"])
+			self.line_raw_loss.set_ydata(df["total_raw_loss"])
 			min_idx = df["total_raw_loss"].idxmin()
-			min_epoch = df.loc[min_idx, "global_epoch"]
-			min_value = df.loc[min_idx, "total_raw_loss"]
-			self.min_loss_dot.set_xdata([min_epoch])
-			self.min_loss_dot.set_ydata([min_value])
+			self.min_loss_dot.set_xdata([df.loc[min_idx, "global_epoch"]])
+			self.min_loss_dot.set_ydata([df.loc[min_idx, "total_raw_loss"]])
+			visible_now.add("Total Raw Loss")
+			handles.extend([self.line_raw_loss, self.min_loss_dot])
 		else:
+			self.line_raw_loss.set_xdata([])
+			self.line_raw_loss.set_ydata([])
 			self.min_loss_dot.set_xdata([])
 			self.min_loss_dot.set_ydata([])
+
+		# 2. Full-Image Total Raw Loss (safely skipped if missing in legacy logs)
+		has_full_col = "full_total_raw_loss" in df.columns and df["full_total_raw_loss"].notna().any()
+		if self.visible_loss_keys["Full Total Raw Loss"].get() and has_full_col and not df.empty:
+			valid_full = df.dropna(subset=["full_total_raw_loss"])
+			self.line_full_raw_loss.set_xdata(valid_full["global_epoch"])
+			self.line_full_raw_loss.set_ydata(valid_full["full_total_raw_loss"])
+			min_full_idx = valid_full["full_total_raw_loss"].idxmin()
+			self.min_full_loss_dot.set_xdata([valid_full.loc[min_full_idx, "global_epoch"]])
+			self.min_full_loss_dot.set_ydata([valid_full.loc[min_full_idx, "full_total_raw_loss"]])
+			visible_now.add("Full Total Raw Loss")
+			handles.extend([self.line_full_raw_loss, self.min_full_loss_dot])
+		else:
+			self.line_full_raw_loss.set_xdata([])
+			self.line_full_raw_loss.set_ydata([])
+			self.min_full_loss_dot.set_xdata([])
+			self.min_full_loss_dot.set_ydata([])
+
+		# 3. Start -> End Percentage Gap Readout for current slider window
+		if has_full_col and not df.empty:
+			valid_gap = df.dropna(subset=["total_raw_loss", "full_total_raw_loss"])
+			valid_gap = valid_gap[valid_gap["full_total_raw_loss"] > 0]
+			if not valid_gap.empty:
+				gap_pct = ((valid_gap["total_raw_loss"] - valid_gap["full_total_raw_loss"]) / valid_gap["full_total_raw_loss"]) * 100.0
+				start_pct = float(gap_pct.iloc[0])
+				end_pct = float(gap_pct.iloc[-1])
+				delta_pct = end_pct - start_pct
+				self.gap_badge.set_text(f"Loss Gap: {start_pct:.2f}% → {end_pct:.2f}% ({delta_pct:+.2f}%)")
+				self.gap_badge.set_visible(True)
+			else:
+				self.gap_badge.set_text("")
+				self.gap_badge.set_visible(False)
+		else:
+			self.gap_badge.set_text("")
+			self.gap_badge.set_visible(False)
+
 
 		self.panel_loss.ax.relim()
 		self.panel_loss.ax.autoscale_view()
 
 		show = self.show_legends_var.get()
-
-		if show and (show != self._last_show_legends):
-			handles = [self.line_raw_loss, self.min_loss_dot]
-			labels = [ln.get_label() for ln in handles]
+		if show and (visible_now != self._last_loss_visible or show != self._last_show_legends):
 			if self.panel_loss.ax.legend_:
 				self.panel_loss.ax.legend_.remove()
-			self.panel_loss.ax.legend(handles, labels, facecolor="black", edgecolor="white", labelcolor="white")
+			if handles:
+				labels = [ln.get_label() for ln in handles]
+				self.panel_loss.ax.legend(handles, labels, facecolor="black", edgecolor="white", labelcolor="white")
 		elif not show and self.panel_loss.ax.legend_ and show != self._last_show_legends:
 			self.panel_loss.ax.legend_.remove()
 
+		self._last_loss_visible = visible_now
 		self._last_show_legends = show
-
 
 
 	def _init_plot_lines(self):
 		self.line_raw_loss, = self.panel_loss.ax.plot([], [], label="Total Raw Loss", color="#66ccff")
-		self.min_loss_dot, = self.panel_loss.ax.plot([], [], 'o', color='red', markersize=6, label="Min Loss")
+		self.min_loss_dot, = self.panel_loss.ax.plot([], [], 'o', color='red', markersize=6, label="Min Loss (Top-N)")
+		self.line_full_raw_loss, = self.panel_loss.ax.plot([], [], label="Full Total Raw Loss", color="#ffaa44")
+		self.min_full_loss_dot, = self.panel_loss.ax.plot([], [], 'o', color='#00ff88', markersize=6, label="Min Loss (Full)")
+		self.gap_badge = self.panel_loss.ax.text(
+			0.015, 0.94, "", transform=self.panel_loss.ax.transAxes,
+			color="#bb88ff", fontsize=9, fontweight="bold", verticalalignment="top",
+			bbox=dict(boxstyle="round,pad=0.3", facecolor="#141414", edgecolor="#bb88ff", alpha=0.85)
+		)
+
 		self.panel_loss.ax.legend(facecolor="black", edgecolor="white", labelcolor="white")
+
 
 		self.deriv_lines = {}
 		self.deriv_map = {
@@ -365,6 +443,16 @@ class TelemetryViewer(tk.Tk):
 				self.line_raw_loss.set_ydata([])
 				self.min_loss_dot.set_xdata([])
 				self.min_loss_dot.set_ydata([])
+				self.line_full_raw_loss.set_xdata([])
+				self.line_full_raw_loss.set_ydata([])
+				self.min_full_loss_dot.set_xdata([])
+				self.min_full_loss_dot.set_ydata([])
+				self._last_loss_visible = set()
+
+				self.gap_badge.set_text("")
+				self.gap_badge.set_visible(False)
+
+
 
 				if self.panel_loss.ax.legend_:
 					self.panel_loss.ax.legend_.remove()

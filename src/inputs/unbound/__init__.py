@@ -1,2 +1,5 @@
 from .fractal_infinite import fractal_infinite
 from .voronoi_segmentation_infinite import voronoi_segmentation_infinite
+from .perlin_infinite import perlin_infinite
+from .grid_varied_infinite import grid_varied_infinite
+from .curl_noise_flow_infinite import curl_noise_flow_infinite

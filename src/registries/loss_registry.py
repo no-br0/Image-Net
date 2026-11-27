@@ -7,6 +7,112 @@ from src.losses import *
 
 
 
+def select_top_n_loss_groups(target, pred, group_size, top_n=1):
+	"""
+	Evaluates all groups of `group_size` in parallel on the GPU using the exact
+	formulas and weights in LOSS_CONFIG, and returns a 1D CuPy array of sample
+	indices belonging to the top `top_n` highest-loss groups.
+	"""
+	n_samples = pred.shape[0]
+	full_groups = n_samples // group_size
+	remainder = n_samples % group_size
+
+	if full_groups == 0:
+		return cp.arange(n_samples, dtype=cp.int32)
+
+	# Zero-copy reshape on GPU into (num_groups, group_size, ...)
+	t_full = target[:full_groups * group_size].reshape(full_groups, group_size, *target.shape[1:])
+	p_full = pred[:full_groups * group_size].reshape(full_groups, group_size, *pred.shape[1:])
+
+	diff = p_full - t_full
+	abs_diff_smooth = cp.sqrt(diff * diff + 1e-6)
+	reduce_axes = tuple(range(1, diff.ndim))
+	max_range = 255.0
+
+	fast_group_fns = {
+		"mae": lambda: cp.mean(cp.abs(diff), axis=reduce_axes),
+		"mse_scaled": lambda: cp.mean(diff ** 2, axis=reduce_axes) / max_range,
+		"exp_decay_5": lambda: cp.mean(
+			max_range * (1.0 - cp.exp(-(5.0 / max_range) * abs_diff_smooth)),
+			axis=reduce_axes
+		),
+		"exp_growth": lambda: cp.mean(
+			max_range * ((cp.exp((3.0 / max_range) * abs_diff_smooth) - 1.0) / (cp.exp(3.0) - 1.0)),
+			axis=reduce_axes
+		),
+	}
+
+	raw_group_vals = []
+	for loss_name, default_weight in LOSS_CONFIG:
+		if loss_name in fast_group_fns:
+			g_vals = fast_group_fns[loss_name]()  # shape (full_groups,) on GPU
+		else:
+			loss_fn = LOSS_REGISTRY[loss_name]
+			g_vals = cp.stack([
+				cp.asarray(loss_fn(t_full[g], p_full[g], derivative=False))
+				for g in range(full_groups)
+			])
+
+		if remainder > 0:
+			loss_fn = LOSS_REGISTRY[loss_name]
+			rem_val = cp.asarray(loss_fn(
+				target[full_groups * group_size:],
+				pred[full_groups * group_size:],
+				derivative=False
+			)).reshape(1)
+			g_vals = cp.concatenate([g_vals, rem_val])
+
+		raw_group_vals.append((default_weight, g_vals))
+
+	# Exact weighting (static or adaptive) across all groups in parallel on GPU
+	stacked_vals = cp.stack([v for _, v in raw_group_vals], axis=0)  # (num_losses, total_groups)
+
+	if ENABLE_ADAPTIVE_LOSS_WEIGHTING:
+		eps = 1e-8
+		weights = cp.power(cp.log(stacked_vals + 1.0 + eps), LOSS_WEIGHTING_POWER_SCALE)
+		weights = weights / cp.sum(weights, axis=0, keepdims=True)
+	else:
+		w_vec = cp.array([w for w, _ in raw_group_vals], dtype=cp.float32)[:, None]
+		weights = w_vec / cp.sum(w_vec)
+
+	total_group_losses = cp.sum(weights * stacked_vals, axis=0)      # weighted total per group (for ranking)
+	raw_group_totals = cp.sum(stacked_vals, axis=0)                  # unweighted raw total per group
+	total_groups = total_group_losses.shape[0]
+
+	# Sample-weighted raw total across all groups (handles uneven remainder group accurately)
+	group_sizes = cp.full((full_groups,), group_size, dtype=cp.float32)
+	if remainder > 0:
+		group_sizes = cp.concatenate([group_sizes, cp.array([remainder], dtype=cp.float32)])
+	size_weights = group_sizes / cp.sum(group_sizes)
+
+	full_total_raw_loss = float(cp.sum(raw_group_totals * size_weights))
+
+	k = max(1, min(int(top_n), total_groups))
+
+	if k == 1:
+		best_idx = int(cp.argmax(total_group_losses))
+		best_start = best_idx * group_size
+		best_end = min(best_start + group_size, n_samples)
+		return slice(best_start, best_end), full_total_raw_loss
+
+	top_group_indices = cp.argpartition(total_group_losses, -k)[-k:].astype(cp.int32)
+
+	# Pure GPU 2D broadcast: (k, 1) * group_size + (1, group_size) -> (k * group_size,)
+	offsets = cp.arange(group_size, dtype=cp.int32)
+	sel_idx = (top_group_indices[:, None] * group_size + offsets[None, :]).ravel()
+
+	# Filter out any out-of-bounds indices if the uneven remainder group was selected
+	if remainder > 0:
+		sel_idx = sel_idx[sel_idx < n_samples]
+
+	return sel_idx, full_total_raw_loss
+
+
+
+
+
+
+
 # ==============================
 # Combined loss and registry
 # ==============================

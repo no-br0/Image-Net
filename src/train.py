@@ -1,9 +1,12 @@
 # train.py
-from config.config import (LOWEST_LOSS_THRESHOLD,
-						LR_DECREASE_MULTIPLIER, LR_INCREASE_MULTIPLIER,
-						MAX_LEARNING_RATE, MIN_LEARNING_RATE, ENABLE_ADAPTIVE_LR, 
-						ADAPTIVE_LR_INVERTED)
-from src.registries.loss_registry import combined_loss, wrapped_combined_loss
+from config.config import (
+	LOWEST_LOSS_THRESHOLD,
+	LR_DECREASE_MULTIPLIER, LR_INCREASE_MULTIPLIER,
+	MAX_LEARNING_RATE, MIN_LEARNING_RATE, ENABLE_ADAPTIVE_LR,
+	ADAPTIVE_LR_INVERTED,
+	ENABLE_GROUP_BATCHING, GROUP_BATCH_SIZE
+)
+from src.registries.loss_registry import combined_loss, wrapped_combined_loss, select_top_n_loss_groups
 import cupy as cp, numpy as np
 import time
 from collections import defaultdict
@@ -47,6 +50,7 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	}
 
 	total_loss = None  # defined even if no batches
+	full_raw_loss_sum = 0.0
 
 	shuffle_start = time.perf_counter()
 	stream.set_epoch(shuffle, seed=(model.seed + model.GLOBAL_EPOCH))
@@ -59,6 +63,7 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	
 	total_elements = 0
 	total_samples = 0
+
 	# --- generate and consume batches inline ---
 	for xb, yb in stream.iter_minibatches(batch_size):
 		cp.cuda.Device().synchronize()
@@ -70,9 +75,27 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 		
 		batches += 1
 		model.batch_index = batches
+
+		# Group Batching: select top-N highest-loss groups and slice existing forward caches
+		if model.ENABLE_GROUP_BATCHING and xb.shape[0] > model.GROUP_BATCH_SIZE:
+			sel, batch_full_raw_loss = select_top_n_loss_groups(
+					yb, out, model.GROUP_BATCH_SIZE, top_n=model.TOP_N_GROUPS
+			)
+			xb_train = xb[sel]
+			yb_train = yb[sel]
+			out_train = out[sel]
+			model.netIns = [arr[sel] for arr in model.netIns]
+			model.netOuts = [arr[sel] for arr in model.netOuts]
+		else:
+			xb_train = xb
+			yb_train = yb
+			out_train = out
+			batch_full_raw_loss = None
+
+
 		
 		try:
-			acc = compute_accuracy_metrics(out, yb)
+			acc = compute_accuracy_metrics(out_train, yb_train)
 			accum_acc["binary_overall"] += acc["binary_overall"]
 			accum_acc["binary_per_channel"] += np.array(acc["binary_per_channel"], dtype=np.float64)
 			accum_acc["continuous_overall"] += acc["continuous_overall"]
@@ -81,34 +104,35 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 			print(f"[warn] accuracy computation failed: {e}")
 
 		if error_func is wrapped_combined_loss:
-			total_loss, breakdown, raw_loss = combined_loss(out, yb)
+			total_loss, breakdown, raw_loss = combined_loss(yb_train, out_train)
 			model.previous_loss = model.current_loss
 			model.current_loss = total_loss
-			model.backprop(yb, out, error_func=wrapped_combined_loss)
+			model.backprop(yb_train, out_train, error_func=wrapped_combined_loss)
 		else:
-			total_loss, breakdown = error_func(yb, out)
+			total_loss, breakdown = error_func(yb_train, out_train)
+			raw_loss = breakdown  # fallback if custom error_func only returns 2 items
 			model.previous_loss = model.current_loss
 			model.current_loss = total_loss
-			model.backprop(yb, out, error_func=error_func)
+			model.backprop(yb_train, out_train, error_func=error_func)
 
-		
-		if xb.ndim == 2:
-			elems_per_sample = xb.shape[1]
-		elif xb.ndim == 4:
-			elems_per_sample = xb.shape[2] * xb.shape[3]
+		if xb_train.ndim == 2:
+			elems_per_sample = xb_train.shape[1]
+		elif xb_train.ndim == 4:
+			elems_per_sample = xb_train.shape[1] * xb_train.shape[2] * xb_train.shape[3]
 		else:
-			raise ValueError(f"Unexpected xb shape: {xb.shape}")
+			raise ValueError(f"Unexpected xb shape: {xb_train.shape}")
 		
-		total_elements += elems_per_sample * xb.shape[0]
-		total_samples += xb.shape[0]
+		total_elements += elems_per_sample * xb_train.shape[0]
+		total_samples += xb_train.shape[0]
 		
 		for k, v in breakdown.items():
 			totals[k] += float(v)
 		
 		for k, v in raw_loss.items():
 			raw_totals[k] += float(v)
-
 		
+		full_raw_loss_sum += float(batch_full_raw_loss) if batch_full_raw_loss is not None else float(sum(raw_loss.values()))
+
 		cp.cuda.Device().synchronize()
 		compute_end = time.perf_counter()
 		compute_time += (compute_end - compute_start)
@@ -117,7 +141,7 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 
 		cp.cuda.Device().synchronize()
 		prep_start = time.perf_counter()
-		
+
 	# Average loss components over batches
 	avg_breakdown = {k: v / max(1, batches) for k, v in totals.items()}
 	avg_raw_breakdown = {k: v / max(1, batches) for k, v in raw_totals.items()}
@@ -131,11 +155,10 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	
 	total_loss = sum(v for k, v in avg_breakdown.items())
 	total_raw_loss = sum(v for k, v in avg_raw_breakdown.items())
-	
+	full_total_raw_loss = full_raw_loss_sum / max(1, batches)
 	
 	avg_elems_per_sample = total_elements / total_samples
 	norm_total_raw_loss = total_raw_loss / avg_elems_per_sample
-	
 	
 	lr_prct = (model.learning_rate - MIN_LEARNING_RATE) / (MAX_LEARNING_RATE - MIN_LEARNING_RATE)
 	
@@ -148,10 +171,8 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 		previous_loss_delta = loss_delta
 		
 	curvature = loss_delta - previous_loss_delta
-	
 
 	# --- Raw loss log ---
-	
 	if previous_raw_breakdown is None:
 		previous_raw_breakdown = avg_raw_breakdown.copy()
 	raw_breakdown_delta = {k: avg_raw_breakdown[k] - previous_raw_breakdown[k] for k in avg_raw_breakdown}
@@ -162,15 +183,12 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	
 	total_raw_loss = sum(avg_raw_breakdown.values())
 	
-	
-	
 	if previous_raw_loss is None:
 		previous_raw_loss = total_raw_loss
 	if previous_raw_loss_delta is None:
 		previous_raw_loss_delta = 0.0
 	if previous_abs_raw_loss_delta is None:
 		previous_abs_raw_loss_delta = 0.0
-	
 
 	raw_loss_delta = total_raw_loss - previous_raw_loss
 	abs_raw_loss_delta = abs(total_raw_loss - previous_raw_loss)
@@ -178,11 +196,9 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	abs_raw_loss_curvature = abs(raw_loss_delta - previous_raw_loss_delta)
 	abs_delta_abs_delta_raw = abs(abs_raw_loss_delta - previous_abs_raw_loss_delta)
 	raw_loss_rel_delta = (raw_loss_delta / (previous_raw_loss + 1e-8)) * 100
-	
 
 	# --- Adaptive Learning Rate ---
 	if ENABLE_ADAPTIVE_LR:
-
 		if NORM_LOWEST_RAW_LOSS is not None:
 			if (norm_total_raw_loss < NORM_LOWEST_RAW_LOSS) ^ ADAPTIVE_LR_INVERTED:
 				model.learning_rate *= (1 + LR_INCREASE_MULTIPLIER)
@@ -207,24 +223,16 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 		if norm_total_raw_loss < NORM_LOWEST_RAW_LOSS:
 			NORM_LOWEST_RAW_LOSS = norm_total_raw_loss
 			model.NORM_LOWEST_RAW_LOSS = NORM_LOWEST_RAW_LOSS
-				
 		
 	# --- Lowest-loss milestone ---
 	if LOWEST_RAW_LOSS is None or total_raw_loss < LOWEST_RAW_LOSS:
 		LOWEST_LOSS_EPOCH = model.GLOBAL_EPOCH
-		if LOWEST_RAW_LOSS is None:
-			LOWEST_RAW_LOSS = total_raw_loss
 		LOWEST_RAW_LOSS = total_raw_loss
 		model.LOWEST_RAW_LOSS = LOWEST_RAW_LOSS
 			
-			
 	if LOWEST_LOSS is None or total_loss < LOWEST_LOSS:
-		if LOWEST_LOSS is None:
-			LOWEST_LOSS = total_loss
 		LOWEST_LOSS = total_loss
 		model.LOWEST_LOSS = LOWEST_LOSS
-
-
 
 	model.PREVIOUS_LOSS = total_loss
 	model.PREVIOUS_RAW_LOSS = total_raw_loss
@@ -233,7 +241,6 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	model.PREVIOUS_ABS_RAW_LOSS_DELTA = abs_raw_loss_delta
 	model.PREVIOUS_RAW_BREAKDOWN = avg_raw_breakdown.copy()
 	model.PREVIOUS_RAW_BREAKDOWN_DELTA = raw_breakdown_delta.copy()
-	
 
 	# --- Timing stats ---
 	epoch_time = time.perf_counter() - t0
@@ -241,10 +248,7 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 	total_time += epoch_time
 	
 	telemetry_start = time.perf_counter()
-	
-	
 	model.optimiser.log_epoch_telemetry(model.GLOBAL_EPOCH)
-	
 	
 	if telemetry_logger is not None and telemetry_logger.enabled:
 		epoch_metrics = {
@@ -255,6 +259,7 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 			"loss_delta": float(loss_delta),
 			"curvature": float(curvature),
 			"total_raw_loss": float(total_raw_loss),
+			"full_total_raw_loss": float(full_total_raw_loss),
 			"raw_loss_delta": float(raw_loss_delta),
 			"raw_loss_curvature": float(raw_loss_curvature),
 			"abs_raw_loss_delta": float(abs_raw_loss_delta),
@@ -266,15 +271,11 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 			"raw_breakdown": {k: float(v) for k, v in avg_raw_breakdown.items()},
 			"raw_breakdown_delta": {k: float(v) for k, v in raw_breakdown_delta.items()},
 			"raw_breakdown_curvature": {k: float(v) for k, v in raw_breakdown_curvature.items()},
-
 		}
-
 		telemetry_logger.log(epoch_metrics)
 	
 	telemetry_end = time.perf_counter()
 	telemetry_time = telemetry_end - telemetry_start
-
-
 
 	timing_log = {
 		"global_epoch": model.GLOBAL_EPOCH,
@@ -289,17 +290,6 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 			"sleep_time": sleep_time
 		}
 	}
-	
-	previous_raw_breakdown_delta = raw_breakdown_delta.copy()
-	previous_raw_breakdown = avg_raw_breakdown.copy()
-	previous_loss = total_loss
-	previous_raw_loss = total_raw_loss
-	previous_loss_delta = loss_delta
-	previous_raw_loss_delta = raw_loss_delta
-	previous_abs_raw_loss_delta = abs_raw_loss_delta
-		
-		
-	# used to prevent kernel queuing   
-	cp.cuda.Device().synchronize()
 
+	cp.cuda.Device().synchronize()
 	return timing_log
