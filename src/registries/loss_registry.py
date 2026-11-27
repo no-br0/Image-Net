@@ -95,14 +95,18 @@ def select_top_n_loss_groups(target, pred, group_size, top_n=1):
 		best_end = min(best_start + group_size, n_samples)
 		return slice(best_start, best_end), full_total_raw_loss
 
-	top_group_indices = cp.argsort(total_group_losses)[-k:]
-	idx_chunks = []
-	for g_idx in top_group_indices.tolist():
-		g_start = g_idx * group_size
-		g_end = min(g_start + group_size, n_samples)
-		idx_chunks.append(cp.arange(g_start, g_end, dtype=cp.int32))
+	top_group_indices = cp.argsort(total_group_losses)[-k:].astype(cp.int32)
 
-	return cp.concatenate(idx_chunks), full_total_raw_loss
+	# Pure GPU 2D broadcast: (k, 1) * group_size + (1, group_size) -> (k * group_size,)
+	offsets = cp.arange(group_size, dtype=cp.int32)
+	sel_idx = (top_group_indices[:, None] * group_size + offsets[None, :]).ravel()
+
+	# Filter out any out-of-bounds indices if the uneven remainder group was selected
+	if remainder > 0:
+		sel_idx = sel_idx[sel_idx < n_samples]
+
+	return sel_idx, full_total_raw_loss
+
 
 
 
