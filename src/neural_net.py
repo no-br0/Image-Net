@@ -2,7 +2,10 @@
 from src.backend_cupy import to_device, to_cpu, _ACT_MAP
 from src.losses import mse
 from config.log_dir import SAVE_ERROR_LOG_PATH, INPUT_CONFIG_PATH
-from config.config import ENABLE_SET_LR, LEARNING_RATE, OPTIMISER, ENABLE_GROUP_BATCHING, GROUP_BATCH_SIZE
+from config.config import (
+		ENABLE_SET_LR, LEARNING_RATE, OPTIMISER, 
+		ENABLE_GROUP_BATCHING, GROUP_BATCH_SIZE, TOP_N_GROUPS
+)
 import json, os
 from src.registries.optimiser_registry import OPTIMISER_REGISTRY
 import cupy as cp
@@ -79,6 +82,7 @@ class NeuralNet:
 		self.GLOBAL_EPOCH:int = 0
 		self.ENABLE_GROUP_BATCHING:bool = bool(ENABLE_GROUP_BATCHING)
 		self.GROUP_BATCH_SIZE:int = int(GROUP_BATCH_SIZE)
+		self.TOP_N_GROUPS = int(TOP_N_GROUPS)
 		
 		self.PREVIOUS_LOSS = None
 		self.PREVIOUS_RAW_LOSS = None
@@ -223,6 +227,7 @@ class NeuralNet:
 			"patch_size": int(self.patch_size),
 			"ENABLE_GROUP_BATCHING": bool(self.ENABLE_GROUP_BATCHING),
 			"GROUP_BATCH_SIZE": int(self.GROUP_BATCH_SIZE),
+			"TOP_N_GROUPS": int(self.TOP_N_GROUPS),
 		}
 		
 		
@@ -299,6 +304,11 @@ class NeuralNet:
 		else:
 			nn.GROUP_BATCH_SIZE = GROUP_BATCH_SIZE
 
+		if "TOP_N_GROUPS" in npz:
+			nn.TOP_N_GROUPS = int(npz["TOP_N_GROUPS"])
+		else:
+			nn.TOP_N_GROUPS = 1
+
 
 		if "GLOBAL_EPOCH" in npz:
 			nn.GLOBAL_EPOCH = int(npz["GLOBAL_EPOCH"])
@@ -352,6 +362,7 @@ class NeuralNet:
 			"patch_size": self.patch_size,
 			"ENABLE_GROUP_BATCHING": bool(self.ENABLE_GROUP_BATCHING),
 			"GROUP_BATCH_SIZE": int(self.GROUP_BATCH_SIZE),
+			"TOP_N_GROUPS": int(self.TOP_N_GROUPS),
 		}
 
 	@classmethod
@@ -381,6 +392,7 @@ class NeuralNet:
 		nn.PREVIOUS_ABS_RAW_LOSS_DELTA = state["PREVIOUS_ABS_RAW_LOSS_DELTA"]
 		nn.ENABLE_GROUP_BATCHING = bool(state["ENABLE_GROUP_BATCHING"])
 		nn.GROUP_BATCH_SIZE = int(state["GROUP_BATCH_SIZE"])
+		nn.TOP_N_GROUPS = int(state["TOP_N_GROUPS"])
 
 		nn.GLOBAL_EPOCH = int(state["GLOBAL_EPOCH"])
 		nn.seed = state["seed"]

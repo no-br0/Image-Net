@@ -6,7 +6,7 @@ from config.config import (
 	ADAPTIVE_LR_INVERTED,
 	ENABLE_GROUP_BATCHING, GROUP_BATCH_SIZE
 )
-from src.registries.loss_registry import combined_loss, wrapped_combined_loss, select_highest_loss_group
+from src.registries.loss_registry import combined_loss, wrapped_combined_loss, select_top_n_loss_groups
 import cupy as cp, numpy as np
 import time
 from collections import defaultdict
@@ -75,18 +75,19 @@ def train_streaming(model, stream, batch_size, shuffle=True,
 		batches += 1
 		model.batch_index = batches
 
-		# Group Batching: single-pass GPU selection + slice existing forward caches
-		if ENABLE_GROUP_BATCHING and xb.shape[0] > GROUP_BATCH_SIZE:
-			g_start, g_end = select_highest_loss_group(yb, out, GROUP_BATCH_SIZE)
-			xb_train = xb[g_start:g_end]
-			yb_train = yb[g_start:g_end]
-			out_train = out[g_start:g_end]
-			model.netIns = [arr[g_start:g_end] for arr in model.netIns]
-			model.netOuts = [arr[g_start:g_end] for arr in model.netOuts]
+		# Group Batching: select top-N highest-loss groups and slice existing forward caches
+		if model.ENABLE_GROUP_BATCHING and xb.shape[0] > model.GROUP_BATCH_SIZE:
+			sel = select_top_n_loss_groups(yb, out, model.GROUP_BATCH_SIZE, top_n=model.TOP_N_GROUPS)
+			xb_train = xb[sel]
+			yb_train = yb[sel]
+			out_train = out[sel]
+			model.netIns = [arr[sel] for arr in model.netIns]
+			model.netOuts = [arr[sel] for arr in model.netOuts]
 		else:
 			xb_train = xb
 			yb_train = yb
 			out_train = out
+
 
 		
 		try:
