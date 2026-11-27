@@ -40,15 +40,7 @@ FORCE_NEW_MODEL     = True
 MODEL_SEED          = 42       	# Set to None for random seed
 ENABLE_SET_LR       = False
 LEARNING_RATE       = 0.00001	#0.00020 # 2e-6
-MAX_LEARNING_RATE   = 1e-4
-MIN_LEARNING_RATE   = 1e-8
-ENABLE_ADAPTIVE_LR              = False
-LR_INCREASE_MULTIPLIER          = 0.002
-LR_DECREASE_MULTIPLIER          = 0.004979
-LOWEST_LOSS_THRESHOLD           = 0.01
-# flips the adaptive LR logic so that it increases LR when loss gets worse and 
-# decreases LR when it gets better, instead of the opposite
-ADAPTIVE_LR_INVERTED 			= False
+
 
 
 GRAD_CLIP                       = 1.0

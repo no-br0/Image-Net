@@ -77,22 +77,12 @@ class NeuralNet:
 		self.current_loss = None
 		self.previous_loss = None
 
-		self.LOWEST_LOSS = None
-		self.LOWEST_RAW_LOSS = None
-		self.NORM_LOWEST_RAW_LOSS = None
 		self.GLOBAL_EPOCH:int = 0
 		self.ENABLE_GROUP_BATCHING:bool = bool(ENABLE_GROUP_BATCHING)
 		self.GROUP_BATCH_SIZE:int = int(GROUP_BATCH_SIZE)
 		self.TOP_N_GROUPS = int(TOP_N_GROUPS)
 		self.BATCH_SIZE = BATCH_SIZE
 		
-		self.PREVIOUS_LOSS = None
-		self.PREVIOUS_RAW_LOSS = None
-		self.PREVIOUS_LOSS_DELTA = None
-		self.PREVIOUS_RAW_LOSS_DELTA = None
-		self.PREVIOUS_RAW_BREAKDOWN = None
-		self.PREVIOUS_RAW_BREAKDOWN_DELTA = None
-		self.PREVIOUS_ABS_RAW_LOSS_DELTA = None
 
 
 	def _init_weights_and_biases(self):
@@ -208,21 +198,11 @@ class NeuralNet:
 		data = {
 			"GLOBAL_EPOCH": int(self.GLOBAL_EPOCH),
 			"input_config": np.array(self.input_config, dtype=object),
-			"LOWEST_LOSS": float(self.LOWEST_LOSS),
-			"LOWEST_RAW_LOSS": float(self.LOWEST_RAW_LOSS),
-			"NORM_LOWEST_RAW_LOSS": float(self.NORM_LOWEST_RAW_LOSS),
 			"topology": np.array(self.topology, dtype=np.int32),
 			"learning_rate": float(self.learning_rate),
 			"grad_clip_norm": float(self.grad_clip_norm if self.grad_clip_norm is not None else -1),
 			"hidden_activation": _act_name(self.hidden_activation),
 			"output_activation": _act_name(self.output_activation),
-			"PREVIOUS_LOSS": float(self.PREVIOUS_LOSS),
-			"PREVIOUS_RAW_LOSS": float(self.PREVIOUS_RAW_LOSS),
-			"PREVIOUS_LOSS_DELTA": float(self.PREVIOUS_LOSS_DELTA),
-			"PREVIOUS_RAW_LOSS_DELTA": float(self.PREVIOUS_RAW_LOSS_DELTA),
-			"PREVIOUS_RAW_BREAKDOWN": {k: float(v) for k, v in self.PREVIOUS_RAW_BREAKDOWN.items()} if self.PREVIOUS_RAW_BREAKDOWN else None,
-			"PREVIOUS_RAW_BREAKDOWN_DELTA": {k: float(v) for k, v in self.PREVIOUS_RAW_BREAKDOWN_DELTA.items()} if self.PREVIOUS_RAW_BREAKDOWN_DELTA else None,
-			"PREVIOUS_ABS_RAW_LOSS_DELTA": float(self.PREVIOUS_ABS_RAW_LOSS_DELTA),
 			"optimiser_state": self.optimiser.get_state(),
 			"seed": int(self.seed),
 			"model_name": str(self.model_name),
@@ -284,18 +264,6 @@ class NeuralNet:
 				json.dump(input_config, f, indent=4)
 		
 		nn = NeuralNet(topology, model_name, patch_size, lr, h_act, o_act, gcn, input_config=input_config)
-		nn.LOWEST_LOSS = float(npz["LOWEST_LOSS"])
-		nn.LOWEST_RAW_LOSS = float(npz["LOWEST_RAW_LOSS"])
-		nn.NORM_LOWEST_RAW_LOSS = float(npz["NORM_LOWEST_RAW_LOSS"])
-		nn.PREVIOUS_LOSS = float(npz["PREVIOUS_LOSS"])
-		nn.PREVIOUS_RAW_LOSS = float(npz["PREVIOUS_RAW_LOSS"])
-		nn.PREVIOUS_LOSS_DELTA = float(npz["PREVIOUS_LOSS_DELTA"])
-		nn.PREVIOUS_RAW_LOSS_DELTA = float(npz["PREVIOUS_RAW_LOSS_DELTA"])
-		raw = npz["PREVIOUS_RAW_BREAKDOWN"].item()
-		nn.PREVIOUS_RAW_BREAKDOWN = {k: float(v) for k, v in raw.items()}
-		raw_delta = npz["PREVIOUS_RAW_BREAKDOWN_DELTA"].item()
-		nn.PREVIOUS_RAW_BREAKDOWN_DELTA = {k: float(v) for k, v in raw_delta.items()}
-		nn.PREVIOUS_ABS_RAW_LOSS_DELTA = npz["PREVIOUS_ABS_RAW_LOSS_DELTA"].item()
 		
 		if "ENABLE_GROUP_BATCHING" in npz:
 			nn.ENABLE_GROUP_BATCHING = bool(npz["ENABLE_GROUP_BATCHING"])
@@ -347,21 +315,11 @@ class NeuralNet:
 		return {
 			"GLOBAL_EPOCH": int(self.GLOBAL_EPOCH),
 			"input_config": self.input_config,
-			"LOWEST_LOSS": float(self.LOWEST_LOSS) if self.LOWEST_LOSS is not None else None,
-			"LOWEST_RAW_LOSS": float(self.LOWEST_RAW_LOSS) if self.LOWEST_RAW_LOSS is not None else None,
-			"NORM_LOWEST_RAW_LOSS": float(self.NORM_LOWEST_RAW_LOSS) if self.NORM_LOWEST_RAW_LOSS is not None else None,
 			"topology": list(self.topology),
 			"learning_rate": float(self.learning_rate),
 			"grad_clip_norm": float(self.grad_clip_norm if self.grad_clip_norm is not None else -1),
 			"hidden_activation": _act_name(self.hidden_activation),
 			"output_activation": _act_name(self.output_activation),
-			"PREVIOUS_LOSS": float(self.PREVIOUS_LOSS) if self.PREVIOUS_LOSS is not None else None,
-			"PREVIOUS_RAW_LOSS": float(self.PREVIOUS_RAW_LOSS) if self.PREVIOUS_RAW_LOSS is not None else None,
-			"PREVIOUS_LOSS_DELTA": float(self.PREVIOUS_LOSS_DELTA) if self.PREVIOUS_LOSS_DELTA is not None else None,
-			"PREVIOUS_RAW_LOSS_DELTA": float(self.PREVIOUS_RAW_LOSS_DELTA) if self.PREVIOUS_RAW_LOSS_DELTA is not None else None,
-			"PREVIOUS_RAW_BREAKDOWN": self.PREVIOUS_RAW_BREAKDOWN,
-			"PREVIOUS_RAW_BREAKDOWN_DELTA": self.PREVIOUS_RAW_BREAKDOWN_DELTA,
-			"PREVIOUS_ABS_RAW_LOSS_DELTA": float(self.PREVIOUS_ABS_RAW_LOSS_DELTA) if self.PREVIOUS_ABS_RAW_LOSS_DELTA is not None else None,
 			"optimiser_state": self.optimiser.get_state(),
 			"seed": int(self.seed),
 			"weights": [to_cpu(W) for W in self.weights],
@@ -389,16 +347,6 @@ class NeuralNet:
 
 		nn = NeuralNet(topology, model_name, patch_size, lr, h_act, o_act, gcn, seed=state["seed"], input_config=input_config)
 
-		nn.LOWEST_LOSS = state["LOWEST_LOSS"]
-		nn.LOWEST_RAW_LOSS = state["LOWEST_RAW_LOSS"]
-		nn.NORM_LOWEST_RAW_LOSS = state["NORM_LOWEST_RAW_LOSS"]
-		nn.PREVIOUS_LOSS = state["PREVIOUS_LOSS"]
-		nn.PREVIOUS_RAW_LOSS = state["PREVIOUS_RAW_LOSS"]
-		nn.PREVIOUS_LOSS_DELTA = state["PREVIOUS_LOSS_DELTA"]
-		nn.PREVIOUS_RAW_LOSS_DELTA = state["PREVIOUS_RAW_LOSS_DELTA"]
-		nn.PREVIOUS_RAW_BREAKDOWN = state["PREVIOUS_RAW_BREAKDOWN"]
-		nn.PREVIOUS_RAW_BREAKDOWN_DELTA = state["PREVIOUS_RAW_BREAKDOWN_DELTA"]
-		nn.PREVIOUS_ABS_RAW_LOSS_DELTA = state["PREVIOUS_ABS_RAW_LOSS_DELTA"]
 		nn.ENABLE_GROUP_BATCHING = bool(state["ENABLE_GROUP_BATCHING"])
 		nn.GROUP_BATCH_SIZE = int(state["GROUP_BATCH_SIZE"])
 		nn.TOP_N_GROUPS = int(state["TOP_N_GROUPS"])

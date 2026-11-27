@@ -537,6 +537,53 @@ class TelemetryViewer(tk.Tk):
 				else:
 					self.df = pd.concat([self.df, new_df], ignore_index=True)
 
+
+				# Compute derivative columns from Epoch 0 on load, then O(1) incrementally per new row
+				if "total_raw_loss" in self.df.columns:
+					deriv_cols = [
+						"raw_loss_delta",
+						"raw_loss_curvature",
+						"abs_raw_loss_delta",
+						"abs_raw_loss_curvature",
+						"abs_delta_abs_delta_raw",
+					]
+					if any(c not in self.df.columns for c in deriv_cols):
+						start_idx = 0
+					else:
+						missing_mask = self.df[deriv_cols].isna().any(axis=1)
+						if missing_mask.any():
+							first_missing = int(missing_mask.idxmax())
+							start_idx = max(0, first_missing - 3)
+						else:
+							start_idx = max(0, len(self.df) - len(new_df) - 3)
+
+					sub_idx = self.df.index[start_idx:]
+					raw = pd.to_numeric(self.df.loc[sub_idx, "total_raw_loss"], errors="coerce")
+
+					if start_idx == 0:
+						d1 = raw.diff().fillna(0.0)
+						d2 = d1.diff().fillna(0.0)
+						abs_d1 = d1.abs()
+						abs_d2 = d2.abs()
+						d3_abs = abs_d1.diff().abs().fillna(0.0)
+						write_idx = sub_idx
+					else:
+						d1 = raw.diff()
+						d2 = d1.diff()
+						abs_d1 = d1.abs()
+						abs_d2 = d2.abs()
+						d3_abs = abs_d1.diff().abs()
+						# Skip first 2 boundary rows so they are never overwritten with NaN
+						write_idx = self.df.index[start_idx + 2:]
+
+					self.df.loc[write_idx, "raw_loss_delta"] = d1.loc[write_idx]
+					self.df.loc[write_idx, "raw_loss_curvature"] = d2.loc[write_idx]
+					self.df.loc[write_idx, "abs_raw_loss_delta"] = abs_d1.loc[write_idx]
+					self.df.loc[write_idx, "abs_raw_loss_curvature"] = abs_d2.loc[write_idx]
+					self.df.loc[write_idx, "abs_delta_abs_delta_raw"] = d3_abs.loc[write_idx]
+
+
+
 			# If still empty → nothing to plot
 			if self.df.empty:
 				self.after(1000, self._tail_and_update)
