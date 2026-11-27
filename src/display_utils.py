@@ -61,38 +61,26 @@ def publish_frame(arr):
 
 
 def compute_accuracy_metrics(pred, target, max_range=255.0, decay_rate=12.0):
-	"""
-	Strict binary accuracy (exact match) and exponential-decay continuous accuracy
-	for (N, 3) RGB pixels in 0–255 range.
-
-	decay_rate controls how steeply the continuous score drops for large errors.
-	Higher = harsher penalty.
-	"""
-	if hasattr(pred, "get"): pred = pred.get()
-	if hasattr(target, "get"): target = target.get()
-
-	pred = np.array(pred, dtype=np.float32)
-	target = np.array(target, dtype=np.float32)
+	pred = cp.asarray(pred, dtype=cp.float32)
+	target = cp.asarray(target, dtype=cp.float32)
 
 	if pred.ndim != 2 or pred.shape[1] != 3:
 		raise ValueError(f"Expected shape (N, 3), got {pred.shape}")
 
-	# Binary exact-match
-	bin_correct_per_channel = (pred == target).mean(axis=0)
-	bin_overall = (pred == target).all(axis=1).mean()
+	# Binary exact-match on GPU
+	eq = (pred == target)
+	bin_correct_per_channel = eq.mean(axis=0).get()
+	bin_overall = float(eq.all(axis=1).mean())
 
-	# --- Continuous per-channel (exponential decay) ---
-	diff = np.abs(pred - target) / max_range  # normalised difference [0,1]
-	closeness = np.exp(-decay_rate * diff)    # exponential drop-off
-	cont_per_channel = closeness.mean(axis=0)
-
-	# --- Continuous overall ---
-	pixel_closeness = closeness.mean(axis=1)  # average closeness across channels
-	cont_overall = pixel_closeness.mean()
+	# Continuous per-channel (exponential decay) on GPU
+	diff = cp.abs(pred - target) / max_range
+	closeness = cp.exp(-decay_rate * diff)
+	cont_per_channel = closeness.mean(axis=0).get()
+	cont_overall = float(closeness.mean())
 
 	return {
-		"binary_overall": float(bin_overall),
+		"binary_overall": bin_overall,
 		"binary_per_channel": [float(x) for x in bin_correct_per_channel],
-		"continuous_overall": float(cont_overall),
+		"continuous_overall": cont_overall,
 		"continuous_per_channel": [float(x) for x in cont_per_channel]
 	}

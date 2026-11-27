@@ -95,7 +95,7 @@ def select_top_n_loss_groups(target, pred, group_size, top_n=1):
 		best_end = min(best_start + group_size, n_samples)
 		return slice(best_start, best_end), full_total_raw_loss
 
-	top_group_indices = cp.argsort(total_group_losses)[-k:].astype(cp.int32)
+	top_group_indices = cp.argpartition(total_group_losses, -k)[-k:].astype(cp.int32)
 
 	# Pure GPU 2D broadcast: (k, 1) * group_size + (1, group_size) -> (k * group_size,)
 	offsets = cp.arange(group_size, dtype=cp.int32)
