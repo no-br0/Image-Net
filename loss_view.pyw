@@ -292,6 +292,9 @@ class TelemetryViewer(tk.Tk):
 			self.line_full_raw_loss.set_ydata([])
 			self.min_full_loss_dot.set_xdata([])
 			self.min_full_loss_dot.set_ydata([])
+			self.gap_badge.set_text("")
+			self.gap_badge.set_visible(False)
+
 			return
 
 		df = self.df[(self.df["global_epoch"] >= self.slider_start) & (self.df["global_epoch"] <= self.slider_end)]
@@ -330,6 +333,25 @@ class TelemetryViewer(tk.Tk):
 			self.min_full_loss_dot.set_xdata([])
 			self.min_full_loss_dot.set_ydata([])
 
+		# 3. Start -> End Percentage Gap Readout for current slider window
+		if has_full_col and not df.empty:
+			valid_gap = df.dropna(subset=["total_raw_loss", "full_total_raw_loss"])
+			valid_gap = valid_gap[valid_gap["full_total_raw_loss"] > 0]
+			if not valid_gap.empty:
+				gap_pct = ((valid_gap["total_raw_loss"] - valid_gap["full_total_raw_loss"]) / valid_gap["full_total_raw_loss"]) * 100.0
+				start_pct = float(gap_pct.iloc[0])
+				end_pct = float(gap_pct.iloc[-1])
+				delta_pct = end_pct - start_pct
+				self.gap_badge.set_text(f"Loss Gap: {start_pct:.2f}% → {end_pct:.2f}% ({delta_pct:+.2f}%)")
+				self.gap_badge.set_visible(True)
+			else:
+				self.gap_badge.set_text("")
+				self.gap_badge.set_visible(False)
+		else:
+			self.gap_badge.set_text("")
+			self.gap_badge.set_visible(False)
+
+
 		self.panel_loss.ax.relim()
 		self.panel_loss.ax.autoscale_view()
 
@@ -352,6 +374,12 @@ class TelemetryViewer(tk.Tk):
 		self.min_loss_dot, = self.panel_loss.ax.plot([], [], 'o', color='red', markersize=6, label="Min Loss (Top-N)")
 		self.line_full_raw_loss, = self.panel_loss.ax.plot([], [], label="Full Total Raw Loss", color="#ffaa44")
 		self.min_full_loss_dot, = self.panel_loss.ax.plot([], [], 'o', color='#00ff88', markersize=6, label="Min Loss (Full)")
+		self.gap_badge = self.panel_loss.ax.text(
+			0.015, 0.94, "", transform=self.panel_loss.ax.transAxes,
+			color="#bb88ff", fontsize=9, fontweight="bold", verticalalignment="top",
+			bbox=dict(boxstyle="round,pad=0.3", facecolor="#141414", edgecolor="#bb88ff", alpha=0.85)
+		)
+
 		self.panel_loss.ax.legend(facecolor="black", edgecolor="white", labelcolor="white")
 
 
@@ -420,6 +448,10 @@ class TelemetryViewer(tk.Tk):
 				self.min_full_loss_dot.set_xdata([])
 				self.min_full_loss_dot.set_ydata([])
 				self._last_loss_visible = set()
+
+				self.gap_badge.set_text("")
+				self.gap_badge.set_visible(False)
+
 
 
 				if self.panel_loss.ax.legend_:
